@@ -32,6 +32,7 @@ const autoRefreshTimer = ref(null)
 
 // UI 设置
 const showSettings = ref(false)
+const showDonate = ref(false)
 const showHotValue = ref(UI.SHOW_HOT_VALUE)
 const showDescription = ref(UI.SHOW_DESCRIPTION)
 
@@ -210,6 +211,16 @@ const openSettings = () => {
 // 关闭设置面板
 const closeSettings = () => {
   showSettings.value = false
+}
+
+// 打开打赏弹窗
+const openDonate = () => {
+  showDonate.value = true
+}
+
+// 关闭打赏弹窗
+const closeDonate = () => {
+  showDonate.value = false
 }
 
 // 处理设置变更
@@ -613,6 +624,15 @@ watch(selectedCategory, (newCategory) => {
 
     <!-- 悬浮按钮组 - 右下角 -->
     <div class="floating-buttons">
+      <!-- 打赏按钮 -->
+      <button
+        @click="openDonate"
+        class="floating-btn donate-btn"
+        title="打赏"
+      >
+        <span class="floating-icon">❤️</span>
+      </button>
+
       <!-- 刷新按钮 -->
       <button
         @click="refresh"
@@ -631,6 +651,19 @@ watch(selectedCategory, (newCategory) => {
       >
         <span class="floating-icon">⚙️</span>
       </button>
+    </div>
+
+    <!-- 打赏弹窗 -->
+    <div v-if="showDonate" class="donate-modal" @click="closeDonate">
+      <div class="donate-content" @click.stop>
+        <button class="donate-close" @click="closeDonate">✕</button>
+        <h3 class="donate-title">感谢打赏</h3>
+        <p class="donate-desc">如果您觉得这个插件对您有帮助，欢迎打赏支持</p>
+        <div class="donate-qr-container">
+          <img src="/img/zs.png" alt="打赏二维码" class="donate-qr" />
+        </div>
+        <p class="donate-tip">扫码打赏，感谢您的支持！</p>
+      </div>
     </div>
   </div>
 </template>
@@ -1436,5 +1469,173 @@ html.dark-mode .settings-btn {
 
 html.dark-mode .settings-btn:hover {
   background: linear-gradient(135deg, #343a40, #212529);
+}
+
+/* ========== 打赏按钮样式 ========== */
+
+/* 打赏按钮 - 红色渐变 */
+.donate-btn {
+  background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+}
+
+.donate-btn:hover {
+  background: linear-gradient(135deg, #ee5a52, #dc4c47);
+}
+
+/* 夜间模式打赏按钮 */
+html.dark-mode .donate-btn {
+  background: linear-gradient(135deg, #ee5a52, #dc4c47);
+}
+
+html.dark-mode .donate-btn:hover {
+  background: linear-gradient(135deg, #dc4c47, #c9453f);
+}
+
+/* ========== 打赏弹窗样式 ========== */
+
+/* 打赏弹窗遮罩 */
+.donate-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* 打赏内容容器 */
+.donate-content {
+  background-color: #ffffff;
+  border-radius: 16px;
+  padding: 32px;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  animation: slideUp 0.3s ease;
+  position: relative;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* 关闭按钮 */
+.donate-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background-color: #f5f5f5;
+  border-radius: 50%;
+  font-size: 18px;
+  color: #666;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.donate-close:hover {
+  background-color: #e0e0e0;
+  color: #333;
+}
+
+/* 打赏标题 */
+.donate-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 12px 0;
+  text-align: center;
+}
+
+/* 打赏描述 */
+.donate-desc {
+  font-size: 14px;
+  color: #666;
+  text-align: center;
+  margin: 0 0 24px 0;
+  line-height: 1.5;
+}
+
+/* 二维码容器 */
+.donate-qr-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+/* 二维码图片 */
+.donate-qr {
+  width: 250px;
+  height: 250px;
+  object-fit: contain;
+  border-radius: 8px;
+  border: 2px solid #f0f0f0;
+}
+
+/* 打赏提示 */
+.donate-tip {
+  font-size: 13px;
+  color: #999;
+  text-align: center;
+  margin: 0;
+}
+
+/* ========== 夜间模式打赏弹窗样式 ========== */
+
+html.dark-mode .donate-content {
+  background-color: #2c2c2c;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+html.dark-mode .donate-close {
+  background-color: #3a3a3a;
+  color: #e0e0e0;
+}
+
+html.dark-mode .donate-close:hover {
+  background-color: #4a4a4a;
+  color: #ffffff;
+}
+
+html.dark-mode .donate-title {
+  color: #e0e0e0;
+}
+
+html.dark-mode .donate-desc {
+  color: #999;
+}
+
+html.dark-mode .donate-qr {
+  border-color: #444;
+}
+
+html.dark-mode .donate-tip {
+  color: #777;
 }
 </style>
