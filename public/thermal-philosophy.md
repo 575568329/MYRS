@@ -1,0 +1,15 @@
+# Thermal Wave Movement
+
+## Manifesto
+
+**Thermal Wave** is a visual philosophy born from the convergence of energy dynamics and fluid motion. It speaks to the invisible forces that move through systems—heat, data, attention—rendering visible what usually remains sensed but unseen. The movement embraces paradox: containment and release, structure and spontaneity, the measured and the wild. This is not decoration; it is the visualization of energy itself.
+
+**Spatial composition** in Thermal Wave operates through carefully calibrated tension. Forms emerge from negative space with the precision of thermal imaging—each shape placed with the meticulous attention of a master craftsman who has studied every millimeter. The canvas breathes; elements float in suspension, weightless yet anchored. There is no clutter here, only essential forms positioned with countless hours of refinement. The eye moves through gradients of density, from open fields to concentrated focal points, each transition the product of painstaking deliberation.
+
+**Color behaves as temperature**. The palette flows from cool blues to oranges to brilliant reds, each hue carrying emotional and visual weight. Gradients never feel mechanical—they possess the organic quality of heat dissipation, of warm air meeting cold. Color transitions are executed with master-level precision, each shade calibrated to evoke thermal sensation. This is chromatic craftsmanship at its highest level; every gradient feels inevitable, as if no other combination could exist. The work appears to have been labored over for days, weeks, until each color relationship achieves perfect resonance.
+
+**Form draws from both the geometric and the organic**. Circles suggest containment, focus, the way heat concentrates. Curved channels imply flow, the path of least resistance, the direction energy takes when released. Angular elements cut through softness—arrows, peaks, sharp transitions—representing the sudden, the viral, the moment thermal energy spikes. Every shape is distilled to its essence. Complexity emerges from simple elements repeated, layered, composed with the rigorous discipline of someone at the absolute top of their field.
+
+**Typography, when present, is sparse and integrated**. Text does not explain; it anchors. Words appear as small markers, minimal sans-serif labels floating in thermal fields, or bold typographic gestures that themselves become heat sources. The relationship between word and image is never accidental—each character placed with the same care as every other visual element. Nothing is decorative. Everything communicates.
+
+**The final work bears the mark of obsession**. Every spacing decision, every color transition, every shape boundary reflects countless iterations, endless refinement, the uncompromising standard of work created by someone who has mastered their craft. Thermal Wave is what happens when energy meets control—wildness rendered with precision, feeling expressed through form, the invisible made visible through artistry at the highest level.
