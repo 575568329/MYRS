@@ -2,7 +2,7 @@
  * @Author: fjyu9 fjyu9@iflytek.com
  * @Date: 2026-01-29 15:38:01
  * @LastEditors: fjyu9 fjyu9@iflytek.com
- * @LastEditTime: 2026-01-29 16:09:16
+ * @LastEditTime: 2026-01-30 09:05:53
  * @FilePath: \摸鱼热搜\src\config.js
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -27,6 +27,7 @@ export const DISPLAY_MODE = {
     'douyin',       // 抖音
     'bilibili',     // B站
     'toutiao',      // 今日头条
+    '36kr',         // 36氪
     'sspai',        // 少数派
     'douban-movie', // 豆瓣电影
     'weread'        // 微信读书
