@@ -40,6 +40,14 @@ export const PAGINATION = {
   LOAD_MORE_THRESHOLD: 100 // 距离底部多少像素时触发加载更多
 }
 
+// API 请求配置
+export const API = {
+  // 请求超时时间（毫秒）- 防止请求卡住
+  REQUEST_TIMEOUT: 5000,
+  // 最小请求间隔（毫秒）- 防止频繁请求
+  MIN_REQUEST_INTERVAL: 500
+}
+
 // UI 配置
 export const UI = {
   // 是否显示平台图标

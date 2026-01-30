@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
 import { getHotData, PLATFORMS, getPlatformsByCategory, getCategories, getPlatformsByMode } from '../services/hotSearchApi.js'
-import { DISPLAY_MODE, STORAGE_KEYS, UI, AUTO_REFRESH, HOT_LEVELS } from '../config.js'
+import { DISPLAY_MODE, STORAGE_KEYS, UI, AUTO_REFRESH, HOT_LEVELS, API } from '../config.js'
 import Settings from '../Settings/index.vue'
 
 const props = defineProps({
@@ -29,6 +29,10 @@ const updateTime = ref('')
 const recentPlatforms = ref([])
 const favoriteItems = ref(new Set())
 const autoRefreshTimer = ref(null)
+
+// 加载超时控制
+const loadingTimeout = ref(null)
+const lastRequestTime = ref(0)
 
 // UI 设置
 const showSettings = ref(false)
@@ -70,13 +74,44 @@ const currentPlatformObj = computed(() => {
 
 // 获取热搜数据
 const fetchHotData = async (platformId, loadMore = false) => {
+  // 防止频繁请求（防抖）
+  const now = Date.now()
+  if (!loadMore && now - lastRequestTime.value < API.MIN_REQUEST_INTERVAL) {
+    console.log('⚠️ 请求过于频繁，已忽略')
+    return
+  }
+
+  // 防止重复请求
+  if ((loading.value && !loadMore) || loadingMore.value) {
+    console.log('⚠️ 正在加载中，跳过重复请求')
+    return
+  }
+
+  // 更新最后请求时间
+  lastRequestTime.value = now
+
   if (loadMore) {
     loadingMore.value = true
   } else {
     loading.value = true
     error.value = null
     currentPage.value = 1
+    // 切换平台时自动滚动到顶部
+    scrollToTop()
   }
+
+  // 设置超时定时器
+  if (loadingTimeout.value) {
+    clearTimeout(loadingTimeout.value)
+  }
+
+  loadingTimeout.value = setTimeout(() => {
+    if (loading.value || loadingMore.value) {
+      console.warn(`⏰ 请求超时（${API.REQUEST_TIMEOUT}ms），强制关闭加载状态`)
+      loading.value = false
+      loadingMore.value = false
+    }
+  }, API.REQUEST_TIMEOUT)
 
   try {
     console.log(`🎯 开始获取 ${platformId} 的热搜数据`)
@@ -84,6 +119,12 @@ const fetchHotData = async (platformId, loadMore = false) => {
       page: currentPage.value,
       pageSize: 50
     })
+
+    // 清除超时定时器
+    if (loadingTimeout.value) {
+      clearTimeout(loadingTimeout.value)
+      loadingTimeout.value = null
+    }
 
     // 处理分页数据
     if (result && typeof result === 'object' && result.data) {
@@ -119,6 +160,12 @@ const fetchHotData = async (platformId, loadMore = false) => {
   } catch (err) {
     console.error('❌ 获取热搜失败:', err)
 
+    // 清除超时定时器
+    if (loadingTimeout.value) {
+      clearTimeout(loadingTimeout.value)
+      loadingTimeout.value = null
+    }
+
     // 显示友好的错误信息
     if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
       error.value = '网络请求失败，请检查网络连接'
@@ -138,6 +185,17 @@ const fetchHotData = async (platformId, loadMore = false) => {
   } finally {
     loading.value = false
     loadingMore.value = false
+  }
+}
+
+// 滚动到顶部
+const scrollToTop = () => {
+  const contentSection = document.querySelector('.content-section')
+  if (contentSection) {
+    contentSection.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    })
   }
 }
 
@@ -267,6 +325,10 @@ onUnmounted(() => {
   window.removeEventListener('settingChange', handleSettingChange)
   if (darkModeQuery) {
     darkModeQuery.removeEventListener('change', handleSystemThemeChange)
+  }
+  // 清除超时定时器
+  if (loadingTimeout.value) {
+    clearTimeout(loadingTimeout.value)
   }
 })
 
@@ -554,6 +616,14 @@ watch(selectedCategory, (newCategory) => {
 
     <!-- 热搜列表区域 -->
     <div class="content-section" ref="contentSection">
+      <!-- 加载蒙版 -->
+      <div v-if="loading && hotList.length > 0" class="loading-overlay">
+        <div class="loading-overlay-content">
+          <div class="loading-spinner"></div>
+          <p>请稍等...</p>
+        </div>
+      </div>
+
       <!-- 加载状态 -->
       <div v-if="loading && hotList.length === 0" class="loading-state">
         <div class="loading-spinner"></div>
@@ -875,6 +945,35 @@ watch(selectedCategory, (newCategory) => {
   overflow-y: auto;
   padding: 5px;
   position: relative;
+}
+
+/* 加载蒙版 */
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  backdrop-filter: blur(2px);
+  animation: fadeIn 0.2s ease;
+}
+
+.loading-overlay-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.loading-overlay p {
+  font-size: 14px;
+  color: #666;
+  margin: 0;
 }
 
 .loading-state,
@@ -1637,5 +1736,15 @@ html.dark-mode .donate-qr {
 
 html.dark-mode .donate-tip {
   color: #777;
+}
+
+/* ========== 暗色模式加载蒙版 ========== */
+
+html.dark-mode .loading-overlay {
+  background-color: rgba(42, 42, 42, 0.8);
+}
+
+html.dark-mode .loading-overlay p {
+  color: #e0e0e0;
 }
 </style>
