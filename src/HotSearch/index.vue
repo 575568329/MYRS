@@ -423,11 +423,31 @@ onMounted(() => {
         applyTheme(savedThemeMode)
       }
 
-      // 读取自定义平台顺序 - 如果没有保存的顺序，使用默认顺序
+      // 🔥 读取自定义平台顺序并进行增量合并
       if (savedCustomPlatformOrder) {
         try {
-          customPlatformOrder.value = JSON.parse(savedCustomPlatformOrder)
-          console.log('💾 从本地存储读取自定义平台顺序:', customPlatformOrder.value)
+          const savedOrder = JSON.parse(savedCustomPlatformOrder)
+          console.log('💾 读取到的缓存顺序:', savedOrder)
+
+          // 获取配置文件中的最新平台列表
+          const defaultPlatforms = DISPLAY_MODE.SIMPLE_MODE_PLATFORMS
+          console.log('📋 配置文件中的平台列表:', defaultPlatforms)
+
+          // 找出配置文件中有，但缓存中没有的新平台
+          const newPlatforms = defaultPlatforms.filter(id => !savedOrder.includes(id))
+          console.log('🆕 发现的新平台:', newPlatforms)
+
+          // 如果有新平台，合并并保存
+          if (newPlatforms.length > 0) {
+            const mergedOrder = [...savedOrder, ...newPlatforms]
+            customPlatformOrder.value = mergedOrder
+            // 立即保存合并后的顺序
+            window.utools.dbStorage.setItem(STORAGE_KEYS.CUSTOM_PLATFORM_ORDER, JSON.stringify(mergedOrder))
+            console.log('✅ 增量合并完成！新平台已追加到列表末尾:', newPlatforms)
+          } else {
+            customPlatformOrder.value = savedOrder
+            console.log('ℹ️ 没有发现新平台，使用缓存的顺序')
+          }
         } catch (e) {
           console.log('⚠️ 解析自定义平台顺序失败，使用默认顺序:', e)
           customPlatformOrder.value = DISPLAY_MODE.SIMPLE_MODE_PLATFORMS
@@ -435,7 +455,7 @@ onMounted(() => {
       } else {
         // 没有保存的自定义顺序，使用配置文件中的默认顺序
         customPlatformOrder.value = DISPLAY_MODE.SIMPLE_MODE_PLATFORMS
-        console.log('💾 使用默认平台顺序:', customPlatformOrder.value)
+        console.log('💾 首次启动，使用配置文件的默认顺序')
       }
     } catch (e) {
       console.log('⚠️ 读取本地存储失败:', e)

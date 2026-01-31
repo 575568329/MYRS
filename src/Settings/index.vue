@@ -53,9 +53,24 @@ onMounted(() => {
           const parsedOrder = JSON.parse(savedPlatformOrder)
           // 验证解析的顺序是否有效
           if (Array.isArray(parsedOrder) && parsedOrder.length > 0) {
-            customPlatformOrder.value = parsedOrder.map(id =>
-              PLATFORMS.find(p => p.id === id)
-            ).filter(Boolean)
+            // 增量合并：保留用户顺序，添加配置文件中的新平台
+            const defaultPlatforms = DISPLAY_MODE.SIMPLE_MODE_PLATFORMS
+            const newPlatforms = defaultPlatforms.filter(id => !parsedOrder.includes(id))
+
+            // 如果有新平台，合并并保存
+            if (newPlatforms.length > 0) {
+              const mergedOrder = [...parsedOrder, ...newPlatforms]
+              customPlatformOrder.value = mergedOrder.map(id =>
+                PLATFORMS.find(p => p.id === id)
+              ).filter(Boolean)
+              // 自动保存合并后的顺序
+              window.utools.dbStorage.setItem(STORAGE_KEYS.CUSTOM_PLATFORM_ORDER, JSON.stringify(mergedOrder))
+              console.log('🔄 设置面板发现新平台，已自动合并:', newPlatforms)
+            } else {
+              customPlatformOrder.value = parsedOrder.map(id =>
+                PLATFORMS.find(p => p.id === id)
+              ).filter(Boolean)
+            }
           }
         } catch (e) {
           console.log('⚠️ 解析平台顺序失败，使用默认顺序:', e)
@@ -246,6 +261,37 @@ const resetToDefault = () => {
   console.log('重置后的平台顺序:', customPlatformOrder.value)
   saveCustomPlatformOrder()
 }
+
+// 清除所有缓存
+const clearAllCache = () => {
+  if (!window.utools || !window.utools.dbStorage) {
+    console.log('⚠️ 当前环境不支持清除缓存')
+    return
+  }
+
+  if (confirm('确定要清除所有缓存吗？这将重置所有设置为默认值。')) {
+    try {
+      // 清除平台顺序缓存
+      window.utools.dbStorage.removeItem(STORAGE_KEYS.CUSTOM_PLATFORM_ORDER)
+      // 也可以清除其他设置（可选）
+      // window.utools.dbStorage.removeItem(STORAGE_KEYS.SELECTED_PLATFORM)
+      // window.utools.dbStorage.removeItem(STORAGE_KEYS.SELECTED_CATEGORY)
+
+      console.log('✅ 缓存已清除')
+      alert('缓存已清除！应用将重新加载配置。')
+
+      // 重新加载默认配置
+      customPlatformOrder.value = DISPLAY_MODE.SIMPLE_MODE_PLATFORMS.map(id =>
+        PLATFORMS.find(p => p.id === id)
+      ).filter(Boolean)
+
+      saveCustomPlatformOrder()
+    } catch (e) {
+      console.error('❌ 清除缓存失败:', e)
+      alert('清除缓存失败: ' + e.message)
+    }
+  }
+}
 </script>
 
 <template>
@@ -313,7 +359,10 @@ const resetToDefault = () => {
         <div class="setting-group">
           <div class="setting-group-header">
             <h4>极简模式平台顺序</h4>
-            <button @click="resetToDefault" class="reset-btn">重置</button>
+            <div class="header-buttons">
+              <button @click="clearAllCache" class="clear-cache-btn">清除缓存</button>
+              <button @click="resetToDefault" class="reset-btn">重置</button>
+            </div>
           </div>
           <div class="setting-group-header-info">
             <p class="setting-group-desc">拖动调整极简模式下显示的平台顺序</p>
@@ -673,7 +722,13 @@ const resetToDefault = () => {
   gap: 12px;
 }
 
-.reset-btn {
+.header-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.reset-btn,
+.clear-cache-btn {
   padding: 4px 12px;
   border: 1px solid #ddd;
   border-radius: 4px;
@@ -685,10 +740,22 @@ const resetToDefault = () => {
   flex-shrink: 0;
 }
 
-.reset-btn:hover {
+.reset-btn:hover,
+.clear-cache-btn:hover {
   border-color: #007bff;
   color: #007bff;
   background-color: #f0f8ff;
+}
+
+.clear-cache-btn {
+  border-color: #ff9800;
+  color: #ff9800;
+}
+
+.clear-cache-btn:hover {
+  border-color: #f57c00;
+  color: #f57c00;
+  background-color: #fff3e0;
 }
 
 .setting-group-desc {
@@ -796,16 +863,29 @@ const resetToDefault = () => {
 }
 
 /* 暗色模式 - 平台顺序 */
-:global(.dark-mode) .reset-btn {
+:global(.dark-mode) .reset-btn,
+:global(.dark-mode) .clear-cache-btn {
   background-color: #3a3a3a;
   border-color: #555;
   color: #999;
 }
 
-:global(.dark-mode) .reset-btn:hover {
+:global(.dark-mode) .reset-btn:hover,
+:global(.dark-mode) .clear-cache-btn:hover {
   border-color: #007bff;
   color: #007bff;
   background-color: #2a3a4a;
+}
+
+:global(.dark-mode) .clear-cache-btn {
+  border-color: #ff9800;
+  color: #ff9800;
+}
+
+:global(.dark-mode) .clear-cache-btn:hover {
+  border-color: #ffb74d;
+  color: #ffb74d;
+  background-color: #3a2a1a;
 }
 
 :global(.dark-mode) .platform-count {
