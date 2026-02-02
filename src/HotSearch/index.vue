@@ -3,6 +3,7 @@ import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
 import { getHotData, PLATFORMS, getPlatformsByCategory, getCategories, getPlatformsByMode } from '../services/hotSearchApi.js'
 import { DISPLAY_MODE, STORAGE_KEYS, UI, AUTO_REFRESH, HOT_LEVELS, API } from '../config.js'
 import Settings from '../Settings/index.vue'
+import PlatformIcon from '../components/PlatformIcon.vue'
 
 // 调试工具函数 - 只在 DEBUG 模式下输出日志
 const debug = {
@@ -631,7 +632,7 @@ watch(selectedCategory, (newCategory) => {
       <div class="platform-tabs-wrapper">
         <!-- 当前选中平台 - 独立显示在最左侧 -->
         <div v-if="currentPlatformObj" class="current-platform">
-          <span class="current-platform-icon">{{ currentPlatformObj.icon }}</span>
+          <PlatformIcon :platformId="currentPlatformObj.id" size="18px" class="current-platform-icon" />
           <span class="current-platform-name">{{ currentPlatformObj.name }}</span>
         </div>
 
@@ -654,7 +655,7 @@ watch(selectedCategory, (newCategory) => {
               @click="switchPlatform(platform.id)"
               :class="['platform-tab', { active: selectedPlatform === platform.id }]"
             >
-              <span class="platform-icon">{{ platform.icon }}</span>
+              <PlatformIcon :platformId="platform.id" size="16px" class="platform-icon" />
               <span class="platform-name">{{ platform.name }}</span>
             </button>
           </div>
@@ -866,7 +867,9 @@ watch(selectedCategory, (newCategory) => {
 }
 
 .current-platform-icon {
-  font-size: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .current-platform-name {
@@ -964,7 +967,9 @@ watch(selectedCategory, (newCategory) => {
 }
 
 .platform-icon {
-  font-size: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* 刷新图标动画 */

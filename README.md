@@ -2,16 +2,55 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
+![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Vue](https://img.shields.io/badge/Vue-3.5.13-brightgreen.svg)
 ![uTools](https://img.shields.io/badge/uTools-插件-orange.svg)
 
 **一站式聚合各大平台热搜信息，让你的摸鱼时光更加精彩**
 
-[功能特性](#-功能特性) • [快速开始](#-快速开始) • [使用指南](#-使用指南) • [常见问题](#-常见问题)
+[更新日志](#-更新日志) • [功能特性](#-功能特性) • [快速开始](#-快速开始) • [使用指南](#-使用指南) • [常见问题](#-常见问题)
 
 </div>
+
+---
+
+## 📝 更新日志
+
+### v1.1.0 (2025-02-02)
+
+#### 🎉 新增功能
+- **追书神器小说排行榜** - 新增阅读类平台，支持查看热门小说排行
+- **平台专属超时配置** - 为不同平台设置独立的请求超时时间
+- **调试日志开关** - 新增 `DEBUG` 配置项，可控制是否显示调试日志
+
+#### ⚡ 性能优化
+- **多代理支持** - 追书神器使用3个 CORS 代理备选，大幅提升可用性
+- **超时控制优化** - 使用 `AbortController` 实现真正的请求超时控制
+- **错误处理改进** - 超时时显示"暂无数据"而非错误提示，体验更友好
+
+#### 🔧 技术改进
+- **配置管理优化** - 新增 `PLATFORM_TIMEOUT` 配置，支持平台级别的超时设置
+- **调试工具函数** - 统一的 `debug` 对象管理所有调试日志输出
+- **代码健壮性** - 修复超时配置不一致问题，确保 UI 层和 API 层超时同步
+
+#### 📋 配置变更
+```javascript
+// src/config.js 新增配置
+API: {
+  REQUEST_TIMEOUT: 5000,           // 默认超时 5 秒
+  MIN_REQUEST_INTERVAL: 500,       // 最小请求间隔 500ms
+  PLATFORM_TIMEOUT: {
+    'zhuishu': 20000              // 追书神器超时 20 秒（使用 CORS 代理）
+  },
+  DEBUG: false                     // 调试日志开关（生产环境建议关闭）
+}
+```
+
+#### 🐛 问题修复
+- 修复追书神器接口频繁超时的问题
+- 修复 UI 层和 API 层超时时间不一致导致的加载状态异常
+- 优化错误判断逻辑，避免误判其他网络错误为超时
 
 ---
 
@@ -58,9 +97,56 @@
 豆瓣电影、虎扑、NGA、米游社、原神
 
 ### 📚 阅读类
-微信读书
+微信读书、追书排行
 
 > 📌 持续更新中，欢迎建议更多平台！
+
+---
+
+## 🎨 图标库说明
+
+### Remix Icon 集成（Vue 组件方式）
+
+本项目已集成 **vue-remix-icons** 图标库，使用 Vue 3 组件方式，支持按需加载和 Tree-Shaking！
+
+#### 📦 特性
+- ✅ 2000+ 精美图标
+- ✅ 开源免费（MIT License）
+- ✅ 中性设计风格
+- ✅ 支持线性图标和填充图标
+- ✅ Vue 3 组件方式，按需加载
+- ✅ 优秀的 Tree-Shaking 支持
+- ✅ 每个图标独立打包（~0.4-3KB）
+
+#### 🔧 使用方式
+
+**在 Vue 组件中使用**：
+
+```vue
+<template>
+  <!-- 使用 PlatformIcon 组件（推荐） -->
+  <PlatformIcon :platformId="'bilibili'" size="18px" />
+
+  <!-- 或直接使用 RemixIcon 组件 -->
+  <RemixIcon :iconName="'ri-bilibili-line'" size="18px" />
+</template>
+
+<script setup>
+import PlatformIcon from '@/components/PlatformIcon.vue'
+import RemixIcon from '@/components/RemixIcon.vue'
+</script>
+```
+
+#### 📂 相关文件
+- `src/config/icons.js` - 图标映射配置
+- `src/components/RemixIcon.vue` - 通用图标组件（带缓存）
+- `src/components/PlatformIcon.vue` - 平台图标组件
+
+#### 💡 技术优势
+- ⚡ **按需加载** - 只打包使用的图标
+- 📦 **Tree-Shaking** - 未使用的图标不会被打包
+- 🎯 **组件化** - 更符合 Vue 3 开发习惯
+- 🔒 **类型安全** - 支持 TypeScript 类型推断
 
 ---
 
@@ -159,6 +245,7 @@ npm run build
 | **Vue 3** | 渐进式 JavaScript 框架 | ^3.5.13 |
 | **Vite** | 下一代前端构建工具 | ^6.0.11 |
 | **uTools API** | uTools 插件开发接口 | - |
+| **Remix Icon** | 开源图标库（可选） | ^3.5.0 |
 | **DailyHotApi** | 热搜数据源 | [GitHub](https://github.com/imsyy/DailyHotApi) |
 
 ### 📦 项目结构
@@ -210,6 +297,16 @@ PAGINATION: {
   DEFAULT_PAGE_SIZE: 50,       // 每页显示条数
   LOAD_MORE_THRESHOLD: 100     // 距离底部多少像素触发加载更多
 }
+
+// API 配置
+API: {
+  REQUEST_TIMEOUT: 5000,       // 默认请求超时（毫秒）
+  MIN_REQUEST_INTERVAL: 500,   // 最小请求间隔（毫秒）
+  PLATFORM_TIMEOUT: {          // 平台专属超时配置
+    'zhuishu': 20000          // 追书神器 20 秒（使用 CORS 代理）
+  },
+  DEBUG: false                 // 是否显示调试日志
+}
 ```
 
 ---
@@ -253,7 +350,35 @@ PAGINATION: {
    - **亮色** - 始终亮色
    - **暗色** - 始终暗色
 
-### Q5: 如何开发调试？
+### Q5: 追书神器加载失败怎么办？
+
+**A**: 追书神器使用 CORS 代理访问，可能会遇到以下情况：
+- 代理服务暂时不可用
+- 请求超时（已设置为 20 秒）
+- 目标网站限制访问
+
+**解决方案**：
+- 系统会自动尝试 3 个不同的代理服务
+- 如果所有代理都失败，会显示"暂无热搜数据"
+- 稍后重试或切换到其他平台
+
+### Q6: 如何开启调试日志？
+
+**A**: 编辑 `src/config.js` 文件：
+
+```javascript
+// 开启调试日志
+API: {
+  DEBUG: true   // 设置为 true 开启，false 关闭（默认）
+}
+```
+
+**注意事项**：
+- 生产环境建议关闭（`DEBUG: false`）
+- 错误日志（`console.error`）始终显示，不受 `DEBUG` 控制
+- 开启后会在控制台输出详细的请求信息
+
+### Q7: 如何开发调试？
 
 **A**:
 ```bash
@@ -267,7 +392,7 @@ npm run dev
 npm run build
 ```
 
-### Q6: 依赖安装太慢怎么办？
+### Q8: 依赖安装太慢怎么办？
 
 **A**: 项目已配置淘宝镜像源，如果仍然慢：
 ```bash
@@ -282,7 +407,7 @@ npm install -g cnpm --registry=https://registry.npmmirror.com
 cnpm install
 ```
 
-### Q7: 可以添加新的平台吗？
+### Q9: 可以添加新的平台吗？
 
 **A**: 当然可以！编辑 `src/services/hotSearchApi.js`：
 
