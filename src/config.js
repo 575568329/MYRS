@@ -46,7 +46,13 @@ export const API = {
   // 请求超时时间（毫秒）- 防止请求卡住
   REQUEST_TIMEOUT: 5000,
   // 最小请求间隔（毫秒）- 防止频繁请求
-  MIN_REQUEST_INTERVAL: 500
+  MIN_REQUEST_INTERVAL: 500,
+  // 各平台特殊超时配置（毫秒）
+  PLATFORM_TIMEOUT: {
+    'zhuishu': 20000  // 追书神器使用CORS代理，需要更长时间（20秒）
+  },
+  // 是否显示调试日志（开发环境可设为 true，生产环境设为 false）
+  DEBUG: false
 }
 
 // UI 配置

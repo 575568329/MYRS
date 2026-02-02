@@ -4,6 +4,24 @@ import { getHotData, PLATFORMS, getPlatformsByCategory, getCategories, getPlatfo
 import { DISPLAY_MODE, STORAGE_KEYS, UI, AUTO_REFRESH, HOT_LEVELS, API } from '../config.js'
 import Settings from '../Settings/index.vue'
 
+// 调试工具函数 - 只在 DEBUG 模式下输出日志
+const debug = {
+  log: (...args) => {
+    if (API.DEBUG) {
+      debug.log(...args)
+    }
+  },
+  warn: (...args) => {
+    if (API.DEBUG) {
+      debug.warn(...args)
+    }
+  },
+  error: (...args) => {
+    // 错误日志始终显示
+    console.error(...args)
+  }
+}
+
 const props = defineProps({
   enterAction: {
     type: Object,
@@ -77,13 +95,13 @@ const fetchHotData = async (platformId, loadMore = false) => {
   // 防止频繁请求（防抖）
   const now = Date.now()
   if (!loadMore && now - lastRequestTime.value < API.MIN_REQUEST_INTERVAL) {
-    console.log('⚠️ 请求过于频繁，已忽略')
+    debug.log('⚠️ 请求过于频繁，已忽略')
     return
   }
 
   // 防止重复请求
   if ((loading.value && !loadMore) || loadingMore.value) {
-    console.log('⚠️ 正在加载中，跳过重复请求')
+    debug.log('⚠️ 正在加载中，跳过重复请求')
     return
   }
 
@@ -100,21 +118,24 @@ const fetchHotData = async (platformId, loadMore = false) => {
     scrollToTop()
   }
 
-  // 设置超时定时器
+  // 设置超时定时器（使用平台特定的超时配置）
   if (loadingTimeout.value) {
     clearTimeout(loadingTimeout.value)
   }
 
+  // 获取平台特定的超时时间
+  const platformTimeout = API.PLATFORM_TIMEOUT[platformId] || API.REQUEST_TIMEOUT
+
   loadingTimeout.value = setTimeout(() => {
     if (loading.value || loadingMore.value) {
-      console.warn(`⏰ 请求超时（${API.REQUEST_TIMEOUT}ms），强制关闭加载状态`)
+      debug.warn(`⏰ 请求超时（${platformTimeout}ms），强制关闭加载状态`)
       loading.value = false
       loadingMore.value = false
     }
-  }, API.REQUEST_TIMEOUT)
+  }, platformTimeout)
 
   try {
-    console.log(`🎯 开始获取 ${platformId} 的热搜数据`)
+    debug.log(`🎯 开始获取 ${platformId} 的热搜数据`)
     const result = await getHotData(platformId, {
       page: currentPage.value,
       pageSize: 50
@@ -141,20 +162,20 @@ const fetchHotData = async (platformId, loadMore = false) => {
       }
       hasMore.value = result.hasMore
       totalCount.value = result.total
-      console.log(`✅ 成功获取 ${result.data.length} 条热搜数据`)
-      console.log(`📊 总数据量: ${result.total}，还有更多: ${result.hasMore}`)
+      debug.log(`✅ 成功获取 ${result.data.length} 条热搜数据`)
+      debug.log(`📊 总数据量: ${result.total}，还有更多: ${result.hasMore}`)
     } else if (Array.isArray(result)) {
       // 兼容旧格式（直接是数组）
       hotList.value = result
       hasMore.value = false
       totalCount.value = result.length
-      console.log(`✅ 成功获取 ${result.length} 条热搜数据`)
+      debug.log(`✅ 成功获取 ${result.length} 条热搜数据`)
     } else {
       // 空数据或其他格式
       hotList.value = []
       hasMore.value = false
       totalCount.value = 0
-      console.warn('⚠️ 未获取到有效数据')
+      debug.warn('⚠️ 未获取到有效数据')
     }
 
   } catch (err) {
@@ -166,8 +187,17 @@ const fetchHotData = async (platformId, loadMore = false) => {
       loadingTimeout.value = null
     }
 
-    // 显示友好的错误信息
-    if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
+    // 超时错误直接显示暂无数据
+    // AbortError 是由 AbortController 触发的标准超时错误
+    if (err.name === 'AbortError' || err.message === '请求超时') {
+      debug.log('⏰ 请求超时，显示暂无数据')
+      error.value = null
+      hotList.value = []
+      hasMore.value = false
+      totalCount.value = 0
+    }
+    // 其他错误显示友好的错误信息
+    else if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
       error.value = '网络请求失败，请检查网络连接'
     } else if (err.message.includes('404')) {
       error.value = '该平台暂不支持或接口已更新'
@@ -179,9 +209,12 @@ const fetchHotData = async (platformId, loadMore = false) => {
       error.value = err.message || '获取数据失败'
     }
 
-    hotList.value = []
-    hasMore.value = false
-    totalCount.value = 0
+    // 如果有错误信息，清空列表
+    if (error.value) {
+      hotList.value = []
+      hasMore.value = false
+      totalCount.value = 0
+    }
   } finally {
     loading.value = false
     loadingMore.value = false
@@ -204,7 +237,7 @@ const loadMore = () => {
   if (!hasMore.value || loadingMore.value) return
 
   currentPage.value++
-  console.log(`📄 加载第 ${currentPage.value} 页`)
+  debug.log(`📄 加载第 ${currentPage.value} 页`)
   fetchHotData(selectedPlatform.value, true)
 }
 
@@ -229,15 +262,15 @@ const switchCategory = (category) => {
 
   if (currentPlatformInCategory) {
     // 当前平台在新分类中，保持不变
-    console.log(`📂 切换到分类 "${category}"，当前平台 "${selectedPlatform.value}" 仍在该分类中`)
+    debug.log(`📂 切换到分类 "${category}"，当前平台 "${selectedPlatform.value}" 仍在该分类中`)
   } else if (platformsInCategory.length > 0) {
     // 当前平台不在新分类中，自动切换到该分类的第一个平台
     const firstPlatform = platformsInCategory[0]
-    console.log(`📂 切换到分类 "${category}"，自动切换到平台 "${firstPlatform.name}"`)
+    debug.log(`📂 切换到分类 "${category}"，自动切换到平台 "${firstPlatform.name}"`)
     selectedPlatform.value = firstPlatform.id
     fetchHotData(firstPlatform.id)
   } else {
-    console.warn(`⚠️ 分类 "${category}" 下没有可用平台`)
+    debug.warn(`⚠️ 分类 "${category}" 下没有可用平台`)
   }
 }
 
@@ -245,7 +278,7 @@ const switchCategory = (category) => {
 // 打开链接
 const openUrl = (url) => {
   if (!url || url === '#') {
-    console.log('⚠️ 无效链接:', url)
+    debug.log('⚠️ 无效链接:', url)
     return
   }
 
@@ -284,7 +317,7 @@ const closeDonate = () => {
 // 处理设置变更
 const handleSettingChange = (event) => {
   const { key, value } = event.detail
-  console.log('⚙️ 设置变更:', key, value)
+  debug.log('⚙️ 设置变更:', key, value)
 
   if (key === 'showHotValue') {
     showHotValue.value = value
@@ -295,10 +328,10 @@ const handleSettingChange = (event) => {
   } else if (key === 'customPlatformOrder') {
     // 更新自定义平台顺序
     customPlatformOrder.value = value
-    console.log('✅ 自定义平台顺序已更新 (ID数组):', value)
+    debug.log('✅ 自定义平台顺序已更新 (ID数组):', value)
     // 验证顺序是否正确
     const platforms = getPlatformsByMode(value)
-    console.log('✅ 实际显示的平台顺序:', platforms.map(p => `${p.icon} ${p.name}`))
+    debug.log('✅ 实际显示的平台顺序:', platforms.map(p => `${p.icon} ${p.name}`))
   }
 }
 
@@ -316,7 +349,7 @@ const handleSystemThemeChange = (e) => {
     } else {
       html.removeAttribute('class')
     }
-    console.log('🌙 系统主题已切换:', e.matches ? '暗色' : '亮色')
+    debug.log('🌙 系统主题已切换:', e.matches ? '暗色' : '亮色')
   }
 }
 
@@ -386,9 +419,9 @@ const applyTheme = (mode) => {
 
 // 监听滚动事件（实现下拉加载更多）
 onMounted(() => {
-  console.log('🔥 热搜组件已挂载')
-  console.log('📍 当前平台:', selectedPlatform.value)
-  console.log('📂 当前分类:', selectedCategory.value)
+  debug.log('🔥 热搜组件已挂载')
+  debug.log('📍 当前平台:', selectedPlatform.value)
+  debug.log('📂 当前分类:', selectedCategory.value)
 
   // 从本地存储读取保存的分类和平台设置
   if (window.utools && window.utools.dbStorage) {
@@ -401,12 +434,12 @@ onMounted(() => {
       const savedCustomPlatformOrder = window.utools.dbStorage.getItem(STORAGE_KEYS.CUSTOM_PLATFORM_ORDER)
 
       if (savedCategory) {
-        console.log('💾 从本地存储读取分类:', savedCategory)
+        debug.log('💾 从本地存储读取分类:', savedCategory)
         selectedCategory.value = savedCategory
       }
 
       if (savedPlatform) {
-        console.log('💾 从本地存储读取平台:', savedPlatform)
+        debug.log('💾 从本地存储读取平台:', savedPlatform)
         selectedPlatform.value = savedPlatform
       }
 
@@ -427,15 +460,15 @@ onMounted(() => {
       if (savedCustomPlatformOrder) {
         try {
           const savedOrder = JSON.parse(savedCustomPlatformOrder)
-          console.log('💾 读取到的缓存顺序:', savedOrder)
+          debug.log('💾 读取到的缓存顺序:', savedOrder)
 
           // 获取配置文件中的最新平台列表
           const defaultPlatforms = DISPLAY_MODE.SIMPLE_MODE_PLATFORMS
-          console.log('📋 配置文件中的平台列表:', defaultPlatforms)
+          debug.log('📋 配置文件中的平台列表:', defaultPlatforms)
 
           // 找出配置文件中有，但缓存中没有的新平台
           const newPlatforms = defaultPlatforms.filter(id => !savedOrder.includes(id))
-          console.log('🆕 发现的新平台:', newPlatforms)
+          debug.log('🆕 发现的新平台:', newPlatforms)
 
           // 如果有新平台，合并并保存
           if (newPlatforms.length > 0) {
@@ -443,22 +476,22 @@ onMounted(() => {
             customPlatformOrder.value = mergedOrder
             // 立即保存合并后的顺序
             window.utools.dbStorage.setItem(STORAGE_KEYS.CUSTOM_PLATFORM_ORDER, JSON.stringify(mergedOrder))
-            console.log('✅ 增量合并完成！新平台已追加到列表末尾:', newPlatforms)
+            debug.log('✅ 增量合并完成！新平台已追加到列表末尾:', newPlatforms)
           } else {
             customPlatformOrder.value = savedOrder
-            console.log('ℹ️ 没有发现新平台，使用缓存的顺序')
+            debug.log('ℹ️ 没有发现新平台，使用缓存的顺序')
           }
         } catch (e) {
-          console.log('⚠️ 解析自定义平台顺序失败，使用默认顺序:', e)
+          debug.log('⚠️ 解析自定义平台顺序失败，使用默认顺序:', e)
           customPlatformOrder.value = DISPLAY_MODE.SIMPLE_MODE_PLATFORMS
         }
       } else {
         // 没有保存的自定义顺序，使用配置文件中的默认顺序
         customPlatformOrder.value = DISPLAY_MODE.SIMPLE_MODE_PLATFORMS
-        console.log('💾 首次启动，使用配置文件的默认顺序')
+        debug.log('💾 首次启动，使用配置文件的默认顺序')
       }
     } catch (e) {
-      console.log('⚠️ 读取本地存储失败:', e)
+      debug.log('⚠️ 读取本地存储失败:', e)
       // 读取失败时使用默认顺序
       customPlatformOrder.value = DISPLAY_MODE.SIMPLE_MODE_PLATFORMS
     }
@@ -471,7 +504,7 @@ onMounted(() => {
   // 确保 customPlatformOrder 不为 null
   if (!customPlatformOrder.value || customPlatformOrder.value.length === 0) {
     customPlatformOrder.value = DISPLAY_MODE.SIMPLE_MODE_PLATFORMS
-    console.log('📋 初始化默认平台顺序:', customPlatformOrder.value)
+    debug.log('📋 初始化默认平台顺序:', customPlatformOrder.value)
   }
 
   // 监听设置变更事件
@@ -507,7 +540,7 @@ const handleScroll = (event) => {
   // 滚动到底部时加载更多
   if (scrollHeight - scrollTop - clientHeight < 100) {
     if (hasMore.value && !loading.value && !loadingMore.value) {
-      console.log('📜 触发加载更多')
+      debug.log('📜 触发加载更多')
       loadMore()
     }
   }
@@ -555,7 +588,7 @@ watch(selectedPlatform, (newPlatform) => {
     try {
       window.utools.dbStorage.setItem(STORAGE_KEYS.SELECTED_PLATFORM, newPlatform)
     } catch (e) {
-      console.log('⚠️ 保存平台失败:', e)
+      debug.log('⚠️ 保存平台失败:', e)
     }
   }
 })
@@ -566,7 +599,7 @@ watch(selectedCategory, (newCategory) => {
     try {
       window.utools.dbStorage.setItem(STORAGE_KEYS.SELECTED_CATEGORY, newCategory)
     } catch (e) {
-      console.log('⚠️ 保存分类失败:', e)
+      debug.log('⚠️ 保存分类失败:', e)
     }
   }
 

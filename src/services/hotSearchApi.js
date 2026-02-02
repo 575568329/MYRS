@@ -3,7 +3,33 @@
  * 通过 uTools preload 脚本获取各平台热搜
  */
 
-import { DISPLAY_MODE } from '../config.js'
+import { DISPLAY_MODE, API } from '../config.js'
+
+// 调试工具函数 - 只在 DEBUG 模式下输出日志
+const debug = {
+  log: (...args) => {
+    if (API.DEBUG) {
+      console.log(...args)
+    }
+  },
+  warn: (...args) => {
+    if (API.DEBUG) {
+      console.warn(...args)
+    }
+  },
+  error: (...args) => {
+    // 错误日志始终显示
+    console.error(...args)
+  }
+}
+
+// 调试：验证 API 配置是否正确加载
+debug.log('✅ API 配置已加载:', {
+  REQUEST_TIMEOUT: API.REQUEST_TIMEOUT,
+  MIN_REQUEST_INTERVAL: API.MIN_REQUEST_INTERVAL,
+  PLATFORM_TIMEOUT: API.PLATFORM_TIMEOUT,
+  DEBUG: API.DEBUG
+})
 
 // 支持的热搜平台配置
 export const PLATFORMS = [
@@ -59,7 +85,7 @@ export const PLATFORMS = [
   { id: 'weread', name: '微信读书', icon: '📖', category: '阅读' },
   { id: 'hellogithub', name: 'HelloGitHub', icon: '🐱', category: '科技' },
   { id: 'jianshu', name: '简书', icon: '✍️', category: '综合' },
-  { id: 'zhuishu', name: '追书神器', icon: '📚', category: '阅读' }
+  { id: 'zhuishu', name: '追书排行', icon: '📚', category: '阅读' }
 ]
 
 /**
@@ -91,9 +117,9 @@ export function getPlatformsByMode(customOrder = null) {
 export async function getHotData(platformId, options = {}) {
   const { page = 1, pageSize = 50 } = options
 
-  console.log(`🌐 正在获取 ${platformId} 热搜数据...`)
-  console.log(`📄 第 ${page} 页，每页 ${pageSize} 条`)
-  console.log(`🔧 运行环境: ${window.utools ? 'uTools' : '浏览器'}`)
+  debug.log(`🌐 正在获取 ${platformId} 热搜数据...`)
+  debug.log(`📄 第 ${page} 页，每页 ${pageSize} 条`)
+  debug.log(`🔧 运行环境: ${window.utools ? 'uTools' : '浏览器'}`)
 
   // 直接调用热搜 API（支持 uTools 和浏览器环境）
   return await getHotDataViaFetch(platformId, page, pageSize)
@@ -127,15 +153,31 @@ async function getHotDataViaFetch(platformId, page, pageSize) {
     ? `https://uapis.cn/api/v1/misc/hotboard?type=${platformId}`
     : `https://api-hot.imsyy.com/${platformId}?cache=true`
 
-  console.log(`📡 正在请求 API: ${apiUrl}`)
+  debug.log(`📡 正在请求 API: ${apiUrl}`)
+
+  // 获取平台特定的超时配置,如果没有则使用默认超时
+  const timeout = API.PLATFORM_TIMEOUT[platformId] || API.REQUEST_TIMEOUT
+  debug.log(`⏱️ 超时配置:`, {
+    platform: platformId,
+    platformTimeout: API.PLATFORM_TIMEOUT[platformId],
+    defaultTimeout: API.REQUEST_TIMEOUT,
+    finalTimeout: timeout
+  })
 
   try {
+    // 使用 AbortController 实现超时控制
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), timeout)
+
     const response = await fetch(apiUrl, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json'
-      }
+      },
+      signal: controller.signal
     })
+
+    clearTimeout(timeoutId)
 
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`)
@@ -156,17 +198,17 @@ async function getHotDataViaFetch(platformId, page, pageSize) {
         url: item.url || '',
         hot: item.hot_value || ''
       }))
-      console.log(`✅ 成功从 uapis.cn 获取 ${hotList.length} 条热搜数据`)
+      debug.log(`✅ 成功从 uapis.cn 获取 ${hotList.length} 条热搜数据`)
     }
     // uapis.cn 旧格式: { code: 200, data: [...], message: "success" }
     else if (data.code === 200 && Array.isArray(data.data)) {
       hotList = data.data
-      console.log(`✅ 成功从 uapis.cn 获取 ${hotList.length} 条热搜数据`)
+      debug.log(`✅ 成功从 uapis.cn 获取 ${hotList.length} 条热搜数据`)
     }
     // imsyy.top 格式: { data: [...], success: true }
     else if (data && data.data && Array.isArray(data.data)) {
       hotList = data.data
-      console.log(`✅ 成功从 imsyy.top 获取 ${hotList.length} 条热搜数据`)
+      debug.log(`✅ 成功从 imsyy.top 获取 ${hotList.length} 条热搜数据`)
     } else {
       throw new Error('API 返回数据格式不正确')
     }
@@ -184,8 +226,12 @@ async function getHotDataViaFetch(platformId, page, pageSize) {
   } catch (error) {
     console.error('❌ 请求失败:', error)
 
+    // 超时错误处理
+    if (error.name === 'AbortError') {
+      throw new Error('请求超时')
+    }
     // 网络错误处理
-    if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+    else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
       throw new Error('网络请求失败，请检查网络连接')
     } else if (error.message.includes('CORS')) {
       throw new Error('跨域请求被阻止（建议在uTools中使用）')
@@ -202,54 +248,105 @@ async function getHotDataViaFetch(platformId, page, pageSize) {
  * @returns {Promise<Object>} 小说排行榜数据
  */
 async function getZhuishuData(page, pageSize) {
-  // 使用 CORS 代理访问追书神器网站
-  const proxyUrl = 'https://api.allorigins.win/raw?url='
-  const targetUrl = encodeURIComponent('http://zhuishushenqi.com/ranking')
+  // 使用多个 CORS 代理作为备选
+  const proxies = [
+    'https://api.allorigins.win/raw?url=',
+    'https://corsproxy.io/?',
+    'https://api.codetabs.com/v1/proxy?quest='
+  ]
 
-  console.log(`📚 正在获取追书神器小说排行榜...`)
+  const targetUrl = 'http://zhuishushenqi.com/ranking'
+  const timeout = API.PLATFORM_TIMEOUT['zhuishu'] || API.REQUEST_TIMEOUT
 
-  try {
-    const response = await fetch(proxyUrl + targetUrl, {
-      method: 'GET',
-      headers: {
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+  debug.log(`📚 正在获取追书神器小说排行榜...`)
+  debug.log(`⏱️ 超时配置:`, {
+    platform: 'zhuishu',
+    platformTimeout: API.PLATFORM_TIMEOUT['zhuishu'],
+    defaultTimeout: API.REQUEST_TIMEOUT,
+    finalTimeout: timeout
+  })
+
+  // 尝试多个代理
+  for (let i = 0; i < proxies.length; i++) {
+    const proxyUrl = proxies[i]
+    const fullUrl = proxyUrl + encodeURIComponent(targetUrl)
+
+    debug.log(`🔄 尝试代理 ${i + 1}/${proxies.length}: ${proxyUrl}`)
+
+    try {
+      // 使用 AbortController 实现超时控制
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), timeout)
+
+      const response = await fetch(fullUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+        },
+        signal: controller.signal
+      })
+
+      clearTimeout(timeoutId)
+
+      if (!response.ok) {
+        debug.warn(`⚠️ 代理 ${i + 1} 返回错误: ${response.status}`)
+        continue // 尝试下一个代理
       }
-    })
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-    }
+      const html = await response.text()
 
-    const html = await response.text()
+      // 检查是否返回了有效内容
+      if (!html || html.length < 100) {
+        debug.warn(`⚠️ 代理 ${i + 1} 返回内容无效`)
+        continue
+      }
 
-    // 解析 HTML 提取小说数据
-    const books = parseZhuishuHTML(html)
+      // 解析 HTML 提取小说数据
+      const books = parseZhuishuHTML(html)
 
-    if (!books || books.length === 0) {
-      throw new Error('未能解析到小说数据')
-    }
+      if (!books || books.length === 0) {
+        debug.warn(`⚠️ 代理 ${i + 1} 未能解析到小说数据`)
+        continue
+      }
 
-    console.log(`✅ 成功获取 ${books.length} 本小说`)
+      debug.log(`✅ 代理 ${i + 1} 成功获取 ${books.length} 本小说`)
 
-    // 分页处理
-    const start = (page - 1) * pageSize
-    const end = start + pageSize
-    const paginatedData = books.slice(start, end)
+      // 分页处理
+      const start = (page - 1) * pageSize
+      const end = start + pageSize
+      const paginatedData = books.slice(start, end)
 
-    return {
-      data: paginatedData,
-      total: books.length,
-      hasMore: end < books.length
-    }
-  } catch (error) {
-    console.error('❌ 获取追书神器数据失败:', error)
+      return {
+        data: paginatedData,
+        total: books.length,
+        hasMore: end < books.length
+      }
+    } catch (error) {
+      debug.warn(`⚠️ 代理 ${i + 1} 请求失败:`, error.message)
 
-    if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-      throw new Error('网络请求失败，请检查网络连接')
-    } else {
-      throw error
+      // 超时错误特殊处理
+      if (error.name === 'AbortError') {
+        debug.warn(`⏰ 代理 ${i + 1} 请求超时`)
+        // 如果是最后一个代理，抛出超时错误
+        if (i === proxies.length - 1) {
+          throw new Error('请求超时')
+        }
+        // 否则继续尝试下一个代理
+        continue
+      }
+
+      // 如果是最后一个代理,抛出错误
+      if (i === proxies.length - 1) {
+        throw new Error('追书神器接口暂时无法访问,请稍后重试')
+      }
+
+      // 否则继续尝试下一个代理
+      continue
     }
   }
+
+  // 如果所有代理都失败了，显示暂无数据
+  throw new Error('请求超时')
 }
 
 /**
