@@ -1,5 +1,4 @@
 {
-  "language": "chinese",
   "permissions": {
     "allow": [
       "Bash(dir:*)",
@@ -13,7 +12,9 @@
       "Bash(git push:*)",
       "Bash(git pull:*)",
       "Bash(git checkout:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(npx ls node_modules/vue-remix-icons)"
     ]
-  }
+  },
+  "language": "chinese"
 }
