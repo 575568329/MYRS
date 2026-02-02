@@ -4,6 +4,7 @@ import { getHotData, PLATFORMS, getPlatformsByCategory, getCategories, getPlatfo
 import { DISPLAY_MODE, STORAGE_KEYS, UI, AUTO_REFRESH, HOT_LEVELS, API } from '../config.js'
 import Settings from '../Settings/index.vue'
 import PlatformIcon from '../components/PlatformIcon.vue'
+import ArtworkListItem from '../components/ArtworkListItem.vue'
 
 // 调试工具函数 - 只在 DEBUG 模式下输出日志
 const debug = {
@@ -67,6 +68,11 @@ const categories = getCategories()
 // 判断是否为极简模式（基于配置文件）
 const isSimpleMode = computed(() => {
   return DISPLAY_MODE.DEFAULT_MODE === 'simple'
+})
+
+// 判断是否为芝加哥艺术学院平台（使用卡片式布局）
+const isArticPlatform = computed(() => {
+  return selectedPlatform.value === 'artic'
 })
 
 // 根据选中的分类过滤平台（与配置联动）
@@ -700,23 +706,38 @@ watch(selectedCategory, (newCategory) => {
 
       <!-- 热搜列表 -->
       <div v-else class="hot-list">
-        <div
-          v-for="(item, index) in hotList"
-          :key="index"
-          @click="openUrl(item.url || item.mobileUrl)"
-          :class="['hot-item', { 'no-desc': !showDescription || !item.desc }]"
-        >
-          <div class="hot-rank" :style="getRankStyle(index + 1)">
-            {{ index + 1 }}
+        <!-- 芝加哥艺术学院 - 艺术品列表布局 -->
+        <template v-if="isArticPlatform">
+          <ArtworkListItem
+            v-for="(item, index) in hotList"
+            :key="index"
+            :artwork="item"
+            :index="index + 1"
+            :showDescription="showDescription"
+            @click="openUrl(item.url || item.mobileUrl)"
+          />
+        </template>
+
+        <!-- 其他平台 - 普通热搜布局 -->
+        <template v-else>
+          <div
+            v-for="(item, index) in hotList"
+            :key="index"
+            @click="openUrl(item.url || item.mobileUrl)"
+            :class="['hot-item', { 'no-desc': !showDescription || !item.desc }]"
+          >
+            <div class="hot-rank" :style="getRankStyle(index + 1)">
+              {{ index + 1 }}
+            </div>
+            <div class="hot-content">
+              <div class="hot-title">{{ item.title }}</div>
+              <div v-if="item.desc && showDescription" class="hot-desc">{{ item.desc }}</div>
+            </div>
+            <div v-if="item.hot && showHotValue" class="hot-value">
+              🔥 {{ formatHotValue(item.hot) }}
+            </div>
           </div>
-          <div class="hot-content">
-            <div class="hot-title">{{ item.title }}</div>
-            <div v-if="item.desc && showDescription" class="hot-desc">{{ item.desc }}</div>
-          </div>
-          <div v-if="item.hot && showHotValue" class="hot-value">
-            🔥 {{ formatHotValue(item.hot) }}
-          </div>
-        </div>
+        </template>
 
         <!-- 加载更多 -->
         <div v-if="hasMore" class="load-more-container">
@@ -1106,9 +1127,10 @@ watch(selectedCategory, (newCategory) => {
 
 /* 热搜列表 */
 .hot-list {
-  background-color: #ffffff;
+  background-color: transparent;
   border-radius: 8px;
   overflow: hidden;
+  padding: 8px;
 }
 
 .hot-item {

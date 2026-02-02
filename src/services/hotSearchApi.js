@@ -4,6 +4,7 @@
  */
 
 import { DISPLAY_MODE, API } from '../config.js'
+import cacheManager from '../utils/cacheManager.js'
 
 // 调试工具函数 - 只在 DEBUG 模式下输出日志
 const debug = {
@@ -85,7 +86,8 @@ export const PLATFORMS = [
   { id: 'weread', name: '微信读书', icon: 'ri-book-read-line', category: '阅读' },
   { id: 'hellogithub', name: 'HelloGitHub', icon: 'ri-github-line', category: '科技' },
   { id: 'jianshu', name: '简书', icon: 'ri-quill-pen-line', category: '综合' },
-  { id: 'zhuishu', name: '追书排行', icon: 'ri-bookmark-line', category: '阅读' }
+  { id: 'zhuishu', name: '追书排行', icon: 'ri-bookmark-line', category: '阅读' },
+  { id: 'artic', name: '芝加哥艺术学院', icon: 'ri-building-2-line', category: '艺术' }
 ]
 
 /**
@@ -136,6 +138,11 @@ async function getHotDataViaFetch(platformId, page, pageSize) {
   // 特殊处理追书神器（需要解析HTML）
   if (platformId === 'zhuishu') {
     return await getZhuishuData(page, pageSize)
+  }
+
+  // 特殊处理芝加哥艺术学院（艺术品API）
+  if (platformId === 'artic') {
+    return await getArticData(page, pageSize)
   }
 
   // uapis.cn 支持的所有平台（根据官方文档）
@@ -400,6 +407,238 @@ function parseZhuishuHTML(html) {
   }
 
   return books
+}
+
+/**
+ * 获取芝加哥艺术学院艺术品数据(带缓存优化)
+ * @param {number} page - 页码
+ * @param {number} pageSize - 每页数量
+ * @returns {Promise<Object>} 艺术品数据
+ */
+async function getArticData(page, pageSize) {
+  const cacheKey = `page_${page}`
+  const cacheTTL = 60 * 60 * 1000 // 缓存1小时
+
+  // 1. 先检查缓存
+  const cachedData = cacheManager.get('artic', cacheKey)
+  if (cachedData) {
+    // 检查缓存数据是否包含旧的 www.artic.edu URL
+    const hasOldData = cachedData.data && cachedData.data.some(item =>
+      item.img && item.img.includes('www.artic.edu/iiif')
+    )
+
+    if (hasOldData) {
+      // 清除旧缓存
+      console.log(`🗑️ [清除旧缓存] 芝加哥艺术学院第 ${page} 页(包含旧的 www.artic.edu URL)`)
+      cacheManager.clearPlatform('artic')
+    } else {
+      debug.log(`📦 [缓存命中] 芝加哥艺术学院第 ${page} 页`)
+      return cachedData
+    }
+  }
+
+  // 2. 请求节流检查(每秒最多1次请求)
+  if (!cacheManager.canRequest('artic', 1000)) {
+    throw new Error('请求过于频繁,请稍后再试')
+  }
+
+  // 3. 使用防重复请求机制
+  return cacheManager.deduplicateRequest(`artic_page_${page}`, async () => {
+    const apiUrl = 'https://api.artic.edu/api/v1/artworks'
+    const timeout = API.PLATFORM_TIMEOUT['artic'] || 10000 // 默认 10 秒超时
+
+    debug.log(`🎨 正在获取芝加哥艺术学院艺术品(第${page}页)...`)
+    debug.log(`⏱️ 超时配置:`, {
+      platform: 'artic',
+      platformTimeout: API.PLATFORM_TIMEOUT['artic'],
+      defaultTimeout: API.REQUEST_TIMEOUT,
+      finalTimeout: timeout
+    })
+
+    try {
+      // 使用 AbortController 实现超时控制
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), timeout)
+
+      // 请求参数:一次性获取更多数据以减少API调用
+      // 每次请求pageSize*2的数据,缓存起来供分页使用
+      const params = new URLSearchParams({
+        limit: (pageSize * 2).toString(), // 获取2倍数据以支持下一页
+        page: page.toString(),
+        fields: 'id,title,image_id,artist_display,date_display,medium_display,place_of_origin,dimensions,iiif_url,thumbnail'
+      })
+
+      const response = await fetch(`${apiUrl}?${params}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        signal: controller.signal
+      })
+
+      clearTimeout(timeoutId)
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      const result = await response.json()
+
+      // 从响应中获取数据
+      const artworks = result.data || []
+      const config = result.config || {}
+
+      // 使用 API 返回的 iiif_url (支持 CORS,无需代理)
+      const iiifBaseUrl = config.iiif_url
+
+      debug.log(`✅ 成功获取 ${artworks.length} 件艺术品`)
+      debug.log(`🖼️ IIIF Base URL: ${iiifBaseUrl}`)
+
+      // 转换为统一格式
+      const transformedList = artworks
+        .filter(artwork => artwork.image_id) // 只保留有图片的艺术品
+        .map((artwork, index) => {
+          // 使用官方推荐的 IIIF URL 格式和尺寸 (843px - 缓存命中率最高)
+          // 参考: https://api.artic.edu/docs/#iiif-image-api
+          const imageUrl = `${iiifBaseUrl}/${artwork.image_id}/full/843,/0/default.jpg`
+
+          // 构建描述信息
+          const descParts = []
+          if (artwork.artist_display) descParts.push(artwork.artist_display)
+          if (artwork.date_display) descParts.push(artwork.date_display)
+          if (artwork.medium_display) descParts.push(artwork.medium_display)
+          if (artwork.place_of_origin) descParts.push(artwork.place_of_origin)
+
+          return {
+            index: (page - 1) * pageSize + index + 1,
+            title: artwork.title || 'Untitled',
+            desc: descParts.join(' · '),
+            img: imageUrl,
+            url: `https://www.artic.edu/artworks/${artwork.id}/${encodeURIComponent(artwork.title || 'Untitled').toLowerCase().replace(/\s+/g, '-')}`,
+            hot: ''
+          }
+        })
+
+      // 分页处理
+      const total = result.pagination?.total || transformedList.length
+      const hasMore = page * pageSize < total
+
+      const resultData = {
+        data: transformedList.slice(0, pageSize), // 只返回当前页数据
+        total: total,
+        hasMore: hasMore
+      }
+
+      // 4. 缓存完整数据(包括下一页可能用到的数据)
+      cacheManager.set('artic', cacheKey, resultData, cacheTTL)
+
+      // 5. 智能预加载下一页(如果当前页<3页)
+      if (page < 3) {
+        const nextPageKey = `page_${page + 1}`
+        if (!cacheManager.get('artic', nextPageKey)) {
+          // 异步预加载下一页,不阻塞当前请求
+          setTimeout(async () => {
+            try {
+              const nextPageData = await fetchArticPage(page + 1, pageSize)
+              cacheManager.set('artic', nextPageKey, nextPageData, cacheTTL)
+              debug.log(`🚀 [预加载] 第 ${page + 1} 页`)
+            } catch (error) {
+              debug.warn(`⚠️ [预加载失败] 第 ${page + 1} 页:`, error.message)
+            }
+          }, 500)
+        }
+      }
+
+      return resultData
+    } catch (error) {
+      debug.warn(`⚠️ 获取芝加哥艺术学院数据失败:`, error.message)
+
+      // 超时错误处理
+      if (error.name === 'AbortError') {
+        throw new Error('请求超时')
+      }
+      // 网络错误处理
+      else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+        throw new Error('网络请求失败,请检查网络连接')
+      } else if (error.message.includes('CORS')) {
+        throw new Error('跨域请求被阻止(建议在uTools中使用)')
+      } else {
+        throw error
+      }
+    }
+  })
+}
+
+/**
+ * 获取芝加哥艺术学院指定页码的原始数据
+ * @param {number} page - 页码
+ * @param {number} pageSize - 每页数量
+ * @returns {Promise<Object>} 艺术品数据
+ */
+async function fetchArticPage(page, pageSize) {
+  const apiUrl = 'https://api.artic.edu/api/v1/artworks'
+  const timeout = API.PLATFORM_TIMEOUT['artic'] || 10000
+
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), timeout)
+
+  const params = new URLSearchParams({
+    limit: pageSize.toString(),
+    page: page.toString(),
+    fields: 'id,title,image_id,artist_display,date_display,medium_display,place_of_origin,dimensions,iiif_url,thumbnail'
+  })
+
+  const response = await fetch(`${apiUrl}?${params}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    signal: controller.signal
+  })
+
+  clearTimeout(timeoutId)
+
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+  }
+
+  const result = await response.json()
+  const artworks = result.data || []
+  const config = result.config || {}
+
+  // 使用 API 返回的 iiif_url (支持 CORS,无需代理)
+  const iiifBaseUrl = config.iiif_url
+
+  const transformedList = artworks
+    .filter(artwork => artwork.image_id)
+    .map((artwork, index) => {
+      // 使用官方推荐的 IIIF URL 格式和尺寸 (843px - 缓存命中率最高)
+      const imageUrl = `${iiifBaseUrl}/${artwork.image_id}/full/843,/0/default.jpg`
+
+      const descParts = []
+      if (artwork.artist_display) descParts.push(artwork.artist_display)
+      if (artwork.date_display) descParts.push(artwork.date_display)
+      if (artwork.medium_display) descParts.push(artwork.medium_display)
+      if (artwork.place_of_origin) descParts.push(artwork.place_of_origin)
+
+      return {
+        index: (page - 1) * pageSize + index + 1,
+        title: artwork.title || 'Untitled',
+        desc: descParts.join(' · '),
+        img: imageUrl,
+        url: `https://www.artic.edu/artworks/${artwork.id}/${encodeURIComponent(artwork.title || 'Untitled').toLowerCase().replace(/\s+/g, '-')}`,
+        hot: ''
+      }
+    })
+
+  const total = result.pagination?.total || transformedList.length
+  const hasMore = page * pageSize < total
+
+  return {
+    data: transformedList,
+    total: total,
+    hasMore: hasMore
+  }
 }
 
 /**

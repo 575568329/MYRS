@@ -31,7 +31,8 @@ export const DISPLAY_MODE = {
     'sspai',        // 少数派
     'douban-movie', // 豆瓣电影
     'weread',       // 微信读书
-    'zhuishu'       // 追书神器
+    'zhuishu',      // 追书神器
+    'artic'         // 芝加哥艺术学院
   ]
 }
 
@@ -49,7 +50,8 @@ export const API = {
   MIN_REQUEST_INTERVAL: 500,
   // 各平台特殊超时配置（毫秒）
   PLATFORM_TIMEOUT: {
-    'zhuishu': 20000  // 追书神器使用CORS代理，需要更长时间（20秒）
+    'zhuishu': 20000,  // 追书神器使用CORS代理，需要更长时间（20秒）
+    'artic': 10000     // 芝加哥艺术学院API（10秒）
   },
   // 是否显示调试日志（开发环境可设为 true，生产环境设为 false）
   DEBUG: false

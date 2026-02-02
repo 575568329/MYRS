@@ -63,6 +63,9 @@ export const ICON_IMPORTS = {
   'weread': () => import('vue-remix-icons/icons/ri-book-read-line.vue'),
   'zhuishu': () => import('vue-remix-icons/icons/ri-bookmark-line.vue'),
 
+  // 艺术类
+  'artic': () => import('vue-remix-icons/icons/ri-building-2-line.vue'),
+
   // 默认图标（当找不到对应图标时使用）
   'default': () => import('vue-remix-icons/icons/ri-apps-line.vue')
 }
@@ -125,7 +128,8 @@ export function getPlatformIconName(platformId) {
     'starrail': 'ri-rocket-line',
     'miyoushe': 'ri-game-line',
     'weread': 'ri-book-read-line',
-    'zhuishu': 'ri-bookmark-line'
+    'zhuishu': 'ri-bookmark-line',
+    'artic': 'ri-building-2-line'
   }
   return nameMap[platformId] || 'ri-apps-line'
 }
