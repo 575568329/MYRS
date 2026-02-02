@@ -58,7 +58,8 @@ export const PLATFORMS = [
   // 其他
   { id: 'weread', name: '微信读书', icon: '📖', category: '阅读' },
   { id: 'hellogithub', name: 'HelloGitHub', icon: '🐱', category: '科技' },
-  { id: 'jianshu', name: '简书', icon: '✍️', category: '综合' }
+  { id: 'jianshu', name: '简书', icon: '✍️', category: '综合' },
+  { id: 'zhuishu', name: '追书神器', icon: '📚', category: '阅读' }
 ]
 
 /**
@@ -106,6 +107,11 @@ export async function getHotData(platformId, options = {}) {
  * @returns {Promise<Object>} 热搜数据
  */
 async function getHotDataViaFetch(platformId, page, pageSize) {
+  // 特殊处理追书神器（需要解析HTML）
+  if (platformId === 'zhuishu') {
+    return await getZhuishuData(page, pageSize)
+  }
+
   // uapis.cn 支持的所有平台（根据官方文档）
   const uapisPlatforms = [
     'baidu', 'weibo', 'zhihu', 'douyin', 'bilibili', 'kuaishou',
@@ -187,6 +193,116 @@ async function getHotDataViaFetch(platformId, page, pageSize) {
       throw error
     }
   }
+}
+
+/**
+ * 获取追书神器小说排行榜数据
+ * @param {number} page - 页码
+ * @param {number} pageSize - 每页数量
+ * @returns {Promise<Object>} 小说排行榜数据
+ */
+async function getZhuishuData(page, pageSize) {
+  // 使用 CORS 代理访问追书神器网站
+  const proxyUrl = 'https://api.allorigins.win/raw?url='
+  const targetUrl = encodeURIComponent('http://zhuishushenqi.com/ranking')
+
+  console.log(`📚 正在获取追书神器小说排行榜...`)
+
+  try {
+    const response = await fetch(proxyUrl + targetUrl, {
+      method: 'GET',
+      headers: {
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+      }
+    })
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+    }
+
+    const html = await response.text()
+
+    // 解析 HTML 提取小说数据
+    const books = parseZhuishuHTML(html)
+
+    if (!books || books.length === 0) {
+      throw new Error('未能解析到小说数据')
+    }
+
+    console.log(`✅ 成功获取 ${books.length} 本小说`)
+
+    // 分页处理
+    const start = (page - 1) * pageSize
+    const end = start + pageSize
+    const paginatedData = books.slice(start, end)
+
+    return {
+      data: paginatedData,
+      total: books.length,
+      hasMore: end < books.length
+    }
+  } catch (error) {
+    console.error('❌ 获取追书神器数据失败:', error)
+
+    if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+      throw new Error('网络请求失败，请检查网络连接')
+    } else {
+      throw error
+    }
+  }
+}
+
+/**
+ * 解析追书神器 HTML 提取小说数据
+ * @param {string} html - HTML 文本
+ * @returns {Array} 小说列表
+ */
+function parseZhuishuHTML(html) {
+  const books = []
+
+  // 使用正则表达式提取每本书的信息
+  // 匹配模式：<a href="/book/..." class="book" target="_blank">
+  const bookRegex = /<a\s+href="\/book\/([^"]+)"\s+class="book"\s+target="_blank">([\s\S]*?)<\/a>/g
+  let match
+
+  while ((match = bookRegex.exec(html)) !== null) {
+    const bookHtml = match[0]
+    const bookId = match[1]
+
+    // 提取书名
+    const titleMatch = /<h4\s+class="name">\s*<span>([^<]+)<\/span>\s*<\/h4>/.exec(bookHtml)
+    const title = titleMatch ? titleMatch[1].trim() : ''
+
+    // 提取作者
+    const authorMatch = /<p\s+class="author">\s*<span>([^<]+)<\/span>\s*<\/p>/.exec(bookHtml)
+    const author = authorMatch ? authorMatch[1].trim() : ''
+
+    // 提取描述
+    const descMatch = /<p\s+class="desc">([^<]*)<\/p>/.exec(bookHtml)
+    const desc = descMatch ? descMatch[1].trim() : ''
+
+    // 提取人气和读者留存
+    const popularityMatch = /<p\s+class="popularity">([\s\S]*?)<\/p>/.exec(bookHtml)
+    let hot = ''
+    if (popularityMatch) {
+      const popularityText = popularityMatch[1]
+      // 提取第一个红色数字（人气值）
+      const hotMatch = /<span\s+class="c-red">([^<]+)<\/span>/.exec(popularityText)
+      hot = hotMatch ? hotMatch[1].trim() : ''
+    }
+
+    if (title) {
+      books.push({
+        index: books.length + 1,
+        title: title,
+        desc: `${author} · ${desc}`,
+        url: `http://zhuishushenqi.com/book/${bookId}`,
+        hot: hot
+      })
+    }
+  }
+
+  return books
 }
 
 /**

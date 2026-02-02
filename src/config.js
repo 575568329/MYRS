@@ -30,7 +30,8 @@ export const DISPLAY_MODE = {
     '36kr',         // 36氪
     'sspai',        // 少数派
     'douban-movie', // 豆瓣电影
-    'weread'        // 微信读书
+    'weread',       // 微信读书
+    'zhuishu'       // 追书神器
   ]
 }
 
