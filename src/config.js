@@ -111,7 +111,9 @@ export const STORAGE_KEYS = {
   SHOW_DESCRIPTION: 'showDescription',
   THEME_MODE: 'themeMode',
   // 自定义平台顺序
-  CUSTOM_PLATFORM_ORDER: 'customPlatformOrder'
+  CUSTOM_PLATFORM_ORDER: 'customPlatformOrder',
+  // 隐藏的平台列表
+  HIDDEN_PLATFORMS: 'hiddenPlatforms'
 }
 
 // 导出默认配置对象

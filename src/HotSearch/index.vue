@@ -69,6 +69,9 @@ const metMuseumFilter = ref('all') // 'all' 或 'china'
 // 自定义平台顺序
 const customPlatformOrder = ref(null)
 
+// 隐藏的平台ID集合
+const hiddenPlatforms = ref(new Set())
+
 const categories = getCategories()
 
 // 判断是否为极简模式（基于配置文件）
@@ -103,19 +106,21 @@ const filteredArtworks = computed(() => {
 
 // 根据选中的分类过滤平台（与配置联动）
 const filteredPlatforms = computed(() => {
+  let platforms = []
+
   // 极简模式：始终显示主流平台
   if (DISPLAY_MODE.DEFAULT_MODE === 'simple') {
-    return getPlatformsByMode(customPlatformOrder.value)
-  }
-
-  // 分类模式：根据选中的分类显示平台
-  if (!selectedCategory.value || selectedCategory.value === '全部') {
+    platforms = getPlatformsByMode(customPlatformOrder.value)
+  } else if (!selectedCategory.value || selectedCategory.value === '全部') {
     // "全部"分类下显示所有平台
-    return PLATFORMS
+    platforms = PLATFORMS
+  } else {
+    // 具体分类：显示该分类下的所有平台
+    platforms = getPlatformsByCategory(selectedCategory.value)
   }
 
-  // 具体分类：显示该分类下的所有平台
-  return getPlatformsByCategory(selectedCategory.value)
+  // 过滤掉隐藏的平台
+  return platforms.filter(p => !hiddenPlatforms.value.has(p.id))
 })
 
 // 获取当前选中的平台对象
@@ -608,6 +613,10 @@ const handleSettingChange = (event) => {
     // 验证顺序是否正确
     const platforms = getPlatformsByMode(value)
     debug.log('✅ 实际显示的平台顺序:', platforms.map(p => `${p.icon} ${p.name}`))
+  } else if (key === 'hiddenPlatforms') {
+    // 更新隐藏平台列表
+    hiddenPlatforms.value = new Set(value)
+    debug.log('✅ 隐藏平台列表已更新:', Array.from(hiddenPlatforms.value))
   }
 }
 
@@ -708,6 +717,7 @@ onMounted(() => {
       const savedShowDescription = window.utools.dbStorage.getItem(STORAGE_KEYS.SHOW_DESCRIPTION)
       const savedThemeMode = window.utools.dbStorage.getItem(STORAGE_KEYS.THEME_MODE)
       const savedCustomPlatformOrder = window.utools.dbStorage.getItem(STORAGE_KEYS.CUSTOM_PLATFORM_ORDER)
+      const savedHiddenPlatforms = window.utools.dbStorage.getItem(STORAGE_KEYS.HIDDEN_PLATFORMS)
 
       if (savedCategory) {
         debug.log('💾 从本地存储读取分类:', savedCategory)
@@ -765,6 +775,19 @@ onMounted(() => {
         // 没有保存的自定义顺序，使用配置文件中的默认顺序
         customPlatformOrder.value = DISPLAY_MODE.SIMPLE_MODE_PLATFORMS
         debug.log('💾 首次启动，使用配置文件的默认顺序')
+      }
+
+      // 加载隐藏平台列表
+      if (savedHiddenPlatforms) {
+        try {
+          const parsedHidden = JSON.parse(savedHiddenPlatforms)
+          if (Array.isArray(parsedHidden)) {
+            hiddenPlatforms.value = new Set(parsedHidden)
+            debug.log('💾 加载隐藏平台列表:', Array.from(hiddenPlatforms.value))
+          }
+        } catch (e) {
+          debug.log('⚠️ 解析隐藏平台列表失败:', e)
+        }
       }
     } catch (e) {
       debug.log('⚠️ 读取本地存储失败:', e)
@@ -1515,23 +1538,30 @@ watch(selectedCategory, (newCategory) => {
 .hot-item {
   display: flex;
   align-items: center;
-  padding: 12px 10px;
-  border-bottom: 1px solid #f5f5f5;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  background: #ffffff;
+  border: none;
+  border-radius: 10px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
 }
 
 /* 没有简介时的高度更紧凑 */
 .hot-item.no-desc {
-  padding: 8px 10px;
+  padding: 10px 16px;
+  margin-bottom: 10px;
 }
 
 .hot-item:last-child {
-  border-bottom: none;
+  margin-bottom: 0;
 }
 
 .hot-item:hover {
-  background-color: #f9f9f9;
+  background-color: #f8f9fa;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 }
 
 .hot-rank {
@@ -1794,11 +1824,12 @@ html.dark-mode .hot-list {
 }
 
 html.dark-mode .hot-item {
-  border-bottom-color: #3a3a3a !important;
+  background: #2c2c2c !important;
+  border: none !important;
 }
 
 html.dark-mode .hot-item:hover {
-  background-color: #3a3a3a !important;
+  background: #3a3a3a !important;
 }
 
 html.dark-mode .hot-title {
@@ -1923,7 +1954,7 @@ html.dark-mode .filter-btn.active {
 
 /* 暗色模式下没有简介时的样式保持一致 */
 html.dark-mode .hot-item.no-desc {
-  padding: 8px 10px;
+  padding: 10px 16px !important;
 }
 
 /* 滚动指示器夜间模式 */

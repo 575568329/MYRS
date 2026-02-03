@@ -1,0 +1,9 @@
+dist
+dist-ssr
+node_modules
+.DS_Store
+*.min.js
+*.min.css
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
