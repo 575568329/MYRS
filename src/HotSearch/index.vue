@@ -1470,7 +1470,6 @@ watch(selectedCategory, (newCategory) => {
   background-color: transparent;
   border-radius: 8px;
   overflow: hidden;
-  padding: 8px;
 }
 
 /* 艺术品网格布局（大都会博物馆） */
@@ -1538,30 +1537,28 @@ watch(selectedCategory, (newCategory) => {
 .hot-item {
   display: flex;
   align-items: center;
-  padding: 14px 16px;
-  margin-bottom: 12px;
+  padding: 5px 8px;
+  margin-bottom: 0;
   background: #ffffff;
   border: none;
-  border-radius: 10px;
+  border-radius: 0;
+  border-bottom: 1px solid #f0f0f0;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+  transition: background-color 0.2s ease;
+  box-shadow: none;
 }
 
 /* 没有简介时的高度更紧凑 */
 .hot-item.no-desc {
-  padding: 10px 16px;
-  margin-bottom: 10px;
+  padding: 8px 16px;
 }
 
 .hot-item:last-child {
-  margin-bottom: 0;
+  border-bottom: none;
 }
 
 .hot-item:hover {
   background-color: #f8f9fa;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 }
 
 .hot-rank {
@@ -1826,6 +1823,11 @@ html.dark-mode .hot-list {
 html.dark-mode .hot-item {
   background: #2c2c2c !important;
   border: none !important;
+  border-bottom: 1px solid #3a3a3a !important;
+}
+
+html.dark-mode .hot-item:last-child {
+  border-bottom: none !important;
 }
 
 html.dark-mode .hot-item:hover {
