@@ -2,10 +2,12 @@
 import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
 import { getHotData, PLATFORMS, getPlatformsByCategory, getCategories, getPlatformsByMode } from '../services/hotSearchApi.js'
 import { DISPLAY_MODE, STORAGE_KEYS, UI, AUTO_REFRESH, HOT_LEVELS, API } from '../config.js'
+import { trackEvent, EventType } from '../services/analytics/index.js'
 import Settings from '../Settings/index.vue'
 import PlatformIcon from '../components/PlatformIcon.vue'
 import ArtworkListItem from '../components/ArtworkListItem.vue'
 import ArtworkCard from '../components/ArtworkCard.vue'
+import AnalyticsDebugPanel from '../components/AnalyticsDebugPanel.vue'
 
 // 调试工具函数 - 只在 DEBUG 模式下输出日志
 const debug = {
@@ -71,6 +73,9 @@ const customPlatformOrder = ref(null)
 
 // 隐藏的平台ID集合
 const hiddenPlatforms = ref(new Set())
+
+// 开发环境标志
+const isDev = import.meta.env.DEV
 
 const categories = getCategories()
 
@@ -287,12 +292,21 @@ const loadMore = () => {
 
   currentPage.value++
   debug.log(`📄 加载第 ${currentPage.value} 页`)
+
+  // 追踪加载更多事件
+  trackEvent(EventType.LOAD_MORE, {
+    platform: selectedPlatform.value,
+    page: currentPage.value
+  })
+
   fetchHotData(selectedPlatform.value, true)
 }
 
 // 切换平台
 const switchPlatform = (platformId) => {
   if (selectedPlatform.value === platformId) return
+
+  const fromPlatform = selectedPlatform.value
   selectedPlatform.value = platformId
   // 重置翻译偏移量
   translateOffset.value = 0
@@ -300,6 +314,13 @@ const switchPlatform = (platformId) => {
   if (platformId !== 'metmuseum') {
     metMuseumFilter.value = 'all'
   }
+
+  // 追踪平台切换事件
+  trackEvent(EventType.PLATFORM_SWITCH, {
+    from_platform: fromPlatform,
+    to_platform: platformId
+  })
+
   fetchHotData(platformId)
 }
 
@@ -311,6 +332,14 @@ const switchMetMuseumFilter = (filter) => {
   currentPage.value = 1
   // 重置翻译偏移量（因为筛选条件变了）
   translateOffset.value = 0
+
+  // 追踪筛选器变更事件
+  trackEvent(EventType.FILTER_CHANGE, {
+    platform: 'metmuseum',
+    filter_type: 'region',
+    filter_value: filter
+  })
+
   // 重新获取数据
   fetchHotData('metmuseum')
 }
@@ -320,6 +349,12 @@ const switchCategory = (category) => {
   if (selectedCategory.value === category) return
 
   selectedCategory.value = category
+
+  // 追踪分类切换事件
+  trackEvent(EventType.CATEGORY_SWITCH, {
+    from_category: selectedCategory.value,
+    to_category: category
+  })
 
   // 获取新分类下的平台列表
   const platformsInCategory = filteredPlatforms.value
@@ -348,6 +383,12 @@ const openUrl = (url) => {
     return
   }
 
+  // 追踪打开链接事件
+  trackEvent(EventType.OPEN_LINK, {
+    platform: selectedPlatform.value,
+    url: url
+  })
+
   if (window.utools) {
     window.utools.shellOpenExternal(url)
   } else {
@@ -357,11 +398,19 @@ const openUrl = (url) => {
 
 // 刷新当前平台
 const refresh = () => {
+  // 追踪刷新事件
+  trackEvent(EventType.REFRESH, {
+    platform: selectedPlatform.value
+  })
   fetchHotData(selectedPlatform.value)
 }
 
 // 打开设置面板
 const openSettings = () => {
+  // 追踪设置打开事件
+  trackEvent(EventType.SETTINGS_OPEN, {
+    platform: selectedPlatform.value
+  })
   showSettings.value = true
 }
 
@@ -1089,6 +1138,9 @@ watch(selectedCategory, (newCategory) => {
 
     <!-- 设置面板 -->
     <Settings :show="showSettings" @close="closeSettings"></Settings>
+
+    <!-- 埋点调试面板 - 仅在开发环境显示 -->
+    <AnalyticsDebugPanel v-if="isDev" />
 
     <!-- 悬浮按钮组 - 右下角 -->
     <div class="floating-buttons">

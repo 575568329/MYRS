@@ -28,6 +28,7 @@ export const DISPLAY_MODE = {
     'bilibili',     // B站
     'toutiao',      // 今日头条
     '36kr',         // 36氪
+    'juejin',       // 掘金
     'sspai',        // 少数派
     'douban-movie', // 豆瓣电影
     'weread',       // 微信读书
@@ -120,6 +121,7 @@ export const STORAGE_KEYS = {
 export default {
   DISPLAY_MODE,
   PAGINATION,
+  API,
   UI,
   AUTO_REFRESH,
   HOT_LEVELS,

@@ -6,6 +6,9 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { getHotData, PLATFORMS, getPlatformsByCategory, getCategories, getPlatformsByMode } from '../services/hotSearchApi.js'
 import { DISPLAY_MODE, STORAGE_KEYS, UI, API } from '../config.js'
+// 埋点追踪导入（可选）
+import { trackEvent } from '../services/analytics/analyticsCollector.js'
+import { EventType } from '../services/analytics/eventTypes.js'
 
 export const useHotSearchStore = defineStore('hotSearch', () => {
   // ========== 状态 ==========
@@ -84,6 +87,13 @@ export const useHotSearchStore = defineStore('hotSearch', () => {
    * @param {boolean} loadMore - 是否加载更多
    */
   async function fetchHotData(platformId, loadMore = false) {
+    // 追踪埋点：平台数据加载开始
+    if (!loadMore) {
+      trackEvent(EventType.PLATFORM_LOAD_START, {
+        platform: platformId
+      })
+    }
+
     // 防止频繁请求（防抖）
     const now = Date.now()
     if (!loadMore && now - lastRequestTime.value < API.MIN_REQUEST_INTERVAL) {
@@ -159,10 +169,23 @@ export const useHotSearchStore = defineStore('hotSearch', () => {
         // 添加到最近使用平台
         addToRecentPlatforms(platformId)
 
+        // 追踪埋点：平台数据加载成功
+        trackEvent(EventType.PLATFORM_LOAD_SUCCESS, {
+          platform: platformId,
+          data_count: result.data.length,
+          load_more: loadMore
+        })
+
         console.log(`✅ 成功获取 ${result.data.length} 条热搜数据`)
       }
     } catch (err) {
       console.error('❌ 获取热搜数据失败:', err)
+
+      // 追踪埋点：平台数据加载失败
+      trackEvent(EventType.PLATFORM_LOAD_ERROR, {
+        platform: platformId,
+        error_message: err.message
+      })
 
       if (loadingTimeout.value) {
         clearTimeout(loadingTimeout.value)
@@ -186,6 +209,13 @@ export const useHotSearchStore = defineStore('hotSearch', () => {
     if (!hasMore.value || loadingMore.value) return
 
     currentPage.value++
+
+    // 追踪埋点：加载更多
+    trackEvent(EventType.LOAD_MORE, {
+      platform: selectedPlatform.value,
+      page: currentPage.value
+    })
+
     fetchHotData(selectedPlatform.value, true)
   }
 
@@ -193,6 +223,11 @@ export const useHotSearchStore = defineStore('hotSearch', () => {
    * 刷新当前平台数据
    */
   function refresh() {
+    // 追踪埋点：刷新数据
+    trackEvent(EventType.REFRESH, {
+      platform: selectedPlatform.value
+    })
+
     fetchHotData(selectedPlatform.value, false)
   }
 
@@ -201,10 +236,24 @@ export const useHotSearchStore = defineStore('hotSearch', () => {
    * @param {string} platformId - 平台ID
    */
   function switchPlatform(platformId) {
-    if (selectedPlatform.value === platformId) return
+    console.log(`[Store] 🔄 switchPlatform 被调用: ${platformId}`)
 
+    if (selectedPlatform.value === platformId) {
+      console.log(`[Store] ⏭️  跳过，已经是当前平台`)
+      return
+    }
+
+    const fromPlatform = selectedPlatform.value
     selectedPlatform.value = platformId
     currentPage.value = 1
+
+    // 追踪埋点：平台切换
+    console.log(`[Store] 📊 准备追踪平台切换事件: ${fromPlatform} -> ${platformId}`)
+    trackEvent(EventType.PLATFORM_SWITCH, {
+      from_platform: fromPlatform,
+      to_platform: platformId
+    })
+
     fetchHotData(platformId, false)
   }
 
@@ -216,6 +265,12 @@ export const useHotSearchStore = defineStore('hotSearch', () => {
     if (selectedCategory.value === category) return
 
     selectedCategory.value = category
+
+    // 追踪埋点：分类切换
+    trackEvent(EventType.CATEGORY_SWITCH, {
+      category: category
+    })
+
     // 切换分类后，重置为默认平台（如果当前平台不在新分类中）
     const platformsInCategory = getPlatformsByCategory(category)
     const currentPlatformInCategory = platformsInCategory.find(p => p.id === selectedPlatform.value)
@@ -282,12 +337,20 @@ export const useHotSearchStore = defineStore('hotSearch', () => {
    */
   function toggleFavorite(item) {
     const key = `${selectedPlatform.value}_${item.title}`
+    const isAdding = !favoriteItems.value.has(key)
 
     if (favoriteItems.value.has(key)) {
       favoriteItems.value.delete(key)
     } else {
       favoriteItems.value.add(key)
     }
+
+    // 追踪埋点：收藏切换
+    trackEvent(EventType.FAVORITE_TOGGLE, {
+      platform: selectedPlatform.value,
+      item_title: item.title,
+      is_favorite: isAdding
+    })
 
     // 持久化到本地存储 - 将 Set 转换为数组
     if (window.utools && window.utools.dbStorage) {
@@ -402,6 +465,39 @@ export const useHotSearchStore = defineStore('hotSearch', () => {
    */
   function setMetMuseumFilter(filter) {
     metMuseumFilter.value = filter
+
+    // 追踪埋点：筛选变更
+    trackEvent(EventType.FILTER_CHANGE, {
+      platform: 'metmuseum',
+      filter_type: 'geo_location',
+      filter_value: filter
+    })
+  }
+
+  /**
+   * 初始化埋点系统
+   * @param {Object} options - 初始化选项
+   */
+  async function initAnalytics(options = {}) {
+    try {
+      const { initAnalytics } = await import('../services/analytics/analyticsCollector.js')
+      await initAnalytics(options)
+    } catch (error) {
+      console.warn('埋点系统初始化失败:', error)
+    }
+  }
+
+  /**
+   * 追踪项目点击事件
+   * @param {Object} item - 热搜项目
+   * @param {number} position - 项目位置
+   */
+  function trackItemClick(item, position = 0) {
+    trackEvent(EventType.ITEM_CLICK, {
+      platform: selectedPlatform.value,
+      item_title: item.title,
+      item_position: position
+    })
   }
 
   return {
@@ -446,6 +542,10 @@ export const useHotSearchStore = defineStore('hotSearch', () => {
     scrollToTop,
     updatePlatformOrder,
     loadPlatformOrder,
-    setMetMuseumFilter
+    setMetMuseumFilter,
+
+    // 埋点相关
+    initAnalytics,
+    trackItemClick
   }
 })
