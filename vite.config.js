@@ -8,45 +8,65 @@
  */
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import { resolve } from 'path'
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [vue()],
+
   base: './', // 使用相对路径，适配 uTools
+
+  resolve: {
+    alias: {
+      '@': resolve(__dirname, 'src')
+    }
+  },
+
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
-    minify: 'esbuild',
+    minify: 'terser', // 使用 terser 压缩（更好的压缩效果）
     target: 'es2015',
+
     // uTools 插件构建配置
     rollupOptions: {
       output: {
-        entryFileNames: 'assets/[name].js',
-        chunkFileNames: 'assets/[name].js',
-        assetFileNames: 'assets/[name].[ext]'
+        // 代码分割优化
+        manualChunks: {
+          'vue-vendor': ['vue', 'pinia'],
+          'ui-library': ['vue-remix-icons']
+        },
+        entryFileNames: 'assets/[name]-[hash].js',
+        chunkFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash].[ext]'
       }
     },
+
     // chunk 大小警告的限制（kb）
     chunkSizeWarningLimit: 1000,
+
     // 生产环境不生成 sourcemap
     sourcemap: false,
-    // esbuild 配置：移除 console.log
-    esbuild: {
-      drop: process.env.NODE_ENV === 'production' ? ['console', 'debugger'] : [],
-      pure: ['console.log', 'console.info', 'console.debug', 'console.warn', 'console.error'],
+
+    // terser 压缩配置
+    terserOptions: {
+      compress: {
+        // 生产环境移除 console
+        drop_console: true,
+        drop_debugger: true,
+        pure_funcs: ['console.log', 'console.info', 'console.debug']
+      }
     }
   },
+
+  // 优化依赖预构建
+  optimizeDeps: {
+    include: ['vue', 'pinia', 'vue-remix-icons']
+  },
+
   server: {
     port: 5173,
     open: true,
-    cors: true,
-    // 开发服务器代理配置（可选）
-    proxy: {
-      '/api': {
-        target: 'https://api-hot.imsyy.top',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '')
-      }
-    }
+    cors: true
   }
 })

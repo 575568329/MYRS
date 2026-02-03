@@ -14,7 +14,10 @@
       "Bash(git checkout:*)",
       "Bash(curl:*)",
       "Bash(npx ls node_modules/vue-remix-icons)",
-      "Bash(timeout:*)"
+      "Bash(timeout:*)",
+      "Bash(npm run lint:*)",
+      "Bash(git merge:*)",
+      "mcp__web-reader__webReader"
     ]
   },
   "language": "chinese"

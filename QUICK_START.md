@@ -161,4 +161,102 @@ MIT License
 
 ---
 
+## 🎉 新功能使用指南 (v1.1.0)
+
+### 代码格式化
+
+在开始开发前，建议先格式化代码：
+
+```bash
+# 格式化所有代码
+npm run format
+
+# 检查代码问题（不修复）
+npm run lint:check
+
+# 检查并修复代码问题
+npm run lint
+```
+
+### 1. 图片懒加载
+
+**在组件中使用:**
+
+```vue
+<template>
+  <!-- 使用 v-lazy 指令 -->
+  <img v-lazy="imageUrl" :alt="imageAlt" />
+</template>
+```
+
+### 2. 无限滚动优化
+
+```vue
+<script setup>
+import { useInfiniteScroll } from '@/composables/useInfiniteScroll.js'
+
+const { target } = useInfiniteScroll(async () => {
+  if (hasMore.value && !loading.value) {
+    await loadMore()
+  }
+})
+</script>
+
+<template>
+  <div ref="target" style="height: 1px"></div>
+</template>
+```
+
+### 3. 请求重试机制
+
+```javascript
+import { retryRequest } from '@/utils/requestHelper.js'
+
+const data = await retryRequest(
+  async () => fetchData(),
+  { retries: 3, delay: 1000 }
+)
+```
+
+### 4. 使用拆分后的 API
+
+```javascript
+// 芝加哥艺术学院
+import { getArticData } from '@/services/platforms/index.js'
+const articData = await getArticData(page, pageSize)
+
+// 大都会博物馆
+import { getMetMuseumData } from '@/services/platforms/index.js'
+const metData = await getMetMuseumData(page, pageSize, {
+  geoLocation: 'China'
+})
+```
+
+### 5. 开发建议
+
+**使用路径别名:**
+
+```javascript
+// 代替
+import SomeComponent from '../../../components/SomeComponent.vue'
+
+// 使用
+import SomeComponent from '@/components/SomeComponent.vue'
+```
+
+### 6. 代码提交前
+
+```bash
+# 1. 格式化代码
+npm run format
+
+# 2. 检查代码问题
+npm run lint
+
+# 3. 构建测试
+npm run build
+```
+
+---
+
 祝你开发愉快！ 🎉
