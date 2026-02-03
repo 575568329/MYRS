@@ -21,8 +21,12 @@ const props = defineProps({
     type: Object,
     required: true,
     validator: (value) => {
-      // 兼容有 img 字段（艺术品）或有 url 字段（小说等）的数据
-      return value.title && (value.img || value.url)
+      // 验证必须有 title
+      if (!value.title) return false
+
+      // 允许 img 或 url 为空字符串，只要至少有一个字段存在即可
+      // 这样可以兼容 API 返回的不完整数据
+      return 'img' in value || 'url' in value || 'mobileUrl' in value
     }
   },
   index: {
@@ -47,8 +51,15 @@ const emit = defineEmits(['click'])
 
 // 打开链接（图片或详情页）
 const openImage = () => {
-  // 优先使用 img，如果没有则使用 url
-  const link = props.artwork.img || props.artwork.url
+  // 优先使用 img，如果没有则使用 url 或 mobileUrl
+  const link = props.artwork.img || props.artwork.url || props.artwork.mobileUrl
+
+  // 如果所有链接都为空，则不执行任何操作
+  if (!link) {
+    console.warn('[ArtworkListItem] 没有可用的链接:', props.artwork)
+    return
+  }
+
   if (window.utools) {
     window.utools.shellOpenExternal(link)
   } else {
