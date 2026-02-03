@@ -10,12 +10,12 @@ import ArtworkListItem from '../components/ArtworkListItem.vue'
 const debug = {
   log: (...args) => {
     if (API.DEBUG) {
-      debug.log(...args)
+      console.log(...args)
     }
   },
   warn: (...args) => {
     if (API.DEBUG) {
-      debug.warn(...args)
+      console.warn(...args)
     }
   },
   error: (...args) => {
@@ -59,6 +59,8 @@ const showSettings = ref(false)
 const showDonate = ref(false)
 const showHotValue = ref(UI.SHOW_HOT_VALUE)
 const showDescription = ref(UI.SHOW_DESCRIPTION)
+const autoTranslate = ref(false) // 自动翻译开关（仅对芝加哥艺术学院有效）
+const translateOffset = ref(0) // 翻译偏移量（用于分页翻译）
 
 // 自定义平台顺序
 const customPlatformOrder = ref(null)
@@ -73,6 +75,11 @@ const isSimpleMode = computed(() => {
 // 判断是否为芝加哥艺术学院平台（使用卡片式布局）
 const isArticPlatform = computed(() => {
   return selectedPlatform.value === 'artic'
+})
+
+// 芝加哥艺术学院 - 艺术品列表
+const filteredArtworks = computed(() => {
+  return hotList.value
 })
 
 // 根据选中的分类过滤平台（与配置联动）
@@ -121,6 +128,8 @@ const fetchHotData = async (platformId, loadMore = false) => {
     loading.value = true
     error.value = null
     currentPage.value = 1
+    // 重置翻译偏移量
+    translateOffset.value = 0
     // 切换平台时自动滚动到顶部
     scrollToTop()
   }
@@ -252,6 +261,8 @@ const loadMore = () => {
 const switchPlatform = (platformId) => {
   if (selectedPlatform.value === platformId) return
   selectedPlatform.value = platformId
+  // 重置翻译偏移量
+  translateOffset.value = 0
   fetchHotData(platformId)
 }
 
@@ -280,7 +291,6 @@ const switchCategory = (category) => {
     debug.warn(`⚠️ 分类 "${category}" 下没有可用平台`)
   }
 }
-
 
 // 打开链接
 const openUrl = (url) => {
@@ -320,6 +330,221 @@ const openDonate = () => {
 const closeDonate = () => {
   showDonate.value = false
 }
+
+// 批量翻译多个文本（一次性请求）
+const batchTranslate = async (texts) => {
+  if (!texts.length || !window.utools || !window.utools.ai) {
+    return texts.map(t => ({ original: t, translated: t }))
+  }
+
+  try {
+    // 构建批量翻译提示
+    const prompt = texts.map((text, index) =>
+      `${index + 1}. ${text}`
+    ).join('\n\n')
+
+    const result = await window.utools.ai({
+      messages: [
+        {
+          role: 'system',
+          content: '你是一个专业的翻译助手。请将用户输入的英文内容翻译成中文。用户会提供多个编号的文本，请按相同格式返回翻译结果，每行一个编号和翻译。只返回翻译结果，不要添加任何解释。对于艺术品名称和艺术家姓名，请保持专业和准确。\n\n返回格式示例：\n1. 翻译结果1\n2. 翻译结果2\n3. 翻译结果3'
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ]
+    })
+
+    // 解析翻译结果
+    const translatedText = result?.content || prompt
+    const lines = translatedText.split('\n').filter(line => line.trim())
+    const translations = []
+
+    for (let i = 0; i < texts.length; i++) {
+      const expectedPrefix = `${i + 1}.`
+      const translatedLine = lines.find(line => line.trim().startsWith(expectedPrefix))
+      translations.push({
+        original: texts[i],
+        translated: translatedLine
+          ? translatedLine.replace(/^\d+\.\s*/, '').trim()
+          : texts[i]
+      })
+    }
+
+    return translations
+  } catch (error) {
+    console.error('批量翻译失败:', error)
+    return texts.map(t => ({ original: t, translated: t }))
+  }
+}
+
+// 翻译列表中的所有艺术品（智能分批，每次最多200个）
+const translateAllArtworks = async () => {
+  if (!window.utools || !window.utools.ai) {
+    console.error('utools AI 功能不可用')
+    alert('翻译功能需要 utools 的 AI 支持，请确保已在 utools 中配置了 AI 模型')
+    return
+  }
+
+  const total = hotList.value.length
+  const startIndex = translateOffset.value
+  const remainingCount = total - startIndex
+  const batchSize = Math.min(200, remainingCount) // 每批最多200个
+  const endIndex = startIndex + batchSize
+
+  const itemsToTranslate = hotList.value.slice(startIndex, endIndex)
+  const textsCount = itemsToTranslate.reduce((count, item) => {
+    return count + (item.title ? 1 : 0) + (item.desc ? 1 : 0)
+  }, 0)
+
+  console.log(`🎯 准备翻译第 ${startIndex + 1}-${endIndex} 个艺术品（共 ${itemsToTranslate.length} 个，${textsCount} 个文本，总共 ${total} 个）`)
+
+  // 保存原文
+  itemsToTranslate.forEach(item => {
+    if (item._originalTitle === undefined) {
+      item._originalTitle = item.title
+      item._originalDesc = item.desc
+    }
+  })
+
+  // 收集所有需要翻译的文本（标题和描述交替）
+  const textsToTranslate = []
+  itemsToTranslate.forEach(item => {
+    if (item._originalTitle) textsToTranslate.push(item._originalTitle)
+    if (item._originalDesc) textsToTranslate.push(item._originalDesc)
+  })
+
+  if (textsToTranslate.length === 0) {
+    console.log('⚠️ 没有需要翻译的内容')
+    autoTranslate.value = false
+    return
+  }
+
+  try {
+    console.log(`📝 开始一次性翻译 ${textsToTranslate.length} 个文本（${itemsToTranslate.length} 个艺术品的标题和描述）...`)
+
+    // 一次性翻译所有文本
+    const translatedTexts = await batchTranslate(textsToTranslate)
+
+    // 将翻译结果分配回艺术品
+    let textIndex = 0
+    itemsToTranslate.forEach((item, index) => {
+      // 翻译标题
+      if (item._originalTitle && textIndex < translatedTexts.length) {
+        const translated = translatedTexts[textIndex++]
+        if (translated) {
+          Object.assign(item, { title: translated.translated })
+          console.log(`✓ [${startIndex + index + 1}] 标题: ${item._originalTitle} → ${item.title}`)
+        }
+      }
+
+      // 翻译描述
+      if (item._originalDesc && textIndex < translatedTexts.length) {
+        const translated = translatedTexts[textIndex++]
+        if (translated) {
+          Object.assign(item, { desc: translated.translated })
+          console.log(`✓ [${startIndex + index + 1}] 描述已翻译`)
+        }
+      }
+    })
+
+    console.log(`✅ 已完成第 ${startIndex + 1}-${endIndex} 个艺术品的翻译`)
+
+    // 更新偏移量
+    translateOffset.value = endIndex
+
+    // 翻译完成后自动关闭翻译按钮状态
+    autoTranslate.value = false
+  } catch (error) {
+    console.error('批量翻译失败:', error)
+    alert('翻译失败，请重试')
+    autoTranslate.value = false
+  }
+}
+
+// 切换翻译状态
+const toggleTranslate = async () => {
+  const total = hotList.value.length
+  const startIndex = translateOffset.value
+
+  // 如果所有数据都已翻译，直接提示
+  if (startIndex >= total) {
+    const shouldRestart = confirm(
+      `✅ 所有 ${total} 个艺术品已翻译完成！\n\n` +
+      `单击"确定"重新开始翻译，单击"取消"返回。`
+    )
+
+    if (!shouldRestart) {
+      console.log('❌ 用户取消重新翻译')
+      return
+    }
+
+    // 重新开始翻译，重置所有进度
+    restoreOriginalText()
+    console.log('🔄 重新开始翻译')
+    return
+  }
+
+  const remainingCount = total - startIndex
+  const batchSize = Math.min(200, remainingCount)
+
+  // 计算本次翻译的文本数量
+  const itemsToTranslate = hotList.value.slice(startIndex, startIndex + batchSize)
+  const textsCount = itemsToTranslate.reduce((count, item) => {
+    return count + (item.title ? 1 : 0) + (item.desc ? 1 : 0)
+  }, 0)
+
+  // 确认对话框
+  const confirmed = confirm(
+    `即将使用 utools AI 翻译 ${itemsToTranslate.length} 个艺术品（约 ${textsCount} 个文本），会消耗一定的 AI 能量。\n\n` +
+    `当前进度：${startIndex}/${total}\n` +
+    `本次翻译：第 ${startIndex + 1}-${startIndex + batchSize} 个\n\n` +
+    `是否继续？`
+  )
+
+  if (!confirmed) {
+    console.log('❌ 用户取消翻译')
+    return
+  }
+
+  console.log(`✅ 用户确认翻译 ${itemsToTranslate.length} 个艺术品`)
+  autoTranslate.value = true
+  await translateAllArtworks()
+}
+
+// 恢复原文（双击翻译按钮触发）
+const restoreOriginalText = () => {
+  hotList.value.forEach(item => {
+    if (item._originalTitle !== undefined) {
+      item.title = item._originalTitle
+      item.desc = item._originalDesc
+      delete item._originalTitle
+      delete item._originalDesc
+    }
+  })
+  // 重置翻译偏移量
+  translateOffset.value = 0
+  console.log('🔄 已恢复原文并重置翻译进度')
+}
+
+// 获取翻译按钮的提示文本
+const translateButtonText = computed(() => {
+  if (autoTranslate.value) return '翻译中...'
+
+  const translated = hotList.value.filter(item => item._originalTitle !== undefined).length
+  const total = hotList.value.length
+  const remaining = total - translateOffset.value
+  const nextBatch = Math.min(200, remaining)
+
+  if (translated === 0) {
+    return `翻译前${nextBatch}个 (0/${total}) - 单击开始`
+  } else if (translateOffset.value >= total) {
+    return `已完成 (${translated}/${total}) - 单击重新开始`
+  } else {
+    return `继续翻译${nextBatch}个 (${translateOffset.value}/${total})`
+  }
+})
 
 // 处理设置变更
 const handleSettingChange = (event) => {
@@ -709,11 +934,12 @@ watch(selectedCategory, (newCategory) => {
         <!-- 芝加哥艺术学院 - 艺术品列表布局 -->
         <template v-if="isArticPlatform">
           <ArtworkListItem
-            v-for="(item, index) in hotList"
-            :key="index"
+            v-for="(item, index) in filteredArtworks"
+            :key="item.id || index"
             :artwork="item"
-            :index="index + 1"
+            :index="item.index"
             :showDescription="showDescription"
+            :autoTranslate="autoTranslate"
             @click="openUrl(item.url || item.mobileUrl)"
           />
         </template>
@@ -769,6 +995,23 @@ watch(selectedCategory, (newCategory) => {
 
     <!-- 悬浮按钮组 - 右下角 -->
     <div class="floating-buttons">
+      <!-- 翻译按钮 - 仅在芝加哥艺术学院平台显示 -->
+      <button
+        v-if="isArticPlatform"
+        @click="toggleTranslate"
+        class="floating-btn translate-btn"
+        :class="{ active: autoTranslate }"
+        :title="translateButtonText"
+        :disabled="autoTranslate"
+      >
+        <span class="floating-icon" :class="{ spinning: autoTranslate }">
+          {{ autoTranslate ? '⏳' : '🌐' }}
+        </span>
+        <span v-if="translateOffset > 0 || autoTranslate" class="translate-progress">
+          {{ translateOffset }}/{{ hotList.length }}
+        </span>
+      </button>
+
       <!-- 打赏按钮 -->
       <button
         @click="openDonate"
@@ -1623,6 +1866,36 @@ html.dark-mode .scroll-indicator-right {
   background: linear-gradient(135deg, #5a6268, #495057);
 }
 
+/* 翻译按钮 */
+.translate-btn {
+  background: linear-gradient(135deg, #17a2b8, #138496);
+  position: relative;
+}
+
+.translate-btn:hover {
+  background: linear-gradient(135deg, #138496, #117a8b);
+}
+
+.translate-btn.active {
+  background: linear-gradient(135deg, #28a745, #218838);
+  box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.3);
+}
+
+.translate-progress {
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  font-weight: bold;
+  color: white;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 2px 6px;
+  border-radius: 8px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
 /* ========== 夜间模式悬浮按钮样式 ========== */
 
 html.dark-mode .floating-btn {
@@ -1640,6 +1913,18 @@ html.dark-mode .refresh-btn {
 
 html.dark-mode .refresh-btn:hover {
   background: linear-gradient(135deg, #004494, #003366);
+}
+
+html.dark-mode .translate-btn {
+  background: linear-gradient(135deg, #117a8b, #0e616e);
+}
+
+html.dark-mode .translate-btn:hover {
+  background: linear-gradient(135deg, #0e616e, #0b515b);
+}
+
+html.dark-mode .translate-btn.active {
+  background: linear-gradient(135deg, #218838, #1e7e34);
 }
 
 html.dark-mode .settings-btn {

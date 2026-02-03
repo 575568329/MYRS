@@ -2,6 +2,7 @@
 import { ref, onMounted, watch, onUnmounted } from 'vue'
 import { UI, STORAGE_KEYS, DISPLAY_MODE } from '../config.js'
 import { PLATFORMS } from '../services/hotSearchApi.js'
+import PlatformIcon from '../components/PlatformIcon.vue'
 
 const props = defineProps({
   show: {
@@ -388,9 +389,56 @@ const clearAllCache = () => {
             >
               <span class="drag-handle">⋮⋮</span>
               <span class="platform-index">{{ index + 1 }}</span>
-              <span class="platform-icon">{{ platform.icon }}</span>
+              <PlatformIcon :platformId="platform.id" size="18px" class="platform-icon" />
               <span class="platform-name">{{ platform.name }}</span>
               <span class="drag-indicator">⋮⋮</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- API 信息 -->
+        <div class="setting-group">
+          <h4>📡 数据来源 & API 信息</h4>
+
+          <div class="api-info-list">
+            <!-- 主要热搜 API -->
+            <div class="api-info-item">
+              <div class="api-info-header">
+                <span class="api-name">热搜聚合 API</span>
+                <span class="api-tag primary">主要</span>
+              </div>
+              <div class="api-info-details">
+                <p><strong>API 地址：</strong><code>https://uapis.cn/api/v1/misc/hotboard</code></p>
+                <p><strong>备用 API：</strong><code>https://api-hot.imsyy.com</code></p>
+                <p><strong>支持平台：</strong>微博、知乎、抖音、B站、百度、今日头条等 40+ 个平台</p>
+                <p><strong>数据说明：</strong>实时聚合各平台热搜数据，仅用于展示</p>
+              </div>
+            </div>
+
+            <!-- 芝加哥艺术学院 API -->
+            <div class="api-info-item highlight">
+              <div class="api-info-header">
+                <span class="api-name">芝加哥艺术学院 API</span>
+                <span class="api-tag success">公有领域</span>
+              </div>
+              <div class="api-info-details">
+                <p><strong>API 地址：</strong><code>https://api.artic.edu/api/v1/artworks</code></p>
+                <p><strong>官网文档：</strong><a href="https://api.artic.edu/docs/" target="_blank">https://api.artic.edu/docs/</a></p>
+                <p><strong>版权说明：</strong>仅展示公有领域（Public Domain）艺术品，可免费使用</p>
+                <p><strong>筛选条件：</strong><code>is_public_domain: true</code></p>
+                <p class="api-note">ℹ️ 根据 API 官方文档建议，我们只使用标注为公有领域的艺术作品图片，避免版权问题</p>
+              </div>
+            </div>
+
+            <!-- 免责声明 -->
+            <div class="api-disclaimer">
+              <p><strong>⚠️ 免责声明：</strong></p>
+              <ul>
+                <li>本应用仅作为数据展示工具，所有数据版权归原平台所有</li>
+                <li>热搜数据实时抓取自各公开平台，可能存在延迟或差异</li>
+                <li>芝加哥艺术学院艺术品均为公有领域作品，可自由使用</li>
+                <li>如有任何版权问题，请联系原平台或 API 提供商</li>
+              </ul>
             </div>
           </div>
         </div>
@@ -955,5 +1003,177 @@ const clearAllCache = () => {
 
 :global(.dark-mode) .empty-tip {
   color: #555 !important;
+}
+/* API 信息样式 */
+.api-info-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.api-info-item {
+  padding: 16px;
+  background-color: #f9f9f9;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.api-info-item:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.api-info-item.highlight {
+  background: linear-gradient(135deg, #f0f8ff15, #e6f3ff15);
+  border-color: #007bff;
+  border-left-width: 4px;
+}
+
+.api-info-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.api-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+}
+
+.api-tag {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.api-tag.primary {
+  background-color: #007bff;
+  color: #ffffff;
+}
+
+.api-tag.success {
+  background-color: #28a745;
+  color: #ffffff;
+}
+
+.api-info-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.api-info-details p {
+  margin: 0;
+  font-size: 13px;
+  color: #555;
+  line-height: 1.6;
+}
+
+.api-info-details code {
+  padding: 2px 6px;
+  background-color: #f0f0f0;
+  border-radius: 4px;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 12px;
+  color: #d63384;
+}
+
+.api-info-details a {
+  color: #007bff;
+  text-decoration: none;
+}
+
+.api-info-details a:hover {
+  text-decoration: underline;
+}
+
+.api-note {
+  padding: 8px 12px;
+  background-color: #fff3cd;
+  border-left: 3px solid #ffc107;
+  border-radius: 4px;
+  font-size: 12px !important;
+  color: #856404 !important;
+}
+
+.api-disclaimer {
+  padding: 16px;
+  background-color: #fff5f5;
+  border: 1px solid #fed7d7;
+  border-radius: 8px;
+}
+
+.api-disclaimer p {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  color: #c53030;
+  font-weight: 600;
+}
+
+.api-disclaimer ul {
+  margin: 0;
+  padding-left: 20px;
+  list-style-type: disc;
+}
+
+.api-disclaimer li {
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: #555;
+  line-height: 1.6;
+}
+
+.api-disclaimer li:last-child {
+  margin-bottom: 0;
+}
+
+/* 暗色模式 - API 信息 */
+:global(.dark-mode) .api-info-item {
+  background-color: #2a2a2a;
+  border-color: #444;
+}
+
+:global(.dark-mode) .api-info-item.highlight {
+  background: linear-gradient(135deg, #1a3a5a15, #0d2a4a15);
+  border-color: #007bff;
+}
+
+:global(.dark-mode) .api-name {
+  color: #e0e0e0;
+}
+
+:global(.dark-mode) .api-info-details p {
+  color: #b0b0b0;
+}
+
+:global(.dark-mode) .api-info-details code {
+  background-color: #1a1a1a;
+  color: #ff6b9d;
+}
+
+:global(.dark-mode) .api-info-details a {
+  color: #4dabf7;
+}
+
+:global(.dark-mode) .api-note {
+  background-color: #3a3a1a;
+  border-left-color: #ffc107;
+  color: #ffd54f !important;
+}
+
+:global(.dark-mode) .api-disclaimer {
+  background-color: #3a1a1a;
+  border-color: #5c2b2b;
+}
+
+:global(.dark-mode) .api-disclaimer p {
+  color: #fc8181;
+}
+
+:global(.dark-mode) .api-disclaimer li {
+  color: #b0b0b0;
 }
 </style>

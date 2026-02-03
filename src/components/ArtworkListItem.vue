@@ -7,43 +7,22 @@
         <div class="artwork-title">{{ artwork.title }}</div>
         <div v-if="showDescription && artwork.desc" class="artwork-desc">{{ artwork.desc }}</div>
       </div>
-      <button
-        class="show-image-btn"
-        @click.stop="toggleIframe"
-        :class="{ active: isIframeVisible }"
-      >
-        {{ isIframeVisible ? '收起图片' : '查看图片' }}
-        <span class="btn-icon">{{ isIframeVisible ? '▲' : '▼' }}</span>
+      <button class="show-image-btn" @click.stop="openImage">
+        {{ artwork.img ? '查看图片' : '查看详情' }}
+        <span class="btn-icon">↗</span>
       </button>
     </div>
-
-    <!-- Iframe 嵌入展示区域 -->
-    <transition name="expand">
-      <div v-if="isIframeVisible" class="iframe-container">
-        <div class="iframe-toolbar">
-          <span class="toolbar-title">{{ artwork.title }}</span>
-          <button class="toolbar-close" @click.stop="toggleIframe">✕</button>
-        </div>
-        <iframe
-          :src="iframeUrl"
-          class="artwork-iframe"
-          frameborder="0"
-          allowfullscreen
-        ></iframe>
-      </div>
-    </transition>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-
 const props = defineProps({
   artwork: {
     type: Object,
     required: true,
     validator: (value) => {
-      return value.title && value.img
+      // 兼容有 img 字段（艺术品）或有 url 字段（小说等）的数据
+      return value.title && (value.img || value.url)
     }
   },
   index: {
@@ -57,65 +36,24 @@ const props = defineProps({
   lazy: {
     type: Boolean,
     default: true
+  },
+  autoTranslate: {
+    type: Boolean,
+    default: false
   }
 })
 
 const emit = defineEmits(['click'])
 
-const isIframeVisible = ref(false)
-
-// 生成 iframe 的 HTML 内容
-const iframeUrl = computed(() => {
-  const html = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>${props.artwork.title}</title>
-      <style>
-        * {
-          margin: 0;
-          padding: 0;
-          box-sizing: border-box;
-        }
-        body {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          min-height: 100vh;
-          background: #f5f5f5;
-          padding: 20px;
-        }
-        .img-container {
-          max-width: 100%;
-          max-height: 100vh;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-        img {
-          max-width: 100%;
-          max-height: 100vh;
-          object-fit: contain;
-          display: block;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-        }
-      </style>
-    </head>
-    <body>
-      <div class="img-container">
-        <img src="${props.artwork.img}" alt="${props.artwork.title}" />
-      </div>
-    </body>
-    </html>
-  `
-  return `data:text/html;charset=utf-8,${encodeURIComponent(html)}`
-})
-
-// 切换 iframe 显示
-const toggleIframe = () => {
-  isIframeVisible.value = !isIframeVisible.value
+// 打开链接（图片或详情页）
+const openImage = () => {
+  // 优先使用 img，如果没有则使用 url
+  const link = props.artwork.img || props.artwork.url
+  if (window.utools) {
+    window.utools.shellOpenExternal(link)
+  } else {
+    window.open(link, '_blank')
+  }
 }
 
 // 处理列表项点击
@@ -193,6 +131,19 @@ const handleClick = () => {
   text-overflow: ellipsis;
 }
 
+/* 国家标签 */
+.artwork-country {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 2px 10px;
+  font-size: 12px;
+  color: #667eea;
+  background: linear-gradient(135deg, #f0f2ff, #e8ebff);
+  border-radius: 12px;
+  border: 1px solid #dde1ff;
+  font-weight: 500;
+}
+
 /* 查看图片按钮 */
 .show-image-btn {
   flex-shrink: 0;
@@ -217,81 +168,6 @@ const handleClick = () => {
 
 .btn-icon {
   font-size: 12px;
-  transition: transform 0.3s ease;
-}
-
-.show-image-btn.active .btn-icon {
-  transform: rotate(180deg);
-}
-
-/* Iframe 容器 */
-.iframe-container {
-  width: 100%;
-  background: #f5f5f5;
-  border-top: 1px solid #e0e0e0;
-  overflow: hidden;
-}
-
-.iframe-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  background: #ffffff;
-  border-bottom: 1px solid #e0e0e0;
-}
-
-.toolbar-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #333333;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex: 1;
-  margin-right: 16px;
-}
-
-.toolbar-close {
-  flex-shrink: 0;
-  width: 28px;
-  height: 28px;
-  border: none;
-  background: #f0f0f0;
-  color: #666666;
-  border-radius: 4px;
-  font-size: 16px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-}
-
-.toolbar-close:hover {
-  background: #e0e0e0;
-  color: #333333;
-}
-
-.artwork-iframe {
-  width: 100%;
-  height: 600px;
-  border: none;
-  display: block;
-}
-
-/* 展开动画 */
-.expand-enter-active,
-.expand-leave-active {
-  transition: all 0.3s ease;
-  max-height: 660px;
-  overflow: hidden;
-}
-
-.expand-enter-from,
-.expand-leave-to {
-  max-height: 0;
-  opacity: 0;
 }
 
 /* 暗色模式 */
@@ -324,34 +200,10 @@ const handleClick = () => {
   background: #2c2c2c;
 }
 
-:global(.dark-mode) .show-image-btn.active {
-  border-color: #667eea;
-  color: #667eea;
-  background: #1e1e2e;
-}
-
-/* Iframe 容器暗色模式 */
-:global(.dark-mode) .iframe-container {
-  background: #1a1a1a;
-  border-top-color: #3a3a3a;
-}
-
-:global(.dark-mode) .iframe-toolbar {
-  background: #2c2c2c;
-  border-bottom-color: #3a3a3a;
-}
-
-:global(.dark-mode) .toolbar-title {
-  color: #e0e0e0;
-}
-
-:global(.dark-mode) .toolbar-close {
-  background: #3a3a3a;
-  color: #a0a0a0;
-}
-
-:global(.dark-mode) .toolbar-close:hover {
-  background: #4a4a4a;
-  color: #e0e0e0;
+/* 暗色模式 - 国家标签 */
+:global(.dark-mode) .artwork-country {
+  color: #8b9dff;
+  background: linear-gradient(135deg, #1e2230, #252a3d);
+  border-color: #3d4460;
 }
 </style>

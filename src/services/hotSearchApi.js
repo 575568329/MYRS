@@ -24,6 +24,7 @@ const debug = {
   }
 }
 
+
 // 调试：验证 API 配置是否正确加载
 debug.log('✅ API 配置已加载:', {
   REQUEST_TIMEOUT: API.REQUEST_TIMEOUT,
@@ -409,6 +410,7 @@ function parseZhuishuHTML(html) {
   return books
 }
 
+
 /**
  * 获取芝加哥艺术学院艺术品数据(带缓存优化)
  * @param {number} page - 页码
@@ -427,12 +429,13 @@ async function getArticData(page, pageSize) {
       item.img && item.img.includes('www.artic.edu/iiif')
     )
 
+    // 由于添加了公有领域筛选，需要清除旧缓存以确保符合版权要求
     if (hasOldData) {
       // 清除旧缓存
-      console.log(`🗑️ [清除旧缓存] 芝加哥艺术学院第 ${page} 页(包含旧的 www.artic.edu URL)`)
+      console.log(`🗑️ [清除旧缓存] 芝加哥艺术学院第 ${page} 页(包含旧的 www.artic.edu URL 或未筛选版权)`)
       cacheManager.clearPlatform('artic')
     } else {
-      debug.log(`📦 [缓存命中] 芝加哥艺术学院第 ${page} 页`)
+      debug.log(`📦 [缓存命中] 芝加哥艺术学院第 ${page} 页(仅公有领域)`)
       return cachedData
     }
   }
@@ -443,8 +446,7 @@ async function getArticData(page, pageSize) {
   }
 
   // 3. 使用防重复请求机制
-  return cacheManager.deduplicateRequest(`artic_page_${page}`, async () => {
-    const apiUrl = 'https://api.artic.edu/api/v1/artworks'
+  return cacheManager.deduplicateRequest(`artic_${cacheKey}`, async () => {
     const timeout = API.PLATFORM_TIMEOUT['artic'] || 10000 // 默认 10 秒超时
 
     debug.log(`🎨 正在获取芝加哥艺术学院艺术品(第${page}页)...`)
@@ -460,13 +462,21 @@ async function getArticData(page, pageSize) {
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), timeout)
 
+      // 使用普通的listing端点（只获取公有领域艺术品，避免版权问题）
+      const apiUrl = 'https://api.artic.edu/api/v1/artworks'
+
       // 请求参数:一次性获取更多数据以减少API调用
       // 每次请求pageSize*2的数据,缓存起来供分页使用
       const params = new URLSearchParams({
         limit: (pageSize * 2).toString(), // 获取2倍数据以支持下一页
         page: page.toString(),
-        fields: 'id,title,image_id,artist_display,date_display,medium_display,place_of_origin,dimensions,iiif_url,thumbnail'
+        fields: 'id,title,image_id,artist_display,date_display,medium_display,place_of_origin,dimensions,iiif_url,thumbnail',
+        query: JSON.stringify({
+          term: { is_public_domain: true } // 只获取公有领域艺术品
+        })
       })
+
+      debug.log(`📋 使用listing端点(仅公有领域): ${apiUrl}?${params}`)
 
       const response = await fetch(`${apiUrl}?${params}`, {
         method: 'GET',
@@ -495,7 +505,7 @@ async function getArticData(page, pageSize) {
       debug.log(`🖼️ IIIF Base URL: ${iiifBaseUrl}`)
 
       // 转换为统一格式
-      const transformedList = artworks
+      let transformedList = artworks
         .filter(artwork => artwork.image_id) // 只保留有图片的艺术品
         .map((artwork, index) => {
           // 使用官方推荐的 IIIF URL 格式和尺寸 (843px - 缓存命中率最高)
@@ -510,6 +520,7 @@ async function getArticData(page, pageSize) {
           if (artwork.place_of_origin) descParts.push(artwork.place_of_origin)
 
           return {
+            id: artwork.id, // 添加ID用于key
             index: (page - 1) * pageSize + index + 1,
             title: artwork.title || 'Untitled',
             desc: descParts.join(' · '),
@@ -523,16 +534,19 @@ async function getArticData(page, pageSize) {
       const total = result.pagination?.total || transformedList.length
       const hasMore = page * pageSize < total
 
+      // listing端点，只返回当前页数据
+      transformedList = transformedList.slice(0, pageSize)
+
       const resultData = {
-        data: transformedList.slice(0, pageSize), // 只返回当前页数据
+        data: transformedList,
         total: total,
         hasMore: hasMore
       }
 
-      // 4. 缓存完整数据(包括下一页可能用到的数据)
+      // 4. 缓存完整数据
       cacheManager.set('artic', cacheKey, resultData, cacheTTL)
 
-      // 5. 智能预加载下一页(如果当前页<3页)
+      // 5. 预加载下一页
       if (page < 3) {
         const nextPageKey = `page_${page + 1}`
         if (!cacheManager.get('artic', nextPageKey)) {
@@ -585,7 +599,10 @@ async function fetchArticPage(page, pageSize) {
   const params = new URLSearchParams({
     limit: pageSize.toString(),
     page: page.toString(),
-    fields: 'id,title,image_id,artist_display,date_display,medium_display,place_of_origin,dimensions,iiif_url,thumbnail'
+    fields: 'id,title,image_id,artist_display,date_display,medium_display,place_of_origin,dimensions,iiif_url,thumbnail',
+    query: JSON.stringify({
+      term: { is_public_domain: true } // 只获取公有领域艺术品
+    })
   })
 
   const response = await fetch(`${apiUrl}?${params}`, {
