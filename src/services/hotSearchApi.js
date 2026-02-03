@@ -161,16 +161,26 @@ async function getHotDataViaFetch(platformId, page, pageSize, geoLocation) {
   const uapisPlatforms = [
     'baidu', 'weibo', 'zhihu', 'douyin', 'bilibili', 'kuaishou',
     'toutiao', 'tieba', 'hupu', 'douban-movie', 'douban-group', 'juejin', 'jianshu',
-    'ithome', 'ithome-xijiayi', '36kr', 'csdn', 'v2ex', 'sspai', 'coolapk',
+    'ithome', 'ithome-xijiayi', 'csdn', 'v2ex', 'sspai', 'coolapk',
     'thepaper', 'qq-news', 'sina', 'sina-news', 'netease-news', 'huxiu', 'ifanr',
     'acfun', 'miyoushe', 'genshin', 'honkai', 'starrail', 'lol', 'guokr', '51cto',
     'nodeseek', '52pojie', 'hostloc', 'weread', 'hellogithub', 'zhihu-daily'
   ]
 
+  // 使用 api-hot.imsyy.com 的平台
+  const imsyyPlatforms = [
+    '36kr'
+  ]
+
   // 选择 API 源
-  const apiUrl = uapisPlatforms.includes(platformId)
-    ? `https://uapis.cn/api/v1/misc/hotboard?type=${platformId}`
-    : `https://api-hot.imsyy.com/${platformId}?cache=true`
+  let apiUrl
+  if (uapisPlatforms.includes(platformId)) {
+    apiUrl = `https://uapis.cn/api/v1/misc/hotboard?type=${platformId}`
+  } else if (imsyyPlatforms.includes(platformId)) {
+    apiUrl = `https://api-hot.imsyy.com/${platformId}?cache=true`
+  } else {
+    apiUrl = `https://api-hot.imsyy.com/${platformId}?cache=true`
+  }
 
   debug.log(`📡 正在请求 API: ${apiUrl}`)
 
