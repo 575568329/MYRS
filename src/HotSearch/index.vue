@@ -5,6 +5,7 @@ import { DISPLAY_MODE, STORAGE_KEYS, UI, AUTO_REFRESH, HOT_LEVELS, API } from '.
 import Settings from '../Settings/index.vue'
 import PlatformIcon from '../components/PlatformIcon.vue'
 import ArtworkListItem from '../components/ArtworkListItem.vue'
+import ArtworkCard from '../components/ArtworkCard.vue'
 
 // 调试工具函数 - 只在 DEBUG 模式下输出日志
 const debug = {
@@ -62,6 +63,9 @@ const showDescription = ref(UI.SHOW_DESCRIPTION)
 const autoTranslate = ref(false) // 自动翻译开关（仅对芝加哥艺术学院有效）
 const translateOffset = ref(0) // 翻译偏移量（用于分页翻译）
 
+// 大都会博物馆筛选选项
+const metMuseumFilter = ref('all') // 'all' 或 'china'
+
 // 自定义平台顺序
 const customPlatformOrder = ref(null)
 
@@ -75,6 +79,21 @@ const isSimpleMode = computed(() => {
 // 判断是否为芝加哥艺术学院平台（使用卡片式布局）
 const isArticPlatform = computed(() => {
   return selectedPlatform.value === 'artic'
+})
+
+// 判断是否为大都会博物馆平台（使用卡片式布局）
+const isMetMuseumPlatform = computed(() => {
+  return selectedPlatform.value === 'metmuseum'
+})
+
+// 判断是否为艺术品平台（使用卡片式布局）
+const isArtworkPlatform = computed(() => {
+  return isArticPlatform.value || isMetMuseumPlatform.value
+})
+
+// 判断是否为支持翻译的平台（芝加哥艺术学院或大都会博物馆）
+const isTranslatablePlatform = computed(() => {
+  return isArticPlatform.value || isMetMuseumPlatform.value
 })
 
 // 芝加哥艺术学院 - 艺术品列表
@@ -152,10 +171,19 @@ const fetchHotData = async (platformId, loadMore = false) => {
 
   try {
     debug.log(`🎯 开始获取 ${platformId} 的热搜数据`)
-    const result = await getHotData(platformId, {
+
+    // 构建请求参数
+    const requestParams = {
       page: currentPage.value,
       pageSize: 50
-    })
+    }
+
+    // 如果是大都会博物馆且有筛选条件，添加地理位置筛选
+    if (platformId === 'metmuseum' && metMuseumFilter.value === 'china') {
+      requestParams.geoLocation = 'China'
+    }
+
+    const result = await getHotData(platformId, requestParams)
 
     // 清除超时定时器
     if (loadingTimeout.value) {
@@ -263,7 +291,23 @@ const switchPlatform = (platformId) => {
   selectedPlatform.value = platformId
   // 重置翻译偏移量
   translateOffset.value = 0
+  // 如果不是艺术品平台，重置筛选
+  if (platformId !== 'metmuseum') {
+    metMuseumFilter.value = 'all'
+  }
   fetchHotData(platformId)
+}
+
+// 切换大都会博物馆筛选
+const switchMetMuseumFilter = (filter) => {
+  if (metMuseumFilter.value === filter) return
+  metMuseumFilter.value = filter
+  // 重置页码
+  currentPage.value = 1
+  // 重置翻译偏移量（因为筛选条件变了）
+  translateOffset.value = 0
+  // 重新获取数据
+  fetchHotData('metmuseum')
 }
 
 // 切换分类
@@ -931,8 +975,38 @@ watch(selectedCategory, (newCategory) => {
 
       <!-- 热搜列表 -->
       <div v-else class="hot-list">
+        <!-- 艺术品平台 - 卡片式布局（大都会博物馆） -->
+        <template v-if="isMetMuseumPlatform">
+          <!-- 筛选按钮组 -->
+          <div class="metmuseum-filters">
+            <button
+              @click="switchMetMuseumFilter('all')"
+              :class="['filter-btn', { active: metMuseumFilter === 'all' }]"
+            >
+              🌍 全部作品
+            </button>
+            <button
+              @click="switchMetMuseumFilter('china')"
+              :class="['filter-btn', { active: metMuseumFilter === 'china' }]"
+            >
+              🏮 中国作品
+            </button>
+          </div>
+
+          <div class="artwork-grid">
+            <ArtworkCard
+              v-for="(item, index) in hotList"
+              :key="item.id || index"
+              :artwork="item"
+              :index="item.index || index + 1"
+              :showDescription="showDescription"
+              @click="openUrl(item.url || item.mobileUrl)"
+            />
+          </div>
+        </template>
+
         <!-- 芝加哥艺术学院 - 艺术品列表布局 -->
-        <template v-if="isArticPlatform">
+        <template v-else-if="isArticPlatform">
           <ArtworkListItem
             v-for="(item, index) in filteredArtworks"
             :key="item.id || index"
@@ -995,9 +1069,9 @@ watch(selectedCategory, (newCategory) => {
 
     <!-- 悬浮按钮组 - 右下角 -->
     <div class="floating-buttons">
-      <!-- 翻译按钮 - 仅在芝加哥艺术学院平台显示 -->
+      <!-- 翻译按钮 - 在芝加哥艺术学院和大都会博物馆平台显示 -->
       <button
-        v-if="isArticPlatform"
+        v-if="isTranslatablePlatform"
         @click="toggleTranslate"
         class="floating-btn translate-btn"
         :class="{ active: autoTranslate }"
@@ -1374,6 +1448,68 @@ watch(selectedCategory, (newCategory) => {
   border-radius: 8px;
   overflow: hidden;
   padding: 8px;
+}
+
+/* 艺术品网格布局（大都会博物馆） */
+.metmuseum-filters {
+  display: flex;
+  gap: 12px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.filter-btn {
+  flex: 1;
+  padding: 10px 20px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #666;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.filter-btn:hover {
+  border-color: #007bff;
+  color: #007bff;
+  background: #f8f9fa;
+}
+
+.filter-btn.active {
+  border-color: #007bff;
+  background: linear-gradient(135deg, #007bff, #0056b3);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
+}
+
+.artwork-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+  padding: 8px;
+}
+
+@media (max-width: 768px) {
+  .artwork-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .artwork-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
 }
 
 .hot-item {
@@ -1759,6 +1895,30 @@ html.dark-mode .hot-rank {
 
 html.dark-mode .hot-rank[style*="ff6600"] {
   background-color: #cc5200 !important;
+}
+
+/* 大都会博物馆筛选按钮暗色模式 */
+html.dark-mode .metmuseum-filters {
+  background: #2c2c2c;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+html.dark-mode .filter-btn {
+  background: #3a3a3a;
+  border-color: #555;
+  color: #e0e0e0;
+}
+
+html.dark-mode .filter-btn:hover {
+  border-color: #4dabf7;
+  color: #4dabf7;
+  background: #4a4a4a;
+}
+
+html.dark-mode .filter-btn.active {
+  border-color: #0056b3;
+  background: linear-gradient(135deg, #0056b3, #003d82);
+  color: #ffffff;
 }
 
 /* 暗色模式下没有简介时的样式保持一致 */

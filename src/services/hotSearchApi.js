@@ -88,7 +88,8 @@ export const PLATFORMS = [
   { id: 'hellogithub', name: 'HelloGitHub', icon: 'ri-github-line', category: '科技' },
   { id: 'jianshu', name: '简书', icon: 'ri-quill-pen-line', category: '综合' },
   { id: 'zhuishu', name: '追书排行', icon: 'ri-bookmark-line', category: '阅读' },
-  { id: 'artic', name: '芝加哥艺术学院', icon: 'ri-building-2-line', category: '艺术' }
+  { id: 'artic', name: '芝加哥艺术学院', icon: 'ri-building-2-line', category: '艺术' },
+  { id: 'metmuseum', name: '大都会博物馆', icon: 'ri-gallery-line', category: '艺术' }
 ]
 
 /**
@@ -115,17 +116,21 @@ export function getPlatformsByMode(customOrder = null) {
  * @param {Object} options - 选项
  * @param {number} options.page - 页码（默认1）
  * @param {number} options.pageSize - 每页条数（默认50）
+ * @param {string} options.geoLocation - 地理位置筛选（仅大都会博物馆使用，如 "China"）
  * @returns {Promise<Object>} 热搜数据列表
  */
 export async function getHotData(platformId, options = {}) {
-  const { page = 1, pageSize = 50 } = options
+  const { page = 1, pageSize = 50, geoLocation } = options
 
   debug.log(`🌐 正在获取 ${platformId} 热搜数据...`)
   debug.log(`📄 第 ${page} 页，每页 ${pageSize} 条`)
+  if (geoLocation) {
+    debug.log(`🌍 地理位置: ${geoLocation}`)
+  }
   debug.log(`🔧 运行环境: ${window.utools ? 'uTools' : '浏览器'}`)
 
   // 直接调用热搜 API（支持 uTools 和浏览器环境）
-  return await getHotDataViaFetch(platformId, page, pageSize)
+  return await getHotDataViaFetch(platformId, page, pageSize, geoLocation)
 }
 
 /**
@@ -133,9 +138,10 @@ export async function getHotData(platformId, options = {}) {
  * @param {string} platformId - 平台ID
  * @param {number} page - 页码
  * @param {number} pageSize - 每页数量
+ * @param {string} geoLocation - 地理位置筛选（可选）
  * @returns {Promise<Object>} 热搜数据
  */
-async function getHotDataViaFetch(platformId, page, pageSize) {
+async function getHotDataViaFetch(platformId, page, pageSize, geoLocation) {
   // 特殊处理追书神器（需要解析HTML）
   if (platformId === 'zhuishu') {
     return await getZhuishuData(page, pageSize)
@@ -144,6 +150,11 @@ async function getHotDataViaFetch(platformId, page, pageSize) {
   // 特殊处理芝加哥艺术学院（艺术品API）
   if (platformId === 'artic') {
     return await getArticData(page, pageSize)
+  }
+
+  // 特殊处理大都会博物馆（艺术品API）
+  if (platformId === 'metmuseum') {
+    return await getMetMuseumData(page, pageSize, { geoLocation })
   }
 
   // uapis.cn 支持的所有平台（根据官方文档）
@@ -655,6 +666,188 @@ async function fetchArticPage(page, pageSize) {
     data: transformedList,
     total: total,
     hasMore: hasMore
+  }
+}
+
+/**
+ * 获取大都会博物馆艺术品数据
+ * @param {number} page - 页码
+ * @param {number} pageSize - 每页数量
+ * @param {Object} options - 额外选项
+ * @param {string} options.geoLocation - 地理位置筛选（可选，如 "China" 搜索中国艺术品）
+ * @returns {Promise<Object>} 艺术品数据
+ */
+async function getMetMuseumData(page, pageSize, options = {}) {
+  const { geoLocation } = options // 地理位置筛选（如 "China"）
+
+  const timeout = API.PLATFORM_TIMEOUT['metmuseum'] || 10000 // 默认 10 秒超时
+
+  debug.log(`🏛️ 正在获取大都会博物馆艺术品(第${page}页, 地区: ${geoLocation || '全部'})...`)
+  debug.log(`⏱️ 超时配置:`, {
+    platform: 'metmuseum',
+    platformTimeout: API.PLATFORM_TIMEOUT['metmuseum'],
+    defaultTimeout: API.REQUEST_TIMEOUT,
+    finalTimeout: timeout
+  })
+
+  try {
+    // 使用 AbortController 实现超时控制
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), timeout)
+
+    // 大都会博物馆API: https://collectionapi.metmuseum.org/public/collection/v1/search
+    const apiUrl = 'https://collectionapi.metmuseum.org/public/collection/v1/search'
+
+    // 请求参数:根据地理位置筛选艺术品
+    const params = new URLSearchParams({
+      q: '*', // 始终使用通配符
+      hasImages: 'true' // 只获取有图片的
+    })
+
+    // 如果指定了地理位置，添加geoLocation参数
+    if (geoLocation) {
+      params.set('geoLocation', geoLocation)
+    }
+
+    debug.log(`📋 使用搜索端点: ${apiUrl}?${params}`)
+
+  const searchResponse = await fetch(`${apiUrl}?${params}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    signal: controller.signal
+  })
+
+  clearTimeout(timeoutId)
+
+  if (!searchResponse.ok) {
+    throw new Error(`HTTP ${searchResponse.status}: ${searchResponse.statusText}`)
+  }
+
+  const searchResult = await searchResponse.json()
+
+  // 获取艺术品ID列表
+  const objectIds = searchResult.objectIDs || []
+  const total = searchResult.total || 0
+
+  debug.log(`✅ 成功获取 ${total} 件艺术品，使用 ${objectIds.length} 个ID`)
+
+  // 计算分页范围
+  const start = (page - 1) * pageSize
+  const end = Math.min(start + pageSize, objectIds.length)
+  const pageObjectIds = objectIds.slice(start, end)
+
+  debug.log(`📄 第 ${page} 页: ${start}-${end} (共 ${pageObjectIds.length} 件)`)
+
+    // 批量获取艺术品详细信息(并发请求)
+    const artworkPromises = pageObjectIds.map(async (objectId, idx) => {
+        try {
+          const detailController = new AbortController()
+          const detailTimeoutId = setTimeout(() => detailController.abort(), 5000) // 单个请求5秒超时
+
+          const detailResponse = await fetch(
+            `https://collectionapi.metmuseum.org/public/collection/v1/objects/${objectId}`,
+            {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              signal: detailController.signal
+            }
+          )
+
+          clearTimeout(detailTimeoutId)
+
+          if (!detailResponse.ok) {
+            debug.warn(`⚠️ 获取艺术品 ${objectId} 详情失败: ${detailResponse.status}`)
+            return null
+          }
+
+          const artwork = await detailResponse.json()
+
+          // 只返回有主图片且是公有领域的艺术品
+          if (!artwork.primaryImage || !artwork.isPublicDomain) {
+            return null
+          }
+
+          // 构建描述信息
+          const descParts = []
+          if (artwork.artistDisplayName) descParts.push(artwork.artistDisplayName)
+          if (artwork.objectDate) descParts.push(artwork.objectDate)
+          if (artwork.country) descParts.push(artwork.country) // 添加国家信息
+          if (artwork.medium) descParts.push(artwork.medium)
+          if (artwork.department) descParts.push(artwork.department)
+          if (artwork.culture) descParts.push(artwork.culture)
+
+          return {
+            id: artwork.objectID,
+            index: start + idx + 1,
+            title: artwork.title || 'Untitled',
+            desc: descParts.join(' · '),
+            img: artwork.primaryImageSmall || artwork.primaryImage, // 优先使用小图
+            url: artwork.objectURL || `https://www.metmuseum.org/art/collection/search/${artwork.objectID}`,
+            hot: artwork.isHighlight ? '⭐ 精选' : ''
+          }
+        } catch (error) {
+          debug.warn(`⚠️ 获取艺术品 ${objectId} 失败:`, error.message)
+          return null
+        }
+    })
+
+    // 等待所有请求完成
+    const artworkResults = await Promise.all(artworkPromises)
+
+    // 过滤掉失败的请求
+    let validArtworks = artworkResults.filter(artwork => artwork !== null)
+
+    debug.log(`✅ 成功获取 ${validArtworks.length}/${pageObjectIds.length} 件艺术品详情`)
+
+    // 根据标题去重（保留第一次出现的作品）
+    const seenTitles = new Set()
+    const beforeDedupCount = validArtworks.length
+    validArtworks = validArtworks.filter(artwork => {
+      const title = artwork.title.toLowerCase().trim()
+      if (seenTitles.has(title)) {
+        debug.log(`🔄 去重: ${artwork.title} (已存在)`)
+        return false
+      }
+      seenTitles.add(title)
+      return true
+    })
+
+    if (beforeDedupCount !== validArtworks.length) {
+      debug.log(`🎯 去重过滤: ${beforeDedupCount} → ${validArtworks.length}`)
+    }
+
+    // 计算实际的总数（考虑去重）
+    // 由于我们无法预测去重数量，使用实际的 objectIds.length 作为基准
+    // 但至少要确保 hasMore 的判断正确
+    const hasMore = end < objectIds.length
+
+    const resultData = {
+      data: validArtworks,
+      total: objectIds.length, // 使用原始总数作为基准
+      hasMore: hasMore,
+      dedupCount: beforeDedupCount - validArtworks.length // 记录去重数量
+    }
+
+    return resultData
+  } catch (error) {
+    debug.warn(`⚠️ 获取大都会博物馆数据失败:`, error.message)
+
+    // 超时错误处理
+    if (error.name === 'AbortError') {
+      throw new Error('请求超时')
+    }
+    // 网络错误处理
+    else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+      throw new Error('网络请求失败,请检查网络连接')
+    } else if (error.message.includes('CORS')) {
+      throw new Error('跨域请求被阻止(建议在uTools中使用)')
+    } else {
+      throw error
+    }
   }
 }
 
