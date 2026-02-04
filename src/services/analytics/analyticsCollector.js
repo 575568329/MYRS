@@ -8,7 +8,9 @@ import { pantryClient } from './pantryClient.js'
 import { createEvent, EventPriority } from './eventTypes.js'
 
 // 从环境变量读取配置（优先级高于配置文件）
-const ANALYTICS_ENABLED_ENV = import.meta.env.VITE_ANALYTICS_ENABLED !== 'false'
+// 测试/开发环境下禁用埋点数据上传
+const IS_DEV = import.meta.env.DEV || import.meta.env.MODE === 'development'
+const ANALYTICS_ENABLED_ENV = !IS_DEV && import.meta.env.VITE_ANALYTICS_ENABLED !== 'false'
 const DEBUG_MODE = import.meta.env.VITE_DEBUG_MODE === 'true' || DEBUG.ENABLED
 const PANTRY_KEY = import.meta.env.VITE_PANTRY_KEY || PANTRY_CONFIG.KEY
 

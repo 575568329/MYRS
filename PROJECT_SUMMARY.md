@@ -1,6 +1,6 @@
 # 摸鱼热搜 - 项目总结
 
-> **最后更新时间**: 2026-02-03
+> **最后更新时间**: 2026-02-04
 > **当前版本**: 1.0.0
 
 ---
@@ -32,7 +32,8 @@
 | utools-api-types | ^7.5.1 | uTools API 类型定义 |
 | ESLint | ^9.0.0 | 代码检查工具 |
 | Prettier | ^3.2.0 | 代码格式化工具 |
-| Terser | ^5.30.0 | JavaScript 代码压缩工具 |
+| Terser | ^5.46.0 | JavaScript 代码压缩工具 |
+| Pantry API | v1 | 云端数据存储服务 ⭐NEW |
 
 ---
 
@@ -121,7 +122,8 @@ src/stores/
     ├── 当前平台/分类
     ├── 数据加载状态
     ├── 翻译状态管理
-    └── 平台筛选状态
+    ├── 平台筛选状态
+    └── 埋点事件追踪 ⭐NEW
 ```
 
 ### 组合式函数 (Composables)
@@ -151,11 +153,42 @@ src/utils/
 ├── cacheManager.js       # 缓存管理器
 │   ├── 缓存存储/读取
 │   ├── 缓存过期检查
+│   ├── 批量缓存操作 ⭐NEW
 │   └── 缓存清理
 ├── apiHelper.js          # API 辅助函数
 │   └── API 响应处理
 └── requestHelper.js      # 请求辅助函数
     └── 网络请求封装
+```
+
+### 埋点系统 ⭐NEW
+```
+src/services/analytics/
+├── pantryClient.js       # Pantry API 客户端
+│   ├── 数据上传/下载
+│   ├── 速率限制处理
+│   └── 数据自动合并
+├── analyticsCollector.js # 埋点收集器
+│   ├── 优先级队列管理
+│   ├── 批量上传策略
+│   ├── 上传冷却机制
+│   └── 本地缓存管理
+├── eventTypes.js         # 事件类型定义
+│   ├── 事件工厂函数
+│   ├── 优先级枚举
+│   └── 数据验证
+└── index.js              # 统一导出
+```
+
+### 配置文件 ⭐NEW
+```
+src/config/
+├── pantryConfig.js       # Pantry 配置
+│   ├── API 基础配置
+│   ├── 上传策略
+│   ├── 重试配置
+│   └── 调试开关
+└── icons.js              # 图标配置
 ```
 
 ### 自定义指令
@@ -179,6 +212,7 @@ src/directives/
 - 大都会博物馆：无缓存（实时数据）
 - 缓存过期自动清理
 - 支持手动刷新
+- **批量缓存操作**（新增）⭐NEW
 
 ### 3. 数据去重
 - **大都会博物馆**：单页标题去重，避免重复展示
@@ -202,6 +236,26 @@ src/directives/
 - 平台显示/隐藏控制（点击眼睛图标切换）⭐NEW
 - 重置为默认设置
 
+### 6. 数据埋点与统计 📊⭐NEW
+- **智能事件追踪**
+  - 应用生命周期（启动/关闭）
+  - 用户行为（平台切换、链接点击）
+  - 数据操作（刷新、加载更多）
+  - 错误追踪（API 失败、网络错误）
+- **云端数据存储**
+  - Pantry API 云端存储
+  - 自动数据同步
+  - 多用户数据合并
+- **统计分析面板**
+  - 事件分布图表
+  - 热门平台排行
+  - 活动趋势分析
+  - 数据导出功能
+- **隐私保护**
+  - 匿名用户 ID
+  - 无敏感信息
+  - 可完全禁用
+
 ---
 
 ## 📁 项目结构
@@ -219,13 +273,19 @@ src/directives/
 │   │   ├── RemixIcon.vue     # 图标组件
 │   │   ├── PlatformIcon.vue  # 平台图标
 │   │   ├── ArtworkCard.vue   # 艺术品卡片
-│   │   └── ArtworkListItem.vue  # 艺术品列表项
+│   │   ├── ArtworkListItem.vue  # 艺术品列表项
+│   │   └── AnalyticsDebugPanel.vue  # 埋点调试面板 ⭐NEW
 │   ├── composables/          # 组合式函数 ⭐NEW
 │   │   ├── usePlatform.js    # 平台切换逻辑
 │   │   └── useInfiniteScroll.js  # 无限滚动
 │   ├── directives/           # 自定义指令 ⭐NEW
 │   │   └── lazyLoad.js       # 图片懒加载
 │   ├── services/             # 业务逻辑
+│   │   ├── analytics/        # 埋点系统 ⭐NEW
+│   │   │   ├── index.js      # 统一导出
+│   │   │   ├── pantryClient.js    # Pantry 客户端
+│   │   │   ├── analyticsCollector.js  # 埋点收集器
+│   │   │   └── eventTypes.js  # 事件类型定义
 │   │   ├── platforms/        # 平台 API 模块 ⭐NEW
 │   │   │   ├── index.js      # 统一导出
 │   │   │   ├── hotboardApi.js    # 热搜聚合
@@ -240,12 +300,17 @@ src/directives/
 │   │   ├── cacheManager.js   # 缓存管理
 │   │   ├── apiHelper.js      # API 辅助
 │   │   └── requestHelper.js  # 请求辅助
-│   ├── config.js             # 配置文件
+│   ├── config/               # 配置模块 ⭐NEW
+│   │   ├── pantryConfig.js   # Pantry 配置
+│   │   └── icons.js          # 图标配置
+│   ├── config.js             # 主配置文件
 │   ├── App.vue               # 根组件
 │   └── main.js               # 入口文件
 ├── .eslintrc.cjs             # ESLint 配置 ⭐NEW
 ├── .prettierrc               # Prettier 配置 ⭐NEW
 ├── .prettierignore           # Prettier 忽略 ⭐NEW
+├── .env.example              # 环境变量示例 ⭐NEW
+├── PANTRY_QUICKSTART.md      # Pantry 使用指南 ⭐NEW
 ├── package.json              # 项目配置
 ├── vite.config.js            # Vite 配置
 ├── PROJECT_SUMMARY.md        # 项目总结（本文件）
@@ -293,6 +358,145 @@ npm run build
 ---
 
 ## 📝 最近更新记录
+
+### 2026-02-04 - API 清理与代码简化 🧹
+
+#### 删除 98dou API
+- ✅ **移除 api.98dou.cn API 依赖**
+  - 删除 60秒早报平台（60s）
+  - 删除人民财讯平台（egsea）
+  - 移除 douPlatforms 相关代码
+  - 删除 API Key 配置
+- ✅ **代码简化**
+  - 删除速率限制检查代码（每10秒最多3次）
+  - 删除特殊数据格式处理（60s、egsea）
+  - 删除专用缓存逻辑
+  - 简化 API 路由选择逻辑
+- ✅ **API 源统一**
+  - 现在只使用两个 API 源
+  - uapis.cn（主要）
+  - api-hot.imsyy.com（36kr 等）
+
+#### 影响范围
+- [config.js](src/config.js:36) - 从极简模式列表删除 60s、egsea
+- [hotSearchApi.js](src/services/hotSearchApi.js:67) - 删除平台定义和相关逻辑
+- 平台总数：50+ → 49
+- 删除约 50 行代码
+
+---
+
+### 2026-02-04 - API 优化与性能提升 🚀
+
+#### 36kr API 切换
+- ✅ **切换至 api-hot.imsyy.com API**
+  - 从 uapis.cn 平台列表移除 36kr
+  - 添加专用 imsyyPlatforms 配置
+  - 优化 API 路由逻辑
+  - 提升数据获取稳定性
+
+#### 缓存机制优化
+- ✅ **增强缓存管理器功能**
+  - 新增批量缓存操作方法
+  - 优化缓存过期检查性能
+  - 添加缓存统计信息
+  - 支持更细粒度的缓存控制
+
+#### 影响范围
+- [hotSearchApi.js](src/services/hotSearchApi.js:112) - 36kr API 路由优化
+- [cacheManager.js](src/utils/cacheManager.js:45) - 缓存功能增强
+- [config.js](src/config.js:59) - 超时配置调整
+
+---
+
+### 2026-02-03 - Pantry 埋点系统集成 📊⭐NEW
+
+#### 核心功能
+- ✅ **云端数据存储**
+  - 集成 Pantry API 服务
+  - 支持多 Basket 数据管理
+  - 自动数据合并与同步
+  - 文档：[Pantry API Docs](https://documenter.getpostman.com/view/3281832/SzmZeMLC)
+
+#### 埋点收集系统
+- ✅ **智能事件追踪**
+  - 优先级队列管理（高/中/低）
+  - 批量上传策略（20条/批）
+  - 上传冷却机制（3秒冷却）
+  - 最大间隔强制上传（10分钟）
+- ✅ **事件类型支持**
+  - 应用启动/关闭
+  - 平台切换
+  - 链接点击
+  - 数据刷新
+  - 加载更多
+  - 错误记录
+
+#### 速率限制处理
+- ✅ **429 错误智能处理**
+  - 5次指数退避重试
+  - 自动延迟调整
+  - 上传失败自动重新入队
+  - 详细的错误日志
+
+#### 数据可视化面板
+- ✅ **统计分析面板**
+  - 事件分布图表
+  - 热门平台排行
+  - 活动趋势图
+  - 远程数据加载
+  - 数据导出功能（JSON/CSV）
+
+#### 隐私与合规
+- ✅ **匿名数据收集**
+  - 匿名用户 ID
+  - 会话 ID 追踪
+  - 无敏感信息存储
+  - 可完全禁用埋点功能
+
+#### 技术实现
+- **核心模块**：
+  - `pantryClient.js` - Pantry API 客户端
+  - `analyticsCollector.js` - 埋点收集器
+  - `eventTypes.js` - 事件类型定义
+  - `AnalyticsDebugPanel.vue` - 调试面板
+- **配置文件**：
+  - `pantryConfig.js` - Pantry 配置
+  - `.env.example` - 环境变量示例
+- **自动初始化**：
+  - 在 `main.js` 中自动启动
+  - 开发环境自动禁用
+  - 支持环境变量配置
+
+#### 快速开始
+1. 访问 [https://getpantry.cloud](https://getpantry.cloud) 注册获取 Pantry Key
+2. 配置环境变量 `VITE_ANALYTICS_ENABLED=true`
+3. 配置环境变量 `VITE_PANTRY_KEY=your_key_here`
+4. 重启应用即可开始收集数据
+
+#### 详细文档
+- [PANTRY_QUICKSTART.md](PANTRY_QUICKSTART.md) - 完整使用指南
+
+#### 影响范围
+- [config/pantryConfig.js](src/config/pantryConfig.js:1) - Pantry 配置
+- [services/analytics/](src/services/analytics/) - 埋点服务模块
+- [components/AnalyticsDebugPanel.vue](src/components/AnalyticsDebugPanel.vue:1) - 调试面板
+- [main.js](src/main.js:15) - 自动初始化
+- [hotSearchStore.js](src/stores/hotSearchStore.js:105) - 状态追踪
+
+---
+
+### 2026-02-03 - 数据展示间距优化 🎨
+
+#### UI 改进
+- ✅ **优化数据展示间距**
+  - 调整热搜列表项间距
+  - 提升可读性
+  - 更符合视觉设计规范
+- ✅ **响应式布局优化**
+  - 适配不同屏幕尺寸
+  - 改善移动端体验
+
+---
 
 ### 2026-02-03 - 平台显示/隐藏控制功能 👁️⭐NEW
 
@@ -490,6 +694,7 @@ npm run build
 **热搜聚合 API**
 - 主要API: `https://uapis.cn/api/v1/misc/hotboard`
 - 备用API: `https://api-hot.imsyy.com`
+- 36kr专用API: `https://api-hot.imsyy.com` ⭐NEW
 - 支持50+平台热搜数据聚合
 
 **芝加哥艺术学院 API**
@@ -541,10 +746,10 @@ npm run build
 - **分类模式**：按分类显示所有平台
 
 ### 平台超时配置
-- 芝加哥艺术学院：30秒
+- 芝加哥艺术学院：10秒
 - 追书神器：20秒
-- 大都会博物馆：5秒（详情请求）
-- 其他平台：10秒（默认）
+- 大都会博物馆：15秒（包含多次请求）
+- 其他平台：5秒（默认）⭐UPDATED
 
 ### 缓存策略
 - 芝加哥艺术学院：60分钟

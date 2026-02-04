@@ -247,11 +247,13 @@ async function getHotDataViaFetch(platformId, page, pageSize, geoLocation) {
     const end = start + pageSize
     const paginatedData = hotList.slice(start, end)
 
-    return {
+    const result = {
       data: paginatedData,
       total: hotList.length,
       hasMore: end < hotList.length
     }
+
+    return result
   } catch (error) {
     console.error('❌ 请求失败:', error)
 

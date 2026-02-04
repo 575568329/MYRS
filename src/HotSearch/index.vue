@@ -4,7 +4,6 @@ import { getHotData, PLATFORMS, getPlatformsByCategory, getCategories, getPlatfo
 import { DISPLAY_MODE, STORAGE_KEYS, UI, AUTO_REFRESH, HOT_LEVELS, API } from '../config.js'
 import { trackEvent, EventType } from '../services/analytics/index.js'
 import Settings from '../Settings/index.vue'
-import PlatformIcon from '../components/PlatformIcon.vue'
 import ArtworkListItem from '../components/ArtworkListItem.vue'
 import ArtworkCard from '../components/ArtworkCard.vue'
 import AnalyticsDebugPanel from '../components/AnalyticsDebugPanel.vue'
@@ -979,7 +978,6 @@ watch(selectedCategory, (newCategory) => {
       <div class="platform-tabs-wrapper">
         <!-- 当前选中平台 - 独立显示在最左侧 -->
         <div v-if="currentPlatformObj" class="current-platform">
-          <PlatformIcon :platformId="currentPlatformObj.id" size="18px" class="current-platform-icon" />
           <span class="current-platform-name">{{ currentPlatformObj.name }}</span>
         </div>
 
@@ -1002,7 +1000,6 @@ watch(selectedCategory, (newCategory) => {
               @click="switchPlatform(platform.id)"
               :class="['platform-tab', { active: selectedPlatform === platform.id }]"
             >
-              <PlatformIcon :platformId="platform.id" size="16px" class="platform-icon" />
               <span class="platform-name">{{ platform.name }}</span>
             </button>
           </div>

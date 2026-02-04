@@ -267,6 +267,35 @@ class CacheManager {
   }
 
   /**
+   * 速率限制检查（滑动窗口算法）
+   * @param {string} key - 请求键
+   * @param {number} maxRequests - 时间窗口内最大请求数
+   * @param {number} timeWindow - 时间窗口(毫秒)
+   * @returns {boolean} 是否允许请求
+   */
+  canRequestRateLimit(key, maxRequests = 3, timeWindow = 10000) {
+    const now = Date.now()
+    const requestHistory = this.requestTimestamps.get(`rate_${key}`) || []
+
+    // 移除时间窗口外的旧请求记录
+    const validRequests = requestHistory.filter(timestamp => now - timestamp < timeWindow)
+
+    // 检查是否超过速率限制
+    if (validRequests.length >= maxRequests) {
+      const oldestRequest = validRequests[0]
+      const waitTime = timeWindow - (now - oldestRequest)
+      console.log(`⏳ [速率限制] ${key} 已达限制 (${maxRequests}次/${timeWindow}ms)，需等待 ${waitTime}ms`)
+      return false
+    }
+
+    // 添加当前请求时间戳
+    validRequests.push(now)
+    this.requestTimestamps.set(`rate_${key}`, validRequests)
+
+    return true
+  }
+
+  /**
    * 防止重复请求
    * @param {string} key - 请求键
    * @param {Function} requestFn - 请求函数

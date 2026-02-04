@@ -20,7 +20,8 @@
       "mcp__web-reader__webReader",
       "Bash(find:*)",
       "WebFetch(domain:docs.storacha.network)",
-      "mcp__web-search-prime__webSearchPrime"
+      "mcp__web-search-prime__webSearchPrime",
+      "Bash(git show:*)"
     ]
   },
   "language": "chinese"
