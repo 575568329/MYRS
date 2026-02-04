@@ -44,6 +44,7 @@ export const PLATFORMS = [
   { id: 'douyin', name: '抖音', icon: 'ri-music-2-line', category: '视频' },
   { id: 'kuaishou', name: '快手', icon: 'ri-camera-lens-line', category: '视频' },
   { id: 'douban-movie', name: '豆瓣电影', icon: 'ri-movie-2-line', category: '娱乐' },
+  { id: 'movie-box', name: '电影票房榜', icon: 'ri-film-line', category: '娱乐' },
   { id: 'douban-group', name: '豆瓣小组', icon: 'ri-team-line', category: '娱乐' },
   { id: 'tieba', name: '贴吧', icon: 'ri-group-line', category: '社交' },
   { id: 'hupu', name: '虎扑', icon: 'ri-basketball-line', category: '生活' },
@@ -56,6 +57,7 @@ export const PLATFORMS = [
 
   // 新闻/资讯
   { id: 'baidu', name: '百度', icon: 'ri-search-2-line', category: '综合' },
+  { id: '60s-news', name: '60秒早报', icon: 'ri-newspaper-line', category: '资讯' },
   { id: 'thepaper', name: '澎湃新闻', icon: 'ri-article-line', category: '资讯' },
   { id: 'toutiao', name: '今日头条', icon: 'ri-fire-line', category: '资讯' },
   { id: 'qq-news', name: '腾讯新闻', icon: 'ri-qq-line', category: '资讯' },
@@ -64,7 +66,6 @@ export const PLATFORMS = [
   { id: 'netease-news', name: '网易新闻', icon: 'ri-news-line', category: '资讯' },
   { id: 'huxiu', name: '虎嗅', icon: 'ri-lightbulb-line', category: '资讯' },
   { id: 'ifanr', name: '爱范儿', icon: 'ri-magic-line', category: '资讯' },
-  { id: '60s', name: '60秒早报', icon: 'ri-time-line', category: '资讯' },
 
   // 技术/IT
   { id: 'sspai', name: '少数派', icon: 'ri-tools-line', category: '科技' },
@@ -144,8 +145,13 @@ export async function getHotData(platformId, options = {}) {
  */
 async function getHotDataViaFetch(platformId, page, pageSize, geoLocation) {
   // 特殊处理60秒早报
-  if (platformId === '60s') {
-    return await get60sData(page, pageSize)
+  if (platformId === '60s-news') {
+    return await get60sNewsData(page, pageSize)
+  }
+
+  // 特殊处理电影票房榜
+  if (platformId === 'movie-box') {
+    return await getMovieBoxData(page, pageSize)
   }
 
   // 特殊处理追书神器（需要解析HTML）
@@ -225,24 +231,58 @@ async function getHotDataViaFetch(platformId, page, pageSize, geoLocation) {
 
     // uapis.cn 新格式: { type: "...", list: [...], update_time: "..." }
     if (data.list && Array.isArray(data.list)) {
-      hotList = data.list.map(item => ({
-        index: item.index,
-        title: item.title,
-        desc: item.extra?.desc || '',
-        img: item.extra?.img || '',
-        url: item.url || '',
-        hot: item.hot_value || ''
-      }))
+      hotList = data.list.map(item => {
+        // 豆瓣电影平台使用豆瓣搜索链接
+        const url = (platformId === 'douban-movie')
+          ? `https://search.douban.com/movie/subject_search?search_text=${encodeURIComponent(item.title)}`
+          : (item.url || '')
+
+        // 调试日志
+        if (platformId === 'douban-movie') {
+          debug.log(`🎬 豆瓣电影: ${item.title} -> ${url}`)
+        }
+
+        return {
+          index: item.index,
+          title: item.title,
+          desc: item.extra?.desc || '',
+          img: item.extra?.img || '',
+          url: url,
+          hot: item.hot_value || ''
+        }
+      })
       debug.log(`✅ 成功从 uapis.cn 获取 ${hotList.length} 条热搜数据`)
     }
     // uapis.cn 旧格式: { code: 200, data: [...], message: "success" }
     else if (data.code === 200 && Array.isArray(data.data)) {
-      hotList = data.data
+      hotList = data.data.map(item => {
+        // 豆瓣电影平台使用豆瓣搜索链接
+        if (platformId === 'douban-movie' && item.title) {
+          const url = `https://search.douban.com/movie/subject_search?search_text=${encodeURIComponent(item.title)}`
+          debug.log(`🎬 豆瓣电影(旧格式): ${item.title} -> ${url}`)
+          return {
+            ...item,
+            url: url
+          }
+        }
+        return item
+      })
       debug.log(`✅ 成功从 uapis.cn 获取 ${hotList.length} 条热搜数据`)
     }
     // imsyy.top 格式: { data: [...], success: true }
     else if (data && data.data && Array.isArray(data.data)) {
-      hotList = data.data
+      hotList = data.data.map(item => {
+        // 豆瓣电影平台使用豆瓣搜索链接
+        if (platformId === 'douban-movie' && item.title) {
+          const url = `https://search.douban.com/movie/subject_search?search_text=${encodeURIComponent(item.title)}`
+          debug.log(`🎬 豆瓣电影(imsyy): ${item.title} -> ${url}`)
+          return {
+            ...item,
+            url: url
+          }
+        }
+        return item
+      })
       debug.log(`✅ 成功从 imsyy.top 获取 ${hotList.length} 条热搜数据`)
     } else {
       throw new Error('API 返回数据格式不正确')
@@ -441,38 +481,185 @@ function parseZhuishuHTML(html) {
 
 
 /**
- * 获取60秒早报数据
+ * 获取电影票房榜数据
  * @param {number} page - 页码
  * @param {number} pageSize - 每页数量
- * @returns {Promise<Object>} 60秒早报数据
+ * @returns {Promise<Object>} 电影票房榜数据
  */
-async function get60sData(page, pageSize) {
+async function getMovieBoxData(page, pageSize) {
   const cacheKey = `page_${page}`
-  const cacheTTL = 60 * 60 * 1000 // 缓存1小时（每天只更新一次）
+  const cacheTTL = 60 * 60 * 1000 // 缓存1小时
 
   // 1. 先检查缓存
-  const cachedData = cacheManager.get('60s', cacheKey)
+  const cachedData = cacheManager.get('movie-box', cacheKey)
   if (cachedData) {
-    debug.log(`📦 [缓存命中] 60秒早报返回缓存数据`)
+    debug.log(`📦 [缓存命中] 电影票房榜返回缓存数据`)
     return cachedData
   }
 
-  const timeout = API.PLATFORM_TIMEOUT['60s'] || 10000 // 默认 10 秒超时
-
-  debug.log(`📰 正在获取60秒早报数据...`)
-  debug.log(`⏱️ 超时配置:`, {
-    platform: '60s',
-    platformTimeout: API.PLATFORM_TIMEOUT['60s'],
-    defaultTimeout: API.REQUEST_TIMEOUT,
-    finalTimeout: timeout
-  })
+  const timeout = API.PLATFORM_TIMEOUT['movie-box'] || 10000 // 默认 10 秒超时
 
   try {
     // 使用 AbortController 实现超时控制
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), timeout)
 
-    const apiUrl = 'https://60api.09cdn.xyz/v2/60s'
+    const apiUrl = 'https://api.52vmy.cn/api/wl/top/movie?type=text'
+
+    const response = await fetch(apiUrl, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'text/plain'
+      },
+      signal: controller.signal
+    })
+
+    clearTimeout(timeoutId)
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+    }
+
+    const text = await response.text()
+
+    if (!text) {
+      throw new Error('返回数据为空')
+    }
+
+    // 解析文本数据
+    const hotList = parseMovieBoxText(text)
+
+    // 分页处理
+    const start = (page - 1) * pageSize
+    const end = start + pageSize
+    const paginatedData = hotList.slice(start, end)
+
+    const resultData = {
+      data: paginatedData,
+      total: hotList.length,
+      hasMore: end < hotList.length
+    }
+
+    // 缓存数据
+    cacheManager.set('movie-box', cacheKey, resultData, cacheTTL)
+    return resultData
+  } catch (error) {
+    debug.warn(`⚠️ 获取电影票房榜失败:`, error.message)
+
+    // 超时错误处理
+    if (error.name === 'AbortError') {
+      throw new Error('请求超时')
+    }
+    // 网络错误处理
+    else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+      throw new Error('网络请求失败，请检查网络连接')
+    } else if (error.message.includes('CORS')) {
+      throw new Error('跨域请求被阻止（建议在uTools中使用）')
+    } else {
+      throw error
+    }
+  }
+}
+
+/**
+ * 解析电影票房榜文本数据
+ * @param {string} text - 文本数据
+ * @returns {Array} 电影列表
+ */
+function parseMovieBoxText(text) {
+  const movies = []
+  const lines = text.split('\n').filter(line => line.trim())
+
+
+  let currentMovie = null
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim()
+
+    // 匹配 "Top X -> 电影名"
+    const topMatch = line.match(/^Top\s*(\d+)\s*->\s*(.+)$/)
+    if (topMatch) {
+      // 保存上一部电影
+      if (currentMovie) {
+        movies.push(currentMovie)
+      }
+
+      // 提取电影名称
+      const movieTitle = topMatch[2].trim()
+
+      // 生成豆瓣搜索链接
+      const doubanSearchUrl = `https://search.douban.com/movie/subject_search?search_text=${encodeURIComponent(movieTitle)}`
+
+      // 开始新电影，url 设置为豆瓣搜索链接
+      currentMovie = {
+        index: parseInt(topMatch[1]),
+        title: movieTitle,
+        desc: '',
+        url: doubanSearchUrl,
+        hot: ''
+      }
+      continue
+    }
+
+    // 解析电影详情
+    if (currentMovie) {
+      // 上映天数和总票房
+      const daysMatch = line.match(/^上映(\d+)天\s+(.+)$/)
+      if (daysMatch) {
+        currentMovie.desc = `上映${daysMatch[1]}天 · 总票房${daysMatch[2]}`
+        continue
+      }
+
+      // 综合票房
+      const boxMatch = line.match(/^综合票房\s+(.+)$/)
+      if (boxMatch) {
+        currentMovie.hot = boxMatch[1]
+        currentMovie.desc += ` · 当日${boxMatch[1]}`
+        continue
+      }
+
+      // 票房占比（可选显示）
+      // const percentMatch = line.match(/^综合票房占比\s+(.+)$/)
+      // if (percentMatch) {
+      //   currentMovie.desc += ` · 占比${percentMatch[1]}`
+      //   continue
+      // }
+    }
+  }
+
+  // 保存最后一部电影
+  if (currentMovie) {
+    movies.push(currentMovie)
+  }
+  return movies
+}
+
+
+/**
+ * 获取60秒早报数据
+ * @param {number} page - 页码
+ * @param {number} pageSize - 每页数量
+ * @returns {Promise<Object>} 早报数据
+ */
+async function get60sNewsData(page, pageSize) {
+  const cacheKey = `page_${page}`
+  const cacheTTL = 60 * 60 * 1000 // 缓存1小时
+
+  // 1. 先检查缓存
+  const cachedData = cacheManager.get('60s-news', cacheKey)
+  if (cachedData) {
+    debug.log(`📦 [缓存命中] 60秒早报返回缓存数据`)
+    return cachedData
+  }
+
+  const timeout = API.PLATFORM_TIMEOUT['60s-news'] || 10000 // 默认 10 秒超时
+
+  try {
+    // 使用 AbortController 实现超时控制
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), timeout)
+
+    const apiUrl = 'http://www.wudada.online/Api/ScD'
 
     const response = await fetch(apiUrl, {
       method: 'GET',
@@ -488,34 +675,18 @@ async function get60sData(page, pageSize) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`)
     }
 
-    const result = await response.json()
+    const data = await response.json()
 
-    // 检查返回状态
-    if (result.code !== 200) {
-      throw new Error(result.message || '获取数据失败')
+    if (data.code !== '200' || !data.data) {
+      throw new Error('API 返回数据格式不正确')
     }
 
-    const data = result.data
-    if (!data || !data.news || !Array.isArray(data.news)) {
-      throw new Error('数据格式不正确')
-    }
+    const newsData = data.data
 
-    // 转换为统一格式
-    const hotList = data.news.map((item, index) => ({
-      index: index + 1,
-      title: item || '',
-      desc: `${data.date} ${data.day_of_week || ''}`,
-      url: data.link || '',
-      hot: '',
-      extra: {
-        cover: data.cover || '',
-        tip: data.tip || '',
-        image: data.image || '',
-        lunar: data.lunar_date || ''
-      }
-    }))
+    // 解析新闻内容
+    const hotList = parse60sNewsData(newsData)
 
-    debug.log(`✅ 成功获取 60秒早报 ${hotList.length} 条新闻`)
+    debug.log(`✅ 成功获取60秒早报 ${hotList.length} 条数据`)
 
     // 分页处理
     const start = (page - 1) * pageSize
@@ -525,22 +696,11 @@ async function get60sData(page, pageSize) {
     const resultData = {
       data: paginatedData,
       total: hotList.length,
-      hasMore: end < hotList.length,
-      extra: {
-        date: data.date,
-        day_of_week: data.day_of_week,
-        lunar_date: data.lunar_date,
-        cover: data.cover,
-        tip: data.tip,
-        image: data.image,
-        link: data.link
-      }
+      hasMore: end < hotList.length
     }
 
     // 缓存数据
-    cacheManager.set('60s', cacheKey, resultData, cacheTTL)
-    debug.log(`💾 [缓存写入] 60秒早报已缓存（TTL: 1小时）`)
-
+    cacheManager.set('60s-news', cacheKey, resultData, cacheTTL)
     return resultData
   } catch (error) {
     debug.warn(`⚠️ 获取60秒早报失败:`, error.message)
@@ -552,12 +712,61 @@ async function get60sData(page, pageSize) {
     // 网络错误处理
     else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
       throw new Error('网络请求失败，请检查网络连接')
-    } else if (error.message.includes('CORS')) {
-      throw new Error('跨域请求被阻止（建议在uTools中使用）')
     } else {
       throw error
     }
   }
+}
+
+/**
+ * 解析60秒早报数据
+ * @param {Object} newsData - API返回的新闻数据
+ * @returns {Array} 新闻列表
+ */
+function parse60sNewsData(newsData) {
+  const items = []
+
+  // 添加日期信息作为第一条
+  if (newsData.date || newsData.cdate) {
+    const dateText = `${newsData.date || ''} ${newsData.cdate || ''}`.trim()
+    if (dateText) {
+      items.push({
+        index: 0,
+        title: `📅 ${dateText}`,
+        desc: newsData.title || '60秒早报',
+        url: 'https://www.baidu.com/s?wd=60秒早报',
+        hot: ''
+      })
+    }
+  }
+
+  // 解析新闻内容
+  if (newsData.content && Array.isArray(newsData.content)) {
+    newsData.content.forEach((item) => {
+      const content = item.content || ''
+      // 跳过空内容和每日金句
+      if (!content || content.trim() === '' || content.includes('【每日金句】')) {
+        return
+      }
+
+      // 提取新闻标题（去掉序号）
+      const title = content.replace(/^\d+、/, '').trim()
+
+      // 生成百度搜索链接
+      const searchQuery = title.split('；')[0].split('；')[0].split('。')[0].trim()
+      const baiduSearchUrl = `https://www.baidu.com/s?wd=${encodeURIComponent(searchQuery)}`
+
+      items.push({
+        index: items.length,
+        title: title,
+        desc: '',
+        url: baiduSearchUrl,
+        hot: ''
+      })
+    })
+  }
+
+  return items
 }
 
 
