@@ -64,6 +64,7 @@ export const PLATFORMS = [
   { id: 'netease-news', name: '网易新闻', icon: 'ri-news-line', category: '资讯' },
   { id: 'huxiu', name: '虎嗅', icon: 'ri-lightbulb-line', category: '资讯' },
   { id: 'ifanr', name: '爱范儿', icon: 'ri-magic-line', category: '资讯' },
+  { id: '60s', name: '60秒早报', icon: 'ri-time-line', category: '资讯' },
 
   // 技术/IT
   { id: 'sspai', name: '少数派', icon: 'ri-tools-line', category: '科技' },
@@ -142,6 +143,11 @@ export async function getHotData(platformId, options = {}) {
  * @returns {Promise<Object>} 热搜数据
  */
 async function getHotDataViaFetch(platformId, page, pageSize, geoLocation) {
+  // 特殊处理60秒早报
+  if (platformId === '60s') {
+    return await get60sData(page, pageSize)
+  }
+
   // 特殊处理追书神器（需要解析HTML）
   if (platformId === 'zhuishu') {
     return await getZhuishuData(page, pageSize)
@@ -431,6 +437,127 @@ function parseZhuishuHTML(html) {
   }
 
   return books
+}
+
+
+/**
+ * 获取60秒早报数据
+ * @param {number} page - 页码
+ * @param {number} pageSize - 每页数量
+ * @returns {Promise<Object>} 60秒早报数据
+ */
+async function get60sData(page, pageSize) {
+  const cacheKey = `page_${page}`
+  const cacheTTL = 60 * 60 * 1000 // 缓存1小时（每天只更新一次）
+
+  // 1. 先检查缓存
+  const cachedData = cacheManager.get('60s', cacheKey)
+  if (cachedData) {
+    debug.log(`📦 [缓存命中] 60秒早报返回缓存数据`)
+    return cachedData
+  }
+
+  const timeout = API.PLATFORM_TIMEOUT['60s'] || 10000 // 默认 10 秒超时
+
+  debug.log(`📰 正在获取60秒早报数据...`)
+  debug.log(`⏱️ 超时配置:`, {
+    platform: '60s',
+    platformTimeout: API.PLATFORM_TIMEOUT['60s'],
+    defaultTimeout: API.REQUEST_TIMEOUT,
+    finalTimeout: timeout
+  })
+
+  try {
+    // 使用 AbortController 实现超时控制
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), timeout)
+
+    const apiUrl = 'https://60api.09cdn.xyz/v2/60s'
+
+    const response = await fetch(apiUrl, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      signal: controller.signal
+    })
+
+    clearTimeout(timeoutId)
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+    }
+
+    const result = await response.json()
+
+    // 检查返回状态
+    if (result.code !== 200) {
+      throw new Error(result.message || '获取数据失败')
+    }
+
+    const data = result.data
+    if (!data || !data.news || !Array.isArray(data.news)) {
+      throw new Error('数据格式不正确')
+    }
+
+    // 转换为统一格式
+    const hotList = data.news.map((item, index) => ({
+      index: index + 1,
+      title: item || '',
+      desc: `${data.date} ${data.day_of_week || ''}`,
+      url: data.link || '',
+      hot: '',
+      extra: {
+        cover: data.cover || '',
+        tip: data.tip || '',
+        image: data.image || '',
+        lunar: data.lunar_date || ''
+      }
+    }))
+
+    debug.log(`✅ 成功获取 60秒早报 ${hotList.length} 条新闻`)
+
+    // 分页处理
+    const start = (page - 1) * pageSize
+    const end = start + pageSize
+    const paginatedData = hotList.slice(start, end)
+
+    const resultData = {
+      data: paginatedData,
+      total: hotList.length,
+      hasMore: end < hotList.length,
+      extra: {
+        date: data.date,
+        day_of_week: data.day_of_week,
+        lunar_date: data.lunar_date,
+        cover: data.cover,
+        tip: data.tip,
+        image: data.image,
+        link: data.link
+      }
+    }
+
+    // 缓存数据
+    cacheManager.set('60s', cacheKey, resultData, cacheTTL)
+    debug.log(`💾 [缓存写入] 60秒早报已缓存（TTL: 1小时）`)
+
+    return resultData
+  } catch (error) {
+    debug.warn(`⚠️ 获取60秒早报失败:`, error.message)
+
+    // 超时错误处理
+    if (error.name === 'AbortError') {
+      throw new Error('请求超时')
+    }
+    // 网络错误处理
+    else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+      throw new Error('网络请求失败，请检查网络连接')
+    } else if (error.message.includes('CORS')) {
+      throw new Error('跨域请求被阻止（建议在uTools中使用）')
+    } else {
+      throw error
+    }
+  }
 }
 
 
