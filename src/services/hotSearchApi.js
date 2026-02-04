@@ -325,6 +325,16 @@ async function getHotDataViaFetch(platformId, page, pageSize, geoLocation) {
  * @returns {Promise<Object>} 小说排行榜数据
  */
 async function getZhuishuData(page, pageSize) {
+  const cacheKey = `page_${page}`
+  const cacheTTL = 2 * 60 * 60 * 1000 // 缓存2小时
+
+  // 1. 先检查缓存
+  const cachedData = cacheManager.get('zhuishu', cacheKey)
+  if (cachedData) {
+    debug.log(`📦 [缓存命中] 追书排行返回缓存数据`)
+    return cachedData
+  }
+
   // 使用多个 CORS 代理作为备选
   const proxies = [
     'https://api.allorigins.win/raw?url=',
@@ -393,11 +403,15 @@ async function getZhuishuData(page, pageSize) {
       const end = start + pageSize
       const paginatedData = books.slice(start, end)
 
-      return {
+      const resultData = {
         data: paginatedData,
         total: books.length,
         hasMore: end < books.length
       }
+
+      // 缓存数据
+      cacheManager.set('zhuishu', cacheKey, resultData, cacheTTL)
+      return resultData
     } catch (error) {
       debug.warn(`⚠️ 代理 ${i + 1} 请求失败:`, error.message)
 
