@@ -3,10 +3,14 @@ import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
 import { getHotData, PLATFORMS, getPlatformsByCategory, getCategories, getPlatformsByMode } from '../services/hotSearchApi.js'
 import { DISPLAY_MODE, STORAGE_KEYS, UI, AUTO_REFRESH, HOT_LEVELS, API } from '../config.js'
 import { trackEvent, EventType } from '../services/analytics/index.js'
+import { useSettingsStore } from '../stores/settingsStore.js'
 import Settings from '../Settings/index.vue'
 import ArtworkListItem from '../components/ArtworkListItem.vue'
 import ArtworkCard from '../components/ArtworkCard.vue'
 import AnalyticsDebugPanel from '../components/AnalyticsDebugPanel.vue'
+
+// 使用 settingsStore
+const settingsStore = useSettingsStore()
 
 // 调试工具函数 - 只在 DEBUG 模式下输出日志
 const debug = {
@@ -57,21 +61,12 @@ const loadingTimeout = ref(null)
 const lastRequestTime = ref(0)
 
 // UI 设置
-const showSettings = ref(false)
 const showDonate = ref(false)
-const showHotValue = ref(UI.SHOW_HOT_VALUE)
-const showDescription = ref(UI.SHOW_DESCRIPTION)
 const autoTranslate = ref(false) // 自动翻译开关（仅对芝加哥艺术学院有效）
 const translateOffset = ref(0) // 翻译偏移量（用于分页翻译）
 
 // 大都会博物馆筛选选项
 const metMuseumFilter = ref('all') // 'all' 或 'china'
-
-// 自定义平台顺序
-const customPlatformOrder = ref(null)
-
-// 隐藏的平台ID集合
-const hiddenPlatforms = ref(new Set())
 
 // 开发环境标志
 const isDev = import.meta.env.DEV
@@ -114,7 +109,9 @@ const filteredPlatforms = computed(() => {
 
   // 极简模式：始终显示主流平台
   if (DISPLAY_MODE.DEFAULT_MODE === 'simple') {
-    platforms = getPlatformsByMode(customPlatformOrder.value)
+    // 将 store 中的平台对象数组转换为 ID 数组传给 getPlatformsByMode
+    const orderIds = settingsStore.customPlatformOrder.map(p => p.id)
+    platforms = getPlatformsByMode(orderIds)
   } else if (!selectedCategory.value || selectedCategory.value === '全部') {
     // "全部"分类下显示所有平台
     platforms = PLATFORMS
@@ -124,7 +121,7 @@ const filteredPlatforms = computed(() => {
   }
 
   // 过滤掉隐藏的平台
-  return platforms.filter(p => !hiddenPlatforms.value.has(p.id))
+  return platforms.filter(p => !settingsStore.hiddenPlatforms.has(p.id))
 })
 
 // 获取当前选中的平台对象
@@ -410,12 +407,12 @@ const openSettings = () => {
   trackEvent(EventType.SETTINGS_OPEN, {
     platform: selectedPlatform.value
   })
-  showSettings.value = true
+  settingsStore.openSettings()
 }
 
 // 关闭设置面板
 const closeSettings = () => {
-  showSettings.value = false
+  settingsStore.closeSettings()
 }
 
 // 打开打赏弹窗
@@ -648,23 +645,18 @@ const handleSettingChange = (event) => {
   const { key, value } = event.detail
   debug.log('⚙️ 设置变更:', key, value)
 
-  if (key === 'showHotValue') {
-    showHotValue.value = value
-  } else if (key === 'showDescription') {
-    showDescription.value = value
-  } else if (key === 'themeMode') {
-    applyTheme(value)
+  if (key === 'showHotValue' || key === 'showDescription' || key === 'themeMode') {
+    // settingsStore 已经自动更新了，首页直接使用 settingsStore 的状态
+    debug.log(`✅ ${key} 已通过 settingsStore 自动更新`)
   } else if (key === 'customPlatformOrder') {
-    // 更新自定义平台顺序
-    customPlatformOrder.value = value
+    // settingsStore 已经自动更新了，这里只需要记录日志
     debug.log('✅ 自定义平台顺序已更新 (ID数组):', value)
     // 验证顺序是否正确
     const platforms = getPlatformsByMode(value)
     debug.log('✅ 实际显示的平台顺序:', platforms.map(p => `${p.icon} ${p.name}`))
   } else if (key === 'hiddenPlatforms') {
-    // 更新隐藏平台列表
-    hiddenPlatforms.value = new Set(value)
-    debug.log('✅ 隐藏平台列表已更新:', Array.from(hiddenPlatforms.value))
+    // settingsStore 已经自动更新了，这里只需要记录日志
+    debug.log('✅ 隐藏平台列表已更新:', Array.from(settingsStore.hiddenPlatforms))
   }
 }
 
@@ -756,16 +748,15 @@ onMounted(() => {
   debug.log('📍 当前平台:', selectedPlatform.value)
   debug.log('📂 当前分类:', selectedCategory.value)
 
+  // 加载设置（包括平台顺序、隐藏平台、主题等）
+  settingsStore.loadSettings()
+
   // 从本地存储读取保存的分类和平台设置
   if (window.utools && window.utools.dbStorage) {
     try {
       const savedCategory = window.utools.dbStorage.getItem(STORAGE_KEYS.SELECTED_CATEGORY)
       const savedPlatform = window.utools.dbStorage.getItem(STORAGE_KEYS.SELECTED_PLATFORM)
-      const savedShowHotValue = window.utools.dbStorage.getItem(STORAGE_KEYS.SHOW_HOT_VALUE)
-      const savedShowDescription = window.utools.dbStorage.getItem(STORAGE_KEYS.SHOW_DESCRIPTION)
       const savedThemeMode = window.utools.dbStorage.getItem(STORAGE_KEYS.THEME_MODE)
-      const savedCustomPlatformOrder = window.utools.dbStorage.getItem(STORAGE_KEYS.CUSTOM_PLATFORM_ORDER)
-      const savedHiddenPlatforms = window.utools.dbStorage.getItem(STORAGE_KEYS.HIDDEN_PLATFORMS)
 
       if (savedCategory) {
         debug.log('💾 从本地存储读取分类:', savedCategory)
@@ -777,81 +768,20 @@ onMounted(() => {
         selectedPlatform.value = savedPlatform
       }
 
-      if (savedShowHotValue !== null) {
-        showHotValue.value = savedShowHotValue === 'true'
-      }
-
-      if (savedShowDescription !== null) {
-        showDescription.value = savedShowDescription === 'true'
-      }
-
       // 应用保存的主题
       if (savedThemeMode) {
         applyTheme(savedThemeMode)
       }
 
-      // 🔥 读取自定义平台顺序并进行增量合并
-      if (savedCustomPlatformOrder) {
-        try {
-          const savedOrder = JSON.parse(savedCustomPlatformOrder)
-          debug.log('💾 读取到的缓存顺序:', savedOrder)
-
-          // 获取配置文件中的最新平台列表
-          const defaultPlatforms = DISPLAY_MODE.SIMPLE_MODE_PLATFORMS
-          debug.log('📋 配置文件中的平台列表:', defaultPlatforms)
-
-          // 找出配置文件中有，但缓存中没有的新平台
-          const newPlatforms = defaultPlatforms.filter(id => !savedOrder.includes(id))
-          debug.log('🆕 发现的新平台:', newPlatforms)
-
-          // 如果有新平台，合并并保存
-          if (newPlatforms.length > 0) {
-            const mergedOrder = [...savedOrder, ...newPlatforms]
-            customPlatformOrder.value = mergedOrder
-            // 立即保存合并后的顺序
-            window.utools.dbStorage.setItem(STORAGE_KEYS.CUSTOM_PLATFORM_ORDER, JSON.stringify(mergedOrder))
-            debug.log('✅ 增量合并完成！新平台已追加到列表末尾:', newPlatforms)
-          } else {
-            customPlatformOrder.value = savedOrder
-            debug.log('ℹ️ 没有发现新平台，使用缓存的顺序')
-          }
-        } catch (e) {
-          debug.log('⚠️ 解析自定义平台顺序失败，使用默认顺序:', e)
-          customPlatformOrder.value = DISPLAY_MODE.SIMPLE_MODE_PLATFORMS
-        }
-      } else {
-        // 没有保存的自定义顺序，使用配置文件中的默认顺序
-        customPlatformOrder.value = DISPLAY_MODE.SIMPLE_MODE_PLATFORMS
-        debug.log('💾 首次启动，使用配置文件的默认顺序')
-      }
-
-      // 加载隐藏平台列表
-      if (savedHiddenPlatforms) {
-        try {
-          const parsedHidden = JSON.parse(savedHiddenPlatforms)
-          if (Array.isArray(parsedHidden)) {
-            hiddenPlatforms.value = new Set(parsedHidden)
-            debug.log('💾 加载隐藏平台列表:', Array.from(hiddenPlatforms.value))
-          }
-        } catch (e) {
-          debug.log('⚠️ 解析隐藏平台列表失败:', e)
-        }
-      }
+      debug.log('✅ settingsStore 已初始化')
+      debug.log('  - 平台顺序:', settingsStore.customPlatformOrder.map(p => p.name))
+      debug.log('  - 隐藏平台:', Array.from(settingsStore.hiddenPlatforms))
+      debug.log('  - 显示热度值:', settingsStore.showHotValue)
+      debug.log('  - 显示描述:', settingsStore.showDescription)
+      debug.log('  - 主题模式:', settingsStore.themeMode)
     } catch (e) {
       debug.log('⚠️ 读取本地存储失败:', e)
-      // 读取失败时使用默认顺序
-      customPlatformOrder.value = DISPLAY_MODE.SIMPLE_MODE_PLATFORMS
     }
-  } else {
-    // 如果不在 uTools 环境，应用默认主题和默认平台顺序
-    applyTheme(UI.THEME_MODE)
-    customPlatformOrder.value = DISPLAY_MODE.SIMPLE_MODE_PLATFORMS
-  }
-
-  // 确保 customPlatformOrder 不为 null
-  if (!customPlatformOrder.value || customPlatformOrder.value.length === 0) {
-    customPlatformOrder.value = DISPLAY_MODE.SIMPLE_MODE_PLATFORMS
-    debug.log('📋 初始化默认平台顺序:', customPlatformOrder.value)
   }
 
   // 监听设置变更事件
@@ -1068,7 +998,7 @@ watch(selectedCategory, (newCategory) => {
               :key="item.id || index"
               :artwork="item"
               :index="item.index || index + 1"
-              :showDescription="showDescription"
+              :showDescription="settingsStore.showDescription"
               @click="openUrl(item.url || item.mobileUrl)"
             />
           </div>
@@ -1081,7 +1011,7 @@ watch(selectedCategory, (newCategory) => {
             :key="item.id || index"
             :artwork="item"
             :index="item.index"
-            :showDescription="showDescription"
+            :showDescription="settingsStore.showDescription"
             :autoTranslate="autoTranslate"
             @click="openUrl(item.url || item.mobileUrl)"
           />
@@ -1093,16 +1023,16 @@ watch(selectedCategory, (newCategory) => {
             v-for="(item, index) in hotList"
             :key="index"
             @click="openUrl(item.url || item.mobileUrl)"
-            :class="['hot-item', { 'no-desc': !showDescription || !item.desc }]"
+            :class="['hot-item', { 'no-desc': !settingsStore.showDescription || !item.desc }]"
           >
             <div class="hot-rank" :style="getRankStyle(index + 1)">
               {{ index + 1 }}
             </div>
             <div class="hot-content">
               <div class="hot-title">{{ item.title }}</div>
-              <div v-if="item.desc && showDescription" class="hot-desc">{{ item.desc }}</div>
+              <div v-if="item.desc && settingsStore.showDescription" class="hot-desc">{{ item.desc }}</div>
             </div>
-            <div v-if="item.hot && showHotValue" class="hot-value">
+            <div v-if="item.hot && settingsStore.showHotValue" class="hot-value">
               🔥 {{ formatHotValue(item.hot) }}
             </div>
           </div>
@@ -1134,7 +1064,7 @@ watch(selectedCategory, (newCategory) => {
     </div>
 
     <!-- 设置面板 -->
-    <Settings :show="showSettings" @close="closeSettings"></Settings>
+    <Settings :show="settingsStore.showSettings" @close="closeSettings"></Settings>
 
     <!-- 埋点调试面板 - 仅在开发环境显示 -->
     <AnalyticsDebugPanel v-if="isDev" />

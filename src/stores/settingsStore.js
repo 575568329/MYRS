@@ -292,9 +292,41 @@ export const useSettingsStore = defineStore('settings', () => {
 
   // ========== Watchers ==========
 
-  // 监听主题变化，自动应用
+  // 监听热度值显示变化，发送事件通知
+  watch(showHotValue, (newValue) => {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('settingChange', {
+        detail: {
+          key: 'showHotValue',
+          value: newValue
+        }
+      }))
+    }
+  })
+
+  // 监听描述显示变化，发送事件通知
+  watch(showDescription, (newValue) => {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('settingChange', {
+        detail: {
+          key: 'showDescription',
+          value: newValue
+        }
+      }))
+    }
+  })
+
+  // 监听主题变化，自动应用并发送事件通知
   watch(themeMode, (newMode) => {
     applyTheme(newMode)
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('settingChange', {
+        detail: {
+          key: 'themeMode',
+          value: newMode
+        }
+      }))
+    }
   })
 
   // 监听隐藏平台列表变化，发送事件通知
@@ -304,6 +336,19 @@ export const useSettingsStore = defineStore('settings', () => {
         detail: {
           key: 'hiddenPlatforms',
           value: Array.from(newSet)
+        }
+      }))
+    }
+  }, { deep: true })
+
+  // 监听自定义平台顺序变化，发送事件通知
+  watch(customPlatformOrder, (newOrder) => {
+    if (typeof window !== 'undefined') {
+      const orderIds = newOrder.map(p => p.id)
+      window.dispatchEvent(new CustomEvent('settingChange', {
+        detail: {
+          key: 'customPlatformOrder',
+          value: orderIds
         }
       }))
     }
