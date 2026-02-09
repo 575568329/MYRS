@@ -9,6 +9,8 @@
         :loading="lazy ? 'lazy' : 'eager'"
       />
       <div class="artwork-rank">{{ index }}</div>
+      <!-- Epic免费游戏标签 -->
+      <div v-if="artwork.hot" class="artwork-badge">{{ artwork.hot }}</div>
     </div>
     <div class="artwork-info">
       <div class="artwork-title">{{ artwork.title }}</div>
@@ -140,6 +142,27 @@ const handleClick = () => {
   font-weight: bold;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   z-index: 2;
+}
+
+/* 免费标签/徽章 */
+.artwork-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  max-width: calc(100% - 50px);
+  padding: 4px 8px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 600;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  z-index: 2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+  line-height: 1.4;
 }
 
 /* 信息区域 */

@@ -1303,7 +1303,12 @@ async function getEpicFreeData(page, pageSize) {
       if (game.is_free_now) {
         priceInfo = '🎁 现免费'
       } else {
-        priceInfo = `即将免费 · ${game.free_start} 至 ${game.free_end}`
+        // 提取日期部分（月-日）并简化显示
+        const startDate = game.free_start ? game.free_start.substring(5, 10).replace(/\//g, '/') : ''
+        const endDate = game.free_end ? game.free_end.substring(5, 10).replace(/\//g, '/') : ''
+        if (startDate && endDate) {
+          priceInfo = `${startDate}起免费`
+        }
       }
 
       if (game.original_price_desc) {
