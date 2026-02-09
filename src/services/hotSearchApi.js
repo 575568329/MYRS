@@ -692,7 +692,7 @@ async function get60sNewsData(page, pageSize) {
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), timeout)
 
-    const apiUrl = 'http://www.wudada.online/Api/ScD'
+    const apiUrl = 'https://api.zxki.cn/api/mrzb'
 
     const response = await fetch(apiUrl, {
       method: 'GET',
@@ -710,7 +710,7 @@ async function get60sNewsData(page, pageSize) {
 
     const data = await response.json()
 
-    if (data.code !== '200' || !data.data) {
+    if (data.code !== 200 || !data.data) {
       throw new Error('API 返回数据格式不正确')
     }
 
@@ -760,25 +760,23 @@ function parse60sNewsData(newsData) {
   const items = []
 
   // 添加日期信息作为第一条
-  if (newsData.date || newsData.cdate) {
-    const dateText = `${newsData.date || ''} ${newsData.cdate || ''}`.trim()
+  if (newsData.date) {
+    const dateText = newsData.date
     if (dateText) {
       items.push({
         index: 0,
         title: `📅 ${dateText}`,
-        desc: newsData.title || '60秒早报',
+        desc: '每天60秒读懂世界',
         url: 'https://www.baidu.com/s?wd=60秒早报',
         hot: ''
       })
     }
   }
 
-  // 解析新闻内容
-  if (newsData.content && Array.isArray(newsData.content)) {
-    newsData.content.forEach((item) => {
-      const content = item.content || ''
-      // 跳过空内容和每日金句
-      if (!content || content.trim() === '' || content.includes('【每日金句】')) {
+  // 解析新闻内容 - 酷酷API返回的是 news 数组
+  if (newsData.news && Array.isArray(newsData.news)) {
+    newsData.news.forEach((content) => {
+      if (!content || content.trim() === '') {
         return
       }
 
@@ -796,6 +794,17 @@ function parse60sNewsData(newsData) {
         url: baiduSearchUrl,
         hot: ''
       })
+    })
+  }
+
+  // 添加微语作为最后一条
+  if (newsData.weiyu) {
+    items.push({
+      index: items.length,
+      title: newsData.weiyu,
+      desc: '每日微语',
+      url: 'https://www.baidu.com/s?wd=每日微语',
+      hot: ''
     })
   }
 

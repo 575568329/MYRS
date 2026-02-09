@@ -56,6 +56,7 @@ export const API = {
   MIN_REQUEST_INTERVAL: 500,
   // 各平台特殊超时配置（毫秒）
   PLATFORM_TIMEOUT: {
+    '60s-news': 10000,  // 60秒早报API（10秒）
     'zhuishu': 20000,   // 追书神器使用CORS代理，需要更长时间（20秒）
     'movie-box': 10000, // 电影票房榜API（10秒）
     'artic': 10000,     // 芝加哥艺术学院API（10秒）
