@@ -1298,16 +1298,21 @@ async function getEpicFreeData(page, pageSize) {
       if (game.seller) descParts.push(game.developer || game.seller)
       if (game.description) descParts.push(game.description.substring(0, 100) + (game.description.length > 100 ? '...' : ''))
 
-      // 构建价格和免费时间信息
+      // 构建价格和免费时间信息（始终显示）
       let priceInfo = ''
       if (game.is_free_now) {
         priceInfo = '🎁 现免费'
       } else {
-        priceInfo = `即将免费 · ${game.free_start} - ${game.free_end}`
+        priceInfo = `即将免费 · ${game.free_start} 至 ${game.free_end}`
       }
 
       if (game.original_price_desc) {
         priceInfo += ` (原价${game.original_price_desc})`
+      }
+
+      // 将免费时间信息添加到描述的末尾
+      if (descParts.length > 0) {
+        descParts.push(priceInfo)
       }
 
       return {
