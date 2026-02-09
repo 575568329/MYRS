@@ -24,6 +24,8 @@ export const DISPLAY_MODE = {
     '60s-news',     // 60秒早报
     'zhihu',        // 知乎
     'weibo',        // 微博
+    'stock-hot',    // 热门股票
+    'epic-free',    // Epic免费游戏
     'genshin',      // 原神
     'douyin',       // 抖音
     'bilibili',     // B站
@@ -57,7 +59,10 @@ export const API = {
     'zhuishu': 20000,   // 追书神器使用CORS代理，需要更长时间（20秒）
     'movie-box': 10000, // 电影票房榜API（10秒）
     'artic': 10000,     // 芝加哥艺术学院API（10秒）
-    'metmuseum': 15000  // 大都会博物馆API（15秒，需要多次请求）
+    'metmuseum': 15000, // 大都会博物馆API（15秒，需要多次请求）
+    'stock-hot': 25000, // 股票行情API（25秒，一次请求多个股票）
+    'stock-sh': 25000,  // 上证指数API（25秒，一次请求多个股票）
+    'stock-tech': 25000 // 科技股API（25秒，一次请求多个股票）
   },
   // 是否显示调试日志（开发环境可设为 true，生产环境设为 false）
   DEBUG: true

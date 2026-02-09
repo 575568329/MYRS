@@ -81,9 +81,15 @@ export const PLATFORMS = [
 
   // 游戏
   { id: 'lol', name: '英雄联盟', icon: 'ri-sword-line', category: '游戏' },
+  { id: 'epic-free', name: 'Epic免费游戏', icon: 'ri-gamepad-line', category: '游戏' },
   { id: 'genshin', name: '原神', icon: 'ri-star-smile-line', category: '游戏' },
   { id: 'honkai', name: '崩坏3', icon: 'ri-planet-line', category: '游戏' },
   { id: 'starrail', name: '星穹铁道', icon: 'ri-rocket-line', category: '游戏' },
+
+  // 金融/股票
+  { id: 'stock-hot', name: '热门股票', icon: 'ri-stock-line', category: '金融' },
+  { id: 'stock-sh', name: '上证指数', icon: 'ri-funds-line', category: '金融' },
+  { id: 'stock-tech', name: '科技股', icon: 'ri-cpu-line', category: '金融' },
 
   // 其他
   { id: 'weread', name: '微信读书', icon: 'ri-book-read-line', category: '阅读' },
@@ -169,6 +175,16 @@ async function getHotDataViaFetch(platformId, page, pageSize, geoLocation) {
     return await getMetMuseumData(page, pageSize, { geoLocation })
   }
 
+  // 特殊处理 Epic 免费游戏
+  if (platformId === 'epic-free') {
+    return await getEpicFreeData(page, pageSize)
+  }
+
+  // 特殊处理股票平台
+  if (platformId.startsWith('stock-')) {
+    return await getStockData(platformId, page, pageSize)
+  }
+
   // uapis.cn 支持的所有平台（根据官方文档）
   const uapisPlatforms = [
     'baidu', 'weibo', 'zhihu', 'douyin', 'bilibili', 'kuaishou',
@@ -186,7 +202,10 @@ async function getHotDataViaFetch(platformId, page, pageSize, geoLocation) {
 
   // 选择 API 源
   let apiUrl
-  if (uapisPlatforms.includes(platformId)) {
+  // Epic 免费游戏使用特殊端点
+  if (platformId === 'epic-free') {
+    apiUrl = `https://uapis.cn/api/v1/game/epic-free`
+  } else if (uapisPlatforms.includes(platformId)) {
     apiUrl = `https://uapis.cn/api/v1/misc/hotboard?type=${platformId}`
   } else if (imsyyPlatforms.includes(platformId)) {
     apiUrl = `https://api-hot.imsyy.com/${platformId}?cache=true`
@@ -1211,6 +1230,482 @@ async function getMetMuseumData(page, pageSize, options = {}) {
       throw error
     }
   }
+}
+
+/**
+ * 获取 Epic Games 免费游戏数据
+ * @param {number} page - 页码
+ * @param {number} pageSize - 每页数量
+ * @returns {Promise<Object>} 免费游戏数据
+ */
+async function getEpicFreeData(page, pageSize) {
+  const cacheKey = `page_${page}`
+  const cacheTTL = 30 * 60 * 1000 // 缓存30分钟
+
+  // 1. 先检查缓存
+  const cachedData = cacheManager.get('epic-free', cacheKey)
+  if (cachedData) {
+    debug.log(`📦 [缓存命中] Epic免费游戏返回缓存数据`)
+    return cachedData
+  }
+
+  const timeout = API.REQUEST_TIMEOUT
+
+  debug.log(`🎮 正在获取 Epic Games 免费游戏...`)
+
+  try {
+    // 使用 AbortController 实现超时控制
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), timeout)
+
+    const apiUrl = 'https://uapis.cn/api/v1/game/epic-free'
+
+    const response = await fetch(apiUrl, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      signal: controller.signal
+    })
+
+    clearTimeout(timeoutId)
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+    }
+
+    const result = await response.json()
+
+    if (result.message !== '获取成功' || !Array.isArray(result.data)) {
+      throw new Error('API 返回数据格式不正确')
+    }
+
+    const games = result.data
+
+    // 转换为统一格式
+    const hotList = games.map((game, index) => {
+      // 构建描述信息
+      const descParts = []
+      if (game.seller) descParts.push(game.developer || game.seller)
+      if (game.description) descParts.push(game.description.substring(0, 100) + (game.description.length > 100 ? '...' : ''))
+
+      // 构建价格和免费时间信息
+      let priceInfo = ''
+      if (game.is_free_now) {
+        priceInfo = '🎁 现免费'
+      } else {
+        priceInfo = `即将免费 · ${game.free_start} - ${game.free_end}`
+      }
+
+      if (game.original_price_desc) {
+        priceInfo += ` (原价${game.original_price_desc})`
+      }
+
+      return {
+        id: game.id,
+        index: index + 1,
+        title: game.title,
+        desc: descParts.join(' · ') || priceInfo,
+        img: game.cover || '',
+        url: game.link || '',
+        hot: priceInfo,
+        extra: {
+          is_free_now: game.is_free_now,
+          free_start: game.free_start,
+          free_end: game.free_end,
+          original_price: game.original_price
+        }
+      }
+    })
+
+    debug.log(`✅ 成功获取 ${hotList.length} 款 Epic 免费游戏`)
+
+    // 分页处理
+    const start = (page - 1) * pageSize
+    const end = start + pageSize
+    const paginatedData = hotList.slice(start, end)
+
+    const resultData = {
+      data: paginatedData,
+      total: hotList.length,
+      hasMore: end < hotList.length
+    }
+
+    // 缓存数据
+    cacheManager.set('epic-free', cacheKey, resultData, cacheTTL)
+    return resultData
+  } catch (error) {
+    debug.warn(`⚠️ 获取 Epic 免费游戏失败:`, error.message)
+
+    // 超时错误处理
+    if (error.name === 'AbortError') {
+      throw new Error('请求超时')
+    }
+    // 网络错误处理
+    else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+      throw new Error('网络请求失败，请检查网络连接')
+    } else {
+      throw error
+    }
+  }
+}
+
+/**
+ * 股票代码配置
+ * 定义不同平台需要查询的股票列表
+ */
+const STOCK_CONFIGS = {
+  'stock-hot': {
+    name: '热门股票',
+    // 热门股票代码列表
+    stocks: [
+      { code: 'sh600519', name: '贵州茅台' },
+      { code: 'sz000858', name: '五粮液' },
+      { code: 'sh601318', name: '中国平安' },
+      { code: 'sz000333', name: '美的集团' },
+      { code: 'sh600036', name: '招商银行' },
+      { code: 'sz002594', name: '比亚迪' },
+      { code: 'sh601012', name: '隆基绿能' },
+      { code: 'sz300059', name: '东方财富' },
+      { code: 'sh600887', name: '伊利股份' },
+      { code: 'sz000651', name: '格力电器' },
+      { code: 'sh601888', name: '中国中免' },
+      { code: 'sz002475', name: '立讯精密' },
+      { code: 'sh600276', name: '恒瑞医药' },
+      { code: 'sz300750', name: '宁德时代' },
+      { code: 'sh601919', name: '中远海控' }
+    ]
+  },
+  'stock-sh': {
+    name: '上证指数',
+    // 上证指数和权重股
+    stocks: [
+      { code: 'sh000001', name: '上证指数' },
+      { code: 'sh600519', name: '贵州茅台' },
+      { code: 'sh601318', name: '中国平安' },
+      { code: 'sh600036', name: '招商银行' },
+      { code: 'sh601012', name: '隆基绿能' },
+      { code: 'sh600887', name: '伊利股份' },
+      { code: 'sh601888', name: '中国中免' },
+      { code: 'sh600276', name: '恒瑞医药' },
+      { code: 'sh601919', name: '中远海控' },
+      { code: 'sh600900', name: '长江电力' }
+    ]
+  },
+  'stock-tech': {
+    name: '科技股',
+    // 科技类股票
+    stocks: [
+      { code: 'sz000063', name: '中兴通讯' },
+      { code: 'sz002415', name: '海康威视' },
+      { code: 'sz300059', name: '东方财富' },
+      { code: 'sz002475', name: '立讯精密' },
+      { code: 'sz300750', name: '宁德时代' },
+      { code: 'sz002594', name: '比亚迪' },
+      { code: 'sh688981', name: '中芯国际' },
+      { code: 'sz000725', name: '京东方A' },
+      { code: 'sz002371', name: '北方华创' },
+      { code: 'sh688008', name: '澜起科技' }
+    ]
+  }
+}
+
+/**
+ * 获取新浪股票实时行情数据
+ * @param {string} platformId - 平台ID
+ * @param {number} page - 页码
+ * @param {number} pageSize - 每页数量
+ * @returns {Promise<Object>} 股票行情数据
+ */
+async function getStockData(platformId, page, pageSize) {
+  const cacheKey = `page_${page}`
+  const cacheTTL = 60 * 1000 // 缓存1分钟（股票数据需要实时更新）
+
+  // 1. 先检查缓存
+  const cachedData = cacheManager.get(platformId, cacheKey)
+  if (cachedData) {
+    debug.log(`📦 [缓存命中] ${platformId} 返回缓存数据`)
+    return cachedData
+  }
+
+  const config = STOCK_CONFIGS[platformId]
+  if (!config) {
+    throw new Error(`未知的股票平台: ${platformId}`)
+  }
+
+  // 获取平台特定的超时配置,如果没有则使用默认超时
+  const timeout = API.PLATFORM_TIMEOUT[platformId] || API.REQUEST_TIMEOUT
+
+  debug.log(`📈 正在获取 ${config.name} 实时行情...`)
+  debug.log(`⏱️ 超时配置:`, {
+    platform: platformId,
+    platformTimeout: API.PLATFORM_TIMEOUT[platformId],
+    defaultTimeout: API.REQUEST_TIMEOUT,
+    finalTimeout: timeout
+  })
+
+  // 重试机制：最多重试2次
+  const maxRetries = 2
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      // 使用 AbortController 实现超时控制
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), timeout)
+
+      // 腾讯股票接口：支持一次查询多个股票，用逗号分隔
+      // 接口格式：http://qt.gtimg.cn/q=sh600519,sz000858
+      const stockCodes = config.stocks.map(s => s.code).join(',')
+      const apiUrl = `https://qt.gtimg.cn/q=${stockCodes}`
+
+      debug.log(`📡 正在请求 API: ${apiUrl}${attempt > 1 ? ` (重试 ${attempt}/${maxRetries})` : ''}`)
+
+        const response = await fetch(apiUrl, {
+          method: 'GET',
+          headers: {
+            'Accept': 'text/plain, */*; q=0.01',
+            'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+            'Cache-Control': 'no-cache'
+          },
+          signal: controller.signal,
+          cache: 'no-store'
+        })
+
+      clearTimeout(timeoutId)
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      // 新浪返回的是文本数据
+      const text = await response.text()
+
+      // 检查是否为空数据
+      if (!text || text.trim() === '') {
+        throw new Error('返回数据为空')
+      }
+
+      // 解析新浪股票数据
+      const hotList = parseSinaStockData(text, config.stocks)
+
+      if (hotList.length === 0) {
+        throw new Error('未能解析到股票数据')
+      }
+
+      debug.log(`✅ 成功获取 ${hotList.length} 只股票行情`)
+
+      // 分页处理
+      const start = (page - 1) * pageSize
+      const end = start + pageSize
+      const paginatedData = hotList.slice(start, end)
+
+      const resultData = {
+        data: paginatedData,
+        total: hotList.length,
+        hasMore: end < hotList.length
+      }
+
+      // 缓存数据
+      cacheManager.set(platformId, cacheKey, resultData, cacheTTL)
+      return resultData
+    } catch (error) {
+      debug.warn(`⚠️ 获取 ${config.name} 失败 (尝试 ${attempt}/${maxRetries}):`, error.message)
+
+      // 如果是最后一次尝试，抛出错误
+      if (attempt === maxRetries) {
+        // 超时错误处理
+        if (error.name === 'AbortError') {
+          throw new Error('请求超时，请检查网络连接或稍后重试')
+        }
+        // 网络错误处理
+        else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+          throw new Error('网络请求失败，请检查网络连接')
+        } else {
+          throw error
+        }
+      }
+
+      // 等待一段时间后重试（指数退避）
+      const retryDelay = attempt * 1000
+      debug.log(`⏳ 等待 ${retryDelay}ms 后重试...`)
+      await new Promise(resolve => setTimeout(resolve, retryDelay))
+    }
+  }
+}
+
+/**
+ * 解析腾讯股票数据
+ * @param {string} text - 腾讯API返回的文本数据
+ * @param {Array} stocks - 股票配置列表
+ * @returns {Array} 解析后的股票数据
+ */
+function parseSinaStockData(text, stocks) {
+  const stockList = []
+
+  // 腾讯返回格式：v_sh600519="51~贵州茅台~600519~1675.00~1680.00~1670.00~..."
+  // 按行分割
+  const lines = text.split('\n')
+
+  for (const line of lines) {
+    // 提取股票代码和数据（腾讯格式）
+    const tencentMatch = line.match(/v_(.+?)="(.+?)"/)
+    if (tencentMatch) {
+      const code = tencentMatch[1]
+      const dataStr = tencentMatch[2]
+
+      if (!dataStr || dataStr === '') continue
+
+      // 查找股票名称
+      const stockConfig = stocks.find(s => s.code === code)
+      const name = stockConfig?.name || code
+
+      // 腾讯数据格式：以~分隔
+      // 0:未知, 1:股票名称, 2:股票代码, 3:当前价格, 4:昨收, 5:今开, 6:成交量（手）,
+      // 7:外盘, 8:内盘, 9:买一, 10:买一量（手）, 11-18:买二-买五, 19:卖一, 20:卖一量,
+      // 21-28:卖二-卖五, 29:最近逐笔成交, 30:时间, 31:涨跌, 32:涨跌%, 33:最高, 34:最低,
+      // 35:价格/成交量（手）/成交额, 36:成交量（手）, 37:成交额（万）
+      const data = dataStr.split('~')
+
+      if (data.length < 38) continue
+
+      // 使用配置的名称，避免API返回的中文乱码问题
+      const nameInData = name // 优先使用配置的名称
+      const price = parseFloat(data[3]) || 0 // 当前价格
+      const closePrev = parseFloat(data[4]) || 0 // 昨收
+      const open = parseFloat(data[5]) || 0 // 今开
+      const volume = parseInt(data[6]) || 0 // 成交量（手）
+      const high = parseFloat(data[33]) || 0 // 最高
+      const low = parseFloat(data[34]) || 0 // 最低
+      const buyPrice = parseFloat(data[9]) || 0 // 买一价
+      const sellPrice = parseFloat(data[19]) || 0 // 卖一价
+      const amount = parseFloat(data[37]) || 0 // 成交额（万）
+      const time = data[30] || '' // 时间
+
+      // 计算涨跌幅
+      const change = price - closePrev
+      const changePercent = closePrev > 0 ? ((change / closePrev) * 100).toFixed(2) : '0.00'
+
+      // 判断涨跌
+      const trend = change > 0 ? 'up' : change < 0 ? 'down' : 'flat'
+
+      // 构建描述信息
+      const descParts = []
+      if (high > 0) descParts.push(`最高:¥${high.toFixed(2)}`)
+      if (low > 0) descParts.push(`最低:¥${low.toFixed(2)}`)
+      if (volume > 0) descParts.push(`成交量:${(volume / 10000).toFixed(0)}万手`)
+      if (amount > 0) descParts.push(`成交额:${(amount / 100000000).toFixed(2)}亿`)
+
+      // 热度值：涨跌幅
+      const hot = `${change > 0 ? '+' : ''}${changePercent}%`
+
+      stockList.push({
+        id: code,
+        index: stockList.length + 1,
+        title: `${nameInData} (${code.toUpperCase().replace('SH', 'SH').replace('SZ', 'SZ')})`,
+        desc: descParts.join(' · ') || time,
+        url: `https://gu.qq.com/${code}`,
+        hot: hot,
+        extra: {
+          code: code,
+          name: nameInData,
+          price: price,
+          open: open,
+          closePrev: closePrev,
+          high: high,
+          low: low,
+          change: change,
+          changePercent: parseFloat(changePercent),
+          volume: volume,
+          amount: amount,
+          buyPrice: buyPrice,
+          sellPrice: sellPrice,
+          date: time,
+          time: time,
+          trend: trend
+        }
+      })
+
+      continue
+    }
+
+    // 兼容新浪格式（备用）
+    const match = line.match(/hq_str_(.+?)="(.+?)"/)
+    if (!match) continue
+
+    const code = match[1]
+    const dataStr = match[2]
+
+    if (!dataStr || dataStr === '') continue
+
+    // 查找股票名称
+    const stockConfig = stocks.find(s => s.code === code)
+    const name = stockConfig?.name || code
+
+    // 新浪数据格式：股票名称,今日开盘价,昨日收盘价,当前价格,今日最高价,今日最低价,
+    // 竞买价,竞卖价,成交股数,成交金额,买1手,买1报价,买2手,买2报价,...,卖5报价,日期,时间
+    const data = dataStr.split(',')
+
+    if (data.length < 32) continue
+
+    const nameInData = data[0] || name
+    const open = parseFloat(data[1]) || 0 // 今日开盘价
+    const closePrev = parseFloat(data[2]) || 0 // 昨日收盘价
+    const price = parseFloat(data[3]) || 0 // 当前价格
+    const high = parseFloat(data[4]) || 0 // 今日最高价
+    const low = parseFloat(data[5]) || 0 // 今日最低价
+    const buyPrice = parseFloat(data[6]) || 0 // 竞买价
+    const sellPrice = parseFloat(data[7]) || 0 // 竞卖价
+    const volume = parseInt(data[8]) || 0 // 成交股数
+    const amount = parseFloat(data[9]) || 0 // 成交金额（元）
+    const date = data[30] || '' // 日期
+    const time = data[31] || '' // 时间
+
+    // 计算涨跌幅
+    const change = price - closePrev
+    const changePercent = closePrev > 0 ? ((change / closePrev) * 100).toFixed(2) : '0.00'
+
+    // 判断涨跌
+    const trend = change > 0 ? 'up' : change < 0 ? 'down' : 'flat'
+
+    // 构建描述信息
+    const descParts = []
+    if (high > 0) descParts.push(`最高:¥${high.toFixed(2)}`)
+    if (low > 0) descParts.push(`最低:¥${low.toFixed(2)}`)
+    if (volume > 0) descParts.push(`成交量:${(volume / 10000).toFixed(0)}万手`)
+    if (amount > 0) descParts.push(`成交额:${(amount / 100000000).toFixed(2)}亿`)
+
+    // 热度值：涨跌幅
+    const hot = `${change > 0 ? '+' : ''}${changePercent}%`
+
+    stockList.push({
+      id: code,
+      index: stockList.length + 1,
+      title: `${nameInData} (${code.toUpperCase().replace('SH', 'SH').replace('SZ', 'SZ')})`,
+      desc: descParts.join(' · ') || `${date} ${time}`,
+      url: `https://finance.sina.com.cn/realstock/company/${code}/nc.shtml`,
+      hot: hot,
+      extra: {
+        code: code,
+        name: nameInData,
+        price: price,
+        open: open,
+        closePrev: closePrev,
+        high: high,
+        low: low,
+        change: change,
+        changePercent: parseFloat(changePercent),
+        volume: volume,
+        amount: amount,
+        buyPrice: buyPrice,
+        sellPrice: sellPrice,
+        date: date,
+        time: time,
+        trend: trend
+      }
+    })
+  }
+
+  return stockList
 }
 
 /**

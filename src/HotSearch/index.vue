@@ -88,9 +88,19 @@ const isMetMuseumPlatform = computed(() => {
   return selectedPlatform.value === 'metmuseum'
 })
 
+// 判断是否为 Epic 免费游戏平台（使用卡片式布局）
+const isEpicFreePlatform = computed(() => {
+  return selectedPlatform.value === 'epic-free'
+})
+
 // 判断是否为艺术品平台（使用卡片式布局）
 const isArtworkPlatform = computed(() => {
   return isArticPlatform.value || isMetMuseumPlatform.value
+})
+
+// 判断是否为游戏平台（使用卡片式布局，类似于艺术品）
+const isGamePlatform = computed(() => {
+  return isEpicFreePlatform.value
 })
 
 // 判断是否为支持翻译的平台（芝加哥艺术学院或大都会博物馆）
@@ -992,6 +1002,20 @@ watch(selectedCategory, (newCategory) => {
             </button>
           </div>
 
+          <div class="artwork-grid">
+            <ArtworkCard
+              v-for="(item, index) in hotList"
+              :key="item.id || index"
+              :artwork="item"
+              :index="item.index || index + 1"
+              :showDescription="settingsStore.showDescription"
+              @click="openUrl(item.url || item.mobileUrl)"
+            />
+          </div>
+        </template>
+
+        <!-- Epic 免费游戏 - 游戏卡片布局 -->
+        <template v-else-if="isGamePlatform">
           <div class="artwork-grid">
             <ArtworkCard
               v-for="(item, index) in hotList"
