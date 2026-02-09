@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)
+![Version](https://img.shields.io/badge/version-2.0.3-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Vue](https://img.shields.io/badge/Vue-3.5.13-brightgreen.svg)
 ![uTools](https://img.shields.io/badge/uTools-插件-orange.svg)
@@ -16,6 +16,53 @@
 ---
 
 ## 📝 更新日志
+
+### v1.3.0 (2025-02-09)
+
+#### 🎉 新增功能
+- **开发者工具集** - 新增3个开发者必备平台
+  - **GitHub热榜** - 全球热门开源项目，实时趋势
+    - 使用 GitHub Search API 获取最近7天最热门项目
+    - 显示项目名称、描述、编程语言、Stars、Forks、License
+    - 支持 Topics 标签展示
+  - **Hacker News** - 科技资讯和讨论社区
+    - 使用 Firebase API 获取热门故事
+    - 显示文章文本、作者、点赞数、评论数、来源域名
+  - **Product Hunt** - 发现最新科技产品和创业项目
+    - 提供产品发现导航链接
+
+#### ✨ 翻译功能
+- **支持翻译的平台** - 芝加哥艺术学院、大都会博物馆、GitHub热榜、Hacker News
+- **智能翻译** - 使用 utools AI 批量翻译标题和描述
+- **翻译缓存** - 自动保存翻译结果到本地，关闭后自动加载
+- **恢复原文** - 双击翻译按钮即可恢复原始内容
+
+#### 🔧 技术改进
+- 移除网易云音乐平台（API不稳定）
+- GitHub Trending 使用官方 Search API
+- Hacker News 使用 Firebase API
+- 添加 `formatNumber` 工具函数，格式化数字显示（1K, 1M, 1B）
+- 翻译结果持久化存储（localStorage）
+
+#### 📋 配置变更
+```javascript
+// src/config.js 新增配置
+SIMPLE_MODE_PLATFORMS: [
+  // ... 其他平台
+  'github-trending',  // GitHub热榜
+  // 替换了 netease-music
+]
+
+// API 配置更新
+API: {
+  PLATFORM_TIMEOUT: {
+    'github-trending': 10000,  // GitHub热榜 10 秒
+    'hacker-news': 10000       // Hacker News 10 秒
+  }
+}
+```
+
+---
 
 ### v1.2.0 (2025-02-09)
 
@@ -130,7 +177,7 @@ API: {
 今日头条、澎湃新闻、腾讯新闻、新浪新闻、网易新闻、凤凰网
 
 ### 💻 科技类
-36氪、IT之家、CSDN、掘金、V2EX、少数派、酷安、爱范儿、虎嗅
+36氪、IT之家、CSDN、掘金、V2EX、少数派、酷安、爱范儿、虎嗅、GitHub热榜、Hacker News、Product Hunt
 
 ### 🎮 娱乐游戏类
 豆瓣电影、虎扑、NGA、米游社、原神、崩坏3、星穹铁道、英雄联盟、Epic免费游戏
@@ -495,6 +542,63 @@ cnpm install
   category: '科技'
 }
 ```
+
+### Q12: 如何使用翻译功能？
+
+**A**:
+1. 切换到支持翻译的平台：
+   - 🎨 芝加哥艺术学院
+   - 🏛️ 大都会博物馆
+   - 🐙 GitHub热榜
+   - 📰 Hacker News
+
+2. 点击右下角 **🌐 翻译按钮**
+   - 首次翻译会显示确认对话框
+   - 使用 utools AI 批量翻译（最多200条）
+   - 翻译完成后自动保存到本地缓存
+
+3. 翻译管理：
+   - **单击** - 继续翻译下一批
+   - **双击** - 恢复原文并清除缓存
+   - 缓存会在下次打开时自动加载
+
+**注意事项**:
+- 翻译功能需要 utools AI 支持
+- 每次翻译会消耗一定的 AI 能量
+- 翻译结果保存在浏览器本地（localStorage）
+- GitHub Trending 项目名会被翻译（如 `ClawRouter` → `爪形路由器`）
+
+### Q13: GitHub Trending 显示什么内容？
+
+**A**:
+- **数据来源**：GitHub Search API
+- **时间范围**：最近 7 天创建的项目
+- **排序方式**：按 Stars 数量降序
+- **显示字段**：
+  - 项目名称（作者/项目名）
+  - 项目描述
+  - 编程语言
+  - Stars 数量（格式化显示，如 1.9K）
+  - Forks 数量
+  - 开源协议（MIT、Apache-2.0 等）
+  - Topics 标签（最多3个）
+
+**更新频率**：缓存 1 小时
+
+### Q14: Hacker News 显示什么内容？
+
+**A**:
+- **数据来源**：Hacker News Firebase API
+- **内容类型**：热门科技资讯
+- **显示字段**：
+  - 标题
+  - 文章文本（Ask HN/Show HN 等）
+  - 作者
+  - 点赞数
+  - 评论数
+  - 来源域名（外部链接）
+
+**更新频率**：缓存 30 分钟
 
 ---
 

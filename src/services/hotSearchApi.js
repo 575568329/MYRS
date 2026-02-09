@@ -24,6 +24,31 @@ const debug = {
   }
 }
 
+/**
+ * 格式化数字显示
+ * @param {number} num - 要格式化的数字
+ * @returns {string} 格式化后的字符串
+ * @example
+ * formatNumber(1000) // "1K"
+ * formatNumber(1500) // "1.5K"
+ * formatNumber(1000000) // "1M"
+ * formatNumber(1500000) // "1.5M"
+ */
+function formatNumber(num) {
+  if (num === undefined || num === null || isNaN(num)) {
+    return '0'
+  }
+
+  if (num < 1000) {
+    return num.toString()
+  } else if (num < 1000000) {
+    return (num / 1000).toFixed(num % 1000 !== 0 ? 1 : 0) + 'K'
+  } else if (num < 1000000000) {
+    return (num / 1000000).toFixed(num % 1000000 !== 0 ? 1 : 0) + 'M'
+  } else {
+    return (num / 1000000000).toFixed(num % 1000000000 !== 0 ? 1 : 0) + 'B'
+  }
+}
 
 // 调试：验证 API 配置是否正确加载
 debug.log('✅ API 配置已加载:', {
@@ -90,6 +115,11 @@ export const PLATFORMS = [
   { id: 'stock-hot', name: '热门股票', icon: 'ri-stock-line', category: '金融' },
   { id: 'stock-sh', name: '上证指数', icon: 'ri-funds-line', category: '金融' },
   { id: 'stock-tech', name: '科技股', icon: 'ri-cpu-line', category: '金融' },
+
+  // 开发者工具
+  { id: 'github-trending', name: 'GitHub热榜', icon: 'ri-github-fill', category: '科技' },
+  { id: 'hacker-news', name: 'Hacker News', icon: 'ri-hacker-news-line', category: '科技' },
+  { id: 'product-hunt', name: 'Product Hunt', icon: 'ri-lightbulb-flash-line', category: '科技' },
 
   // 其他
   { id: 'weread', name: '微信读书', icon: 'ri-book-read-line', category: '阅读' },
@@ -183,6 +213,17 @@ async function getHotDataViaFetch(platformId, page, pageSize, geoLocation) {
   // 特殊处理股票平台
   if (platformId.startsWith('stock-')) {
     return await getStockData(platformId, page, pageSize)
+  }
+
+  // 特殊处理开发者工具平台
+  if (platformId === 'github-trending') {
+    return await getGitHubTrendingData(page, pageSize)
+  }
+  if (platformId === 'hacker-news') {
+    return await getHackerNewsData(page, pageSize)
+  }
+  if (platformId === 'product-hunt') {
+    return await getProductHuntData(page, pageSize)
   }
 
   // uapis.cn 支持的所有平台（根据官方文档）
@@ -1725,6 +1766,410 @@ function parseSinaStockData(text, stocks) {
   }
 
   return stockList
+}
+
+/**
+ * 获取 GitHub Trending 数据
+ * @param {number} page - 页码
+ * @param {number} pageSize - 每页数量
+ * @returns {Promise<Object>} GitHub热榜数据
+ */
+async function getGitHubTrendingData(page, pageSize) {
+  const cacheKey = `page_${page}`
+  const cacheTTL = 60 * 60 * 1000 // 缓存1小时
+
+  // 1. 先检查缓存
+  const cachedData = cacheManager.get('github-trending', cacheKey)
+  if (cachedData) {
+    debug.log(`📦 [缓存命中] GitHub Trending返回缓存数据`)
+    return cachedData
+  }
+
+  const timeout = API.REQUEST_TIMEOUT
+
+  debug.log(`🐙 正在获取 GitHub Trending...`)
+
+  try {
+    // 使用 AbortController 实现超时控制
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), timeout)
+
+    // 获取今天的日期(最近7天)
+    const today = new Date()
+    const sevenDaysAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)
+    const dateStr = sevenDaysAgo.toISOString().split('T')[0]
+
+    // 使用 GitHub 官方 Search API(按stars排序的最近项目)
+    const apiUrl = `https://api.github.com/search/repositories?q=created:>${dateStr}&sort=stars&order=desc&per_page=50`
+
+    debug.log(`📡 正在请求 GitHub API: ${apiUrl}`)
+
+    const response = await fetch(apiUrl, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/vnd.github.v3+json'
+      },
+      signal: controller.signal
+    })
+
+    clearTimeout(timeoutId)
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+    }
+
+    const result = await response.json()
+
+    if (!result.items || !Array.isArray(result.items)) {
+      throw new Error('API 返回数据格式不正确')
+    }
+
+    // 转换为统一格式
+    const hotList = result.items.map((repo, index) => {
+      // 构建描述信息
+      const descParts = []
+
+      // 添加描述(如果有)
+      if (repo.description) {
+        descParts.push(repo.description.substring(0, 100))
+      }
+
+      // 添加语言信息
+      if (repo.language) {
+        descParts.push(`💻 ${repo.language}`)
+      }
+
+      // 添加 stars 数量
+      descParts.push(`⭐ ${formatNumber(repo.stargazers_count)}`)
+
+      // 添加 forks 数量(如果有)
+      if (repo.forks_count > 0) {
+        descParts.push(`🍴 ${formatNumber(repo.forks_count)}`)
+      }
+
+      // 添加 license 信息(如果有)
+      if (repo.license && repo.license.name) {
+        descParts.push(`📄 ${repo.license.name}`)
+      }
+
+      // 添加 topics 标签(如果有)
+      if (repo.topics && repo.topics.length > 0) {
+        const topTopics = repo.topics.slice(0, 3).map(t => `#${t}`).join(' ')
+        descParts.push(`🏷️ ${topTopics}`)
+      }
+
+      return {
+        id: repo.id || `github_${index}`,
+        index: index + 1,
+        title: repo.full_name || repo.name || '未知项目',
+        desc: descParts.join(' · ') || '暂无描述',
+        url: repo.html_url || `https://github.com/${repo.full_name}`,
+        img: repo.owner?.avatar_url || 'https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png',
+        hot: `🌟 ${formatNumber(repo.stargazers_count)}`,
+        extra: {
+          fullName: repo.full_name,
+          name: repo.name,
+          language: repo.language,
+          stars: repo.stargazers_count,
+          forks: repo.forks_count,
+          description: repo.description,
+          license: repo.license?.name || null,
+          topics: repo.topics || [],
+          openIssues: repo.open_issues_count || 0,
+          createdAt: repo.created_at,
+          updatedAt: repo.updated_at,
+          ownerLogin: repo.owner?.login,
+          ownerType: repo.owner?.type
+        }
+      }
+    })
+
+    debug.log(`✅ 成功获取 ${hotList.length} 个 GitHub 热门项目`)
+
+    // 分页处理
+    const start = (page - 1) * pageSize
+    const end = start + pageSize
+    const paginatedData = hotList.slice(start, end)
+
+    const resultData = {
+      data: paginatedData,
+      total: hotList.length,
+      hasMore: end < hotList.length
+    }
+
+    // 缓存数据
+    cacheManager.set('github-trending', cacheKey, resultData, cacheTTL)
+    return resultData
+  } catch (error) {
+    debug.warn(`⚠️ 获取 GitHub Trending 失败:`, error.message)
+
+    // 超时错误处理
+    if (error.name === 'AbortError') {
+      throw new Error('请求超时')
+    }
+    // 网络错误处理
+    else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+      throw new Error('网络请求失败，请检查网络连接')
+    } else {
+      throw error
+    }
+  }
+}
+
+/**
+ * 获取 Hacker News 数据
+ * @param {number} page - 页码
+ * @param {number} pageSize - 每页数量
+ * @returns {Promise<Object>} Hacker News数据
+ */
+async function getHackerNewsData(page, pageSize) {
+  const cacheKey = `page_${page}`
+  const cacheTTL = 30 * 60 * 1000 // 缓存30分钟
+
+  // 1. 先检查缓存
+  const cachedData = cacheManager.get('hacker-news', cacheKey)
+  if (cachedData) {
+    debug.log(`📦 [缓存命中] Hacker News返回缓存数据`)
+    return cachedData
+  }
+
+  const timeout = API.REQUEST_TIMEOUT
+
+  debug.log(`📰 正在获取 Hacker News...`)
+
+  try {
+    // 使用 AbortController 实现超时控制
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), timeout)
+
+    // 使用 Hacker News 官方 API
+    const apiUrl = 'https://hacker-news.firebaseio.com/v0/topstories.json'
+
+    debug.log(`📡 正在请求 API: ${apiUrl}`)
+
+    const response = await fetch(apiUrl, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      signal: controller.signal
+    })
+
+    clearTimeout(timeoutId)
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+    }
+
+    const storyIds = await response.json()
+
+    if (!Array.isArray(storyIds)) {
+      throw new Error('API 返回数据格式不正确')
+    }
+
+    // 获取前50个故事的详细信息
+    const ids = storyIds.slice(0, 50)
+    const storyPromises = ids.map(id =>
+      fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`)
+        .then(res => res.json())
+        .catch(() => null)
+    )
+
+    const stories = await Promise.all(storyPromises)
+    const validStories = stories.filter(s => s && s.title)
+
+    // 转换为统一格式
+    const hotList = validStories.map((story, index) => {
+      // 构建描述信息
+      const descParts = []
+
+      // 添加文章文本内容（如果有）- 限制在200字符内
+      if (story.text) {
+        // 移除 HTML 标签
+        const textContent = story.text
+          .replace(/<[^>]*>/g, '')
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/&amp;/g, '&')
+          .replace(/&quot;/g, '"')
+          .replace(/&#x27;/g, "'")
+          .trim()
+
+        if (textContent.length > 0) {
+          descParts.push(textContent.substring(0, 200) + (textContent.length > 200 ? '...' : ''))
+        }
+      }
+
+      // 添加作者信息
+      if (story.by) descParts.push(`👤 ${story.by}`)
+
+      // 添加分数
+      if (story.score) descParts.push(`👍 ${story.score}`)
+
+      // 添加评论数
+      if (story.descendants) descParts.push(`💬 ${story.descendants}`)
+
+      // 添加域名（如果有外部链接）
+      if (story.url) {
+        try {
+          const urlObj = new URL(story.url)
+          descParts.push(`🔗 ${urlObj.hostname}`)
+        } catch (e) {
+          // URL 解析失败，忽略
+        }
+      }
+
+      return {
+        id: `hn_${story.id}`,
+        index: index + 1,
+        title: story.title || '未知标题',
+        desc: descParts.join(' · ') || '',
+        url: story.url || `https://news.ycombinator.com/item?id=${story.id}`,
+        img: 'https://news.ycombinator.com/y18.svg',
+        hot: `👍 ${story.score || 0}`,
+        extra: {
+          by: story.by,
+          score: story.score,
+          descendants: story.descendants,
+          time: story.time,
+          text: story.text, // 保存原始文本
+          url: story.url
+        }
+      }
+    })
+
+    debug.log(`✅ 成功获取 ${hotList.length} 条 Hacker News`)
+
+    // 分页处理
+    const start = (page - 1) * pageSize
+    const end = start + pageSize
+    const paginatedData = hotList.slice(start, end)
+
+    const resultData = {
+      data: paginatedData,
+      total: hotList.length,
+      hasMore: end < hotList.length
+    }
+
+    // 缓存数据
+    cacheManager.set('hacker-news', cacheKey, resultData, cacheTTL)
+    return resultData
+  } catch (error) {
+    debug.warn(`⚠️ 获取 Hacker News 失败:`, error.message)
+
+    // 超时错误处理
+    if (error.name === 'AbortError') {
+      throw new Error('请求超时')
+    }
+    // 网络错误处理
+    else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+      throw new Error('网络请求失败，请检查网络连接')
+    } else {
+      throw error
+    }
+  }
+}
+
+/**
+ * 获取 Product Hunt 数据
+ * @param {number} page - 页码
+ * @param {number} pageSize - 每页数量
+ * @returns {Promise<Object>} Product Hunt数据
+ */
+async function getProductHuntData(page, pageSize) {
+  const cacheKey = `page_${page}`
+  const cacheTTL = 60 * 60 * 1000 // 缓存1小时
+
+  // 1. 先检查缓存
+  const cachedData = cacheManager.get('product-hunt', cacheKey)
+  if (cachedData) {
+    debug.log(`📦 [缓存命中] Product Hunt返回缓存数据`)
+    return cachedData
+  }
+
+  const timeout = API.REQUEST_TIMEOUT
+
+  debug.log(`🚀 正在获取 Product Hunt...`)
+
+  try {
+    // 使用 AbortController 实现超时控制
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), timeout)
+
+    // Product Hunt API 需要授权，我们返回引导信息
+    debug.log(`📡 Product Hunt 需要API密钥，返回引导信息`)
+
+    clearTimeout(timeoutId)
+
+    // 返回引导信息
+    const hotList = [
+      {
+        id: 'ph_1',
+        index: 1,
+        title: '🎯 Product Hunt',
+        desc: '发现最新的科技产品和创业项目 · 每日更新',
+        url: 'https://www.producthunt.com',
+        img: 'https://ph-static.imgix.net/product-hunt-logo.png',
+        hot: '🔥 热门',
+        extra: {
+          tagline: '发现最新的科技产品',
+          votesCount: 1000
+        }
+      },
+      {
+        id: 'ph_2',
+        index: 2,
+        title: '💡 如何使用 Product Hunt？',
+        desc: '访问 producthunt.com 发现今日最热门的新产品',
+        url: 'https://www.producthunt.com',
+        img: 'https://ph-static.imgix.net/product-hunt-logo.png',
+        hot: '💡 提示',
+        extra: {}
+      }
+    ]
+
+    debug.log(`✅ 成功获取 Product Hunt 数据`)
+
+    // 分页处理
+    const start = (page - 1) * pageSize
+    const end = start + pageSize
+    const paginatedData = hotList.slice(start, end)
+
+    const resultData = {
+      data: paginatedData,
+      total: hotList.length,
+      hasMore: end < hotList.length
+    }
+
+    // 缓存数据
+    cacheManager.set('product-hunt', cacheKey, resultData, cacheTTL)
+    return resultData
+  } catch (error) {
+    debug.warn(`⚠️ 获取 Product Hunt 失败:`, error.message)
+
+    // 返回默认数据
+    const hotList = [
+      {
+        id: 'ph_default',
+        index: 1,
+        title: 'Product Hunt',
+        desc: '发现最新的科技产品和创业项目',
+        url: 'https://www.producthunt.com',
+        img: 'https://ph-static.imgix.net/product-hunt-logo.png',
+        hot: '🔥',
+        extra: {}
+      }
+    ]
+
+    const resultData = {
+      data: hotList,
+      total: hotList.length,
+      hasMore: false
+    }
+
+    return resultData
+  }
 }
 
 /**

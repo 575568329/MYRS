@@ -1,7 +1,7 @@
 {
   "name": "hot-search-utools",
-  "version": "1.0.0",
-  "description": "摸鱼热搜 - uTools 热搜聚合插件",
+  "version": "2.0.3",
+  "description": "摸鱼热搜 - uTools 热搜聚合插件，支持46+平台和AI翻译",
   "type": "module",
   "scripts": {
     "dev": "vite",

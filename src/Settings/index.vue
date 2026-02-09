@@ -215,6 +215,42 @@ const handleToggleVisibility = (platformId, event) => {
               </div>
             </div>
 
+            <!-- 开发者工具集 API -->
+            <div class="api-info-item">
+              <div class="api-info-header">
+                <span class="api-name">开发者工具集 API</span>
+                <span class="api-tag info">开发者</span>
+              </div>
+              <div class="api-info-details">
+                <p><strong>GitHub Trending：</strong><code>https://api.github.com/search/repositories</code></p>
+                <p>• 使用 GitHub 官方 Search API</p>
+                <p>• 获取最近 7 天最热门项目</p>
+                <p>• 按 Stars 数量降序排列</p>
+                <p><strong>Hacker News：</strong><code>https://hacker-news.firebaseio.com/v0/</code></p>
+                <p>• 使用 Hacker News 官方 Firebase API</p>
+                <p>• 获取热门科技资讯和讨论</p>
+                <p>• 显示文章文本、作者、评论数</p>
+                <p><strong>Product Hunt：</strong>产品发现导航</p>
+                <p>• 提供最新科技产品链接</p>
+                <p class="api-note">💡 支持一键翻译（使用 utools AI），翻译结果自动缓存</p>
+              </div>
+            </div>
+
+            <!-- 股票数据 API -->
+            <div class="api-info-item">
+              <div class="api-info-header">
+                <span class="api-name">股票数据 API</span>
+                <span class="api-tag warning">金融</span>
+              </div>
+              <div class="api-info-details">
+                <p><strong>API 地址：</strong><code>https://qt.gtimg.cn</code></p>
+                <p>• 使用腾讯股票实时行情 API</p>
+                <p>• 支持热门股票、上证指数、科技股</p>
+                <p>• 缓存时间：1分钟（确保实时性）</p>
+                <p class="api-note">⚠️ 股票数据仅供参考，不构成投资建议</p>
+              </div>
+            </div>
+
             <!-- 免责声明 -->
             <div class="api-disclaimer">
               <p><strong>⚠️ 免责声明：</strong></p>
@@ -232,9 +268,10 @@ const handleToggleVisibility = (platformId, event) => {
         <section class="settings-section">
           <h3>关于</h3>
           <div class="about-info">
-            <p><strong>摸鱼热搜</strong> v1.0.0</p>
+            <p><strong>摸鱼热搜</strong> v2.0.3</p>
             <p>一个简洁高效的热搜聚合插件</p>
-            <p>支持 40+ 热搜平台，包括艺术品展示</p>
+            <p>支持 46+ 热搜平台，包括开发者工具和艺术品展示</p>
+            <p>支持 AI 智能翻译，翻译结果自动缓存</p>
           </div>
         </section>
       </div>

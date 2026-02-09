@@ -93,6 +93,16 @@ const isEpicFreePlatform = computed(() => {
   return selectedPlatform.value === 'epic-free'
 })
 
+// 判断是否为 GitHub Trending 平台
+const isGithubTrendingPlatform = computed(() => {
+  return selectedPlatform.value === 'github-trending'
+})
+
+// 判断是否为 Hacker News 平台
+const isHackerNewsPlatform = computed(() => {
+  return selectedPlatform.value === 'hacker-news'
+})
+
 // 判断是否为艺术品平台（使用卡片式布局）
 const isArtworkPlatform = computed(() => {
   return isArticPlatform.value || isMetMuseumPlatform.value
@@ -103,9 +113,12 @@ const isGamePlatform = computed(() => {
   return isEpicFreePlatform.value
 })
 
-// 判断是否为支持翻译的平台（芝加哥艺术学院或大都会博物馆）
+// 判断是否为支持翻译的平台（芝加哥艺术学院、大都会博物馆、GitHub Trending、Hacker News）
 const isTranslatablePlatform = computed(() => {
-  return isArticPlatform.value || isMetMuseumPlatform.value
+  return isArticPlatform.value ||
+         isMetMuseumPlatform.value ||
+         isGithubTrendingPlatform.value ||
+         isHackerNewsPlatform.value
 })
 
 // 芝加哥艺术学院 - 艺术品列表
@@ -224,6 +237,11 @@ const fetchHotData = async (platformId, loadMore = false) => {
       totalCount.value = result.total
       debug.log(`✅ 成功获取 ${result.data.length} 条热搜数据`)
       debug.log(`📊 总数据量: ${result.total}，还有更多: ${result.hasMore}`)
+
+      // 加载翻译缓存（仅对支持翻译的平台）
+      if (isTranslatablePlatform.value && !loadMore) {
+        loadTranslationCache()
+      }
     } else if (Array.isArray(result)) {
       // 兼容旧格式（直接是数组）
       hotList.value = result
@@ -451,7 +469,7 @@ const batchTranslate = async (texts) => {
       messages: [
         {
           role: 'system',
-          content: '你是一个专业的翻译助手。请将用户输入的英文内容翻译成中文。用户会提供多个编号的文本，请按相同格式返回翻译结果，每行一个编号和翻译。只返回翻译结果，不要添加任何解释。对于艺术品名称和艺术家姓名，请保持专业和准确。\n\n返回格式示例：\n1. 翻译结果1\n2. 翻译结果2\n3. 翻译结果3'
+          content: '你是一个专业的翻译助手。请将用户输入的英文内容翻译成中文。用户会提供多个编号的文本，请按相同格式返回翻译结果，每行一个编号和翻译。只返回翻译结果，不要添加任何解释。对于专业术语（如编程语言、技术框架、项目名称等），请保持原文或提供通用的中文翻译。\n\n返回格式示例：\n1. 翻译结果1\n2. 翻译结果2\n3. 翻译结果3'
         },
         {
           role: 'user',
@@ -483,13 +501,24 @@ const batchTranslate = async (texts) => {
   }
 }
 
-// 翻译列表中的所有艺术品（智能分批，每次最多200个）
+// 翻译列表中的所有项目（智能分批，每次最多200个）
 const translateAllArtworks = async () => {
   if (!window.utools || !window.utools.ai) {
     console.error('utools AI 功能不可用')
     alert('翻译功能需要 utools 的 AI 支持，请确保已在 utools 中配置了 AI 模型')
     return
   }
+
+  // 获取平台类型名称
+  const getPlatformTypeName = () => {
+    if (isGithubTrendingPlatform.value) return '开源项目'
+    if (isHackerNewsPlatform.value) return '科技资讯'
+    if (isMetMuseumPlatform.value) return '艺术品'
+    if (isArticPlatform.value) return '艺术品'
+    return '项目'
+  }
+
+  const platformTypeName = getPlatformTypeName()
 
   const total = hotList.value.length
   const startIndex = translateOffset.value
@@ -502,7 +531,7 @@ const translateAllArtworks = async () => {
     return count + (item.title ? 1 : 0) + (item.desc ? 1 : 0)
   }, 0)
 
-  console.log(`🎯 准备翻译第 ${startIndex + 1}-${endIndex} 个艺术品（共 ${itemsToTranslate.length} 个，${textsCount} 个文本，总共 ${total} 个）`)
+  console.log(`🎯 准备翻译第 ${startIndex + 1}-${endIndex} 个${platformTypeName}（共 ${itemsToTranslate.length} 个，${textsCount} 个文本，总共 ${total} 个）`)
 
   // 保存原文
   itemsToTranslate.forEach(item => {
@@ -512,7 +541,7 @@ const translateAllArtworks = async () => {
     }
   })
 
-  // 收集所有需要翻译的文本（标题和描述交替）
+  // 收集所有需要翻译的文本（标题和描述）
   const textsToTranslate = []
   itemsToTranslate.forEach(item => {
     if (item._originalTitle) textsToTranslate.push(item._originalTitle)
@@ -526,19 +555,20 @@ const translateAllArtworks = async () => {
   }
 
   try {
-    console.log(`📝 开始一次性翻译 ${textsToTranslate.length} 个文本（${itemsToTranslate.length} 个艺术品的标题和描述）...`)
+    console.log(`📝 开始一次性翻译 ${textsToTranslate.length} 个文本（${itemsToTranslate.length} 个${platformTypeName}）...`)
 
     // 一次性翻译所有文本
     const translatedTexts = await batchTranslate(textsToTranslate)
 
-    // 将翻译结果分配回艺术品
+    // 将翻译结果分配回项目
     let textIndex = 0
     itemsToTranslate.forEach((item, index) => {
       // 翻译标题
       if (item._originalTitle && textIndex < translatedTexts.length) {
         const translated = translatedTexts[textIndex++]
-        if (translated) {
-          Object.assign(item, { title: translated.translated })
+        if (translated && translated.translated) {
+          // 直接赋值以确保 Vue 响应式更新
+          item.title = translated.translated
           console.log(`✓ [${startIndex + index + 1}] 标题: ${item._originalTitle} → ${item.title}`)
         }
       }
@@ -546,14 +576,18 @@ const translateAllArtworks = async () => {
       // 翻译描述
       if (item._originalDesc && textIndex < translatedTexts.length) {
         const translated = translatedTexts[textIndex++]
-        if (translated) {
-          Object.assign(item, { desc: translated.translated })
+        if (translated && translated.translated) {
+          // 直接赋值以确保 Vue 响应式更新
+          item.desc = translated.translated
           console.log(`✓ [${startIndex + index + 1}] 描述已翻译`)
         }
       }
     })
 
-    console.log(`✅ 已完成第 ${startIndex + 1}-${endIndex} 个艺术品的翻译`)
+    console.log(`✅ 已完成第 ${startIndex + 1}-${endIndex} 个${platformTypeName}的翻译`)
+
+    // 保存翻译到缓存
+    saveTranslationCache()
 
     // 更新偏移量
     translateOffset.value = endIndex
@@ -567,15 +601,117 @@ const translateAllArtworks = async () => {
   }
 }
 
+// 获取翻译缓存的 key
+const getTranslationCacheKey = () => {
+  return `hot_search_translation_${selectedPlatform.value}`
+}
+
+// 保存翻译到 localStorage
+const saveTranslationCache = () => {
+  try {
+    const cacheData = {}
+    hotList.value.forEach(item => {
+      if (item._originalTitle !== undefined || item._originalDesc !== undefined) {
+        cacheData[item.id] = {
+          title: item._originalTitle,
+          desc: item._originalDesc,
+          translatedTitle: item.title,
+          translatedDesc: item.desc
+        }
+      }
+    })
+
+    const cacheKey = getTranslationCacheKey()
+    localStorage.setItem(cacheKey, JSON.stringify(cacheData))
+    console.log(`💾 已保存翻译缓存 (${Object.keys(cacheData).length} 条)`)
+  } catch (error) {
+    console.warn('保存翻译缓存失败:', error)
+  }
+}
+
+// 从 localStorage 加载翻译缓存
+const loadTranslationCache = () => {
+  try {
+    const cacheKey = getTranslationCacheKey()
+    const cached = localStorage.getItem(cacheKey)
+
+    if (!cached) {
+      console.log('📦 没有翻译缓存')
+      return 0
+    }
+
+    const cacheData = JSON.parse(cached)
+    let appliedCount = 0
+
+    hotList.value.forEach(item => {
+      const cachedItem = cacheData[item.id]
+      if (cachedItem) {
+        // 保存原文
+        if (item._originalTitle === undefined) {
+          item._originalTitle = cachedItem.title
+        }
+        if (item._originalDesc === undefined) {
+          item._originalDesc = cachedItem.desc
+        }
+
+        // 应用翻译
+        if (cachedItem.translatedTitle && cachedItem.translatedTitle !== cachedItem.title) {
+          item.title = cachedItem.translatedTitle
+          appliedCount++
+        }
+        if (cachedItem.translatedDesc && cachedItem.translatedDesc !== cachedItem.desc) {
+          item.desc = cachedItem.translatedDesc
+          appliedCount++
+        }
+      }
+    })
+
+    // 更新翻译偏移量
+    if (Object.keys(cacheData).length > 0) {
+      translateOffset.value = hotList.value.filter(item =>
+        item._originalTitle !== undefined || item._originalDesc !== undefined
+      ).length
+    }
+
+    console.log(`📦 已加载翻译缓存 (${appliedCount} 条翻译)`)
+    return appliedCount
+  } catch (error) {
+    console.warn('加载翻译缓存失败:', error)
+    return 0
+  }
+}
+
+// 清除翻译缓存
+const clearTranslationCache = () => {
+  try {
+    const cacheKey = getTranslationCacheKey()
+    localStorage.removeItem(cacheKey)
+    console.log('🗑️ 已清除翻译缓存')
+  } catch (error) {
+    console.warn('清除翻译缓存失败:', error)
+  }
+}
+
 // 切换翻译状态
 const toggleTranslate = async () => {
   const total = hotList.value.length
   const startIndex = translateOffset.value
 
+  // 获取平台类型名称
+  const getPlatformTypeName = () => {
+    if (isGithubTrendingPlatform.value) return '开源项目'
+    if (isHackerNewsPlatform.value) return '科技资讯'
+    if (isMetMuseumPlatform.value) return '艺术品'
+    if (isArticPlatform.value) return '艺术品'
+    return '项目'
+  }
+
+  const platformTypeName = getPlatformTypeName()
+
   // 如果所有数据都已翻译，直接提示
   if (startIndex >= total) {
     const shouldRestart = confirm(
-      `✅ 所有 ${total} 个艺术品已翻译完成！\n\n` +
+      `✅ 所有 ${total} 个${platformTypeName}已翻译完成！\n\n` +
       `单击"确定"重新开始翻译，单击"取消"返回。`
     )
 
@@ -601,7 +737,7 @@ const toggleTranslate = async () => {
 
   // 确认对话框
   const confirmed = confirm(
-    `即将使用 utools AI 翻译 ${itemsToTranslate.length} 个艺术品（约 ${textsCount} 个文本），会消耗一定的 AI 能量。\n\n` +
+    `即将使用 utools AI 翻译 ${itemsToTranslate.length} 个${platformTypeName}（约 ${textsCount} 个文本），会消耗一定的 AI 能量。\n\n` +
     `当前进度：${startIndex}/${total}\n` +
     `本次翻译：第 ${startIndex + 1}-${startIndex + batchSize} 个\n\n` +
     `是否继续？`
@@ -629,6 +765,8 @@ const restoreOriginalText = () => {
   })
   // 重置翻译偏移量
   translateOffset.value = 0
+  // 清除翻译缓存
+  clearTranslationCache()
   console.log('🔄 已恢复原文并重置翻译进度')
 }
 

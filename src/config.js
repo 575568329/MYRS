@@ -20,25 +20,28 @@ export const DISPLAY_MODE = {
 
   // 极简模式主流平台ID列表
   SIMPLE_MODE_PLATFORMS: [
-    'baidu',        // 百度
-    '60s-news',     // 60秒早报
-    'zhihu',        // 知乎
-    'weibo',        // 微博
-    'stock-hot',    // 热门股票
-    'epic-free',    // Epic免费游戏
-    'genshin',      // 原神
-    'douyin',       // 抖音
-    'bilibili',     // B站
-    'toutiao',      // 今日头条
-    '36kr',         // 36氪
-    'juejin',       // 掘金
-    'sspai',        // 少数派
-    'douban-movie', // 豆瓣电影
-    'movie-box',    // 电影票房榜
-    'weread',       // 微信读书
-    'zhuishu',      // 追书神器
-    'artic',        // 芝加哥艺术学院
-    'metmuseum'     // 大都会博物馆
+    'baidu',            // 百度
+    '60s-news',         // 60秒早报
+    'zhihu',            // 知乎
+    'weibo',            // 微博
+    'stock-hot',        // 热门股票
+    'epic-free',        // Epic免费游戏
+    'genshin',          // 原神
+    'github-trending',  // GitHub热榜
+    'hacker-news',
+    'product-hunt',
+    'douyin',           // 抖音
+    'bilibili',         // B站
+    'toutiao',          // 今日头条
+    '36kr',             // 36氪
+    'juejin',           // 掘金
+    'sspai',            // 少数派
+    'douban-movie',     // 豆瓣电影
+    'movie-box',        // 电影票房榜
+    'weread',           // 微信读书
+    'zhuishu',          // 追书神器
+    'artic',            // 芝加哥艺术学院
+    'metmuseum'         // 大都会博物馆
   ]
 }
 
