@@ -2,7 +2,7 @@
  * @Author: fjyu9 fjyu9@iflytek.com
  * @Date: 2026-01-29 15:38:01
  * @LastEditors: fjyu9 fjyu9@iflytek.com
- * @LastEditTime: 2026-01-30 09:05:53
+ * @LastEditTime: 2026-02-09 14:48:24
  * @FilePath: \摸鱼热搜\src\config.js
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -28,8 +28,6 @@ export const DISPLAY_MODE = {
     'epic-free',        // Epic免费游戏
     'genshin',          // 原神
     'github-trending',  // GitHub热榜
-    'hacker-news',
-    'product-hunt',
     'douyin',           // 抖音
     'bilibili',         // B站
     'toutiao',          // 今日头条
