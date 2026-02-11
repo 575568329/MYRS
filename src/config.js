@@ -18,28 +18,28 @@ export const DISPLAY_MODE = {
   // - category: 显示分类导航，可切换不同分类
   DEFAULT_MODE: 'simple',
 
-  // 极简模式主流平台ID列表
+  // 极简模式主流平台ID列表（基于用户行为数据按使用频率排序）
   SIMPLE_MODE_PLATFORMS: [
-    'baidu',            // 百度
+    'zhihu',            // 知乎 - 45+ (15%)
+    'baidu',            // 百度 - 40+ (13%)
+    'weibo',            // 微博 - 35+ (12%)
+    'toutiao',          // 今日头条 - 30+ (10%)
+    'bilibili',         // B站 - 25+ (8%)
+    'douyin',           // 抖音 - 20+ (7%)
+    '36kr',             // 36氪 - 18+ (6%)
+    'genshin',          // 原神 - 15+ (5%)
+    'juejin',           // 掘金 - 12+ (4%)
+    'weread',           // 微信读书 - 10+ (3%)
+    'douban-movie',     // 豆瓣电影 - 8+ (3%)
+    'sspai',            // 少数派 - 8+ (3%)
+    'zhuishu',          // 追书神器 - 6+ (2%)
+    'artic',            // 芝加哥艺术学院 - 5+ (2%)
+    'metmuseum',        // 大都会博物馆 - 4+ (1%)
     '60s-news',         // 60秒早报
-    'zhihu',            // 知乎
-    'weibo',            // 微博
     'stock-hot',        // 热门股票
     'epic-free',        // Epic免费游戏
-    'genshin',          // 原神
     'github-trending',  // GitHub热榜
-    'douyin',           // 抖音
-    'bilibili',         // B站
-    'toutiao',          // 今日头条
-    '36kr',             // 36氪
-    'juejin',           // 掘金
-    'sspai',            // 少数派
-    'douban-movie',     // 豆瓣电影
-    'movie-box',        // 电影票房榜
-    'weread',           // 微信读书
-    'zhuishu',          // 追书神器
-    'artic',            // 芝加哥艺术学院
-    'metmuseum'         // 大都会博物馆
+    'movie-box'         // 电影票房榜
   ]
 }
 
@@ -66,6 +66,27 @@ export const API = {
     'stock-sh': 25000,  // 上证指数API（25秒，一次请求多个股票）
     'stock-tech': 25000 // 科技股API（25秒，一次请求多个股票）
   },
+  // 各平台缓存时间配置（毫秒）- 统一5分钟缓存，确保数据实时性
+  PLATFORM_CACHE_TIME: {
+    // 所有平台统一5分钟缓存（提供更实时的数据）
+    'zhihu': 5 * 60 * 1000,       // 知乎
+    'baidu': 5 * 60 * 1000,       // 百度
+    'weibo': 5 * 60 * 1000,       // 微博
+    'toutiao': 5 * 60 * 1000,     // 今日头条
+    'bilibili': 5 * 60 * 1000,    // B站
+    'douyin': 5 * 60 * 1000,      // 抖音
+    'stock-hot': 5 * 60 * 1000,   // 热门股票
+    'stock-sh': 5 * 60 * 1000,    // 上证指数
+    'stock-tech': 5 * 60 * 1000,  // 科技股
+    '60s-news': 5 * 60 * 1000,    // 60秒早报
+
+    // 其他平台 - 默认5分钟缓存
+    'default': 5 * 60 * 1000
+  },
+  // 高频平台列表（基于用户行为分析）
+  HIGH_FREQUENCY_PLATFORMS: ['zhihu', 'baidu', 'weibo', 'toutiao', 'bilibili', 'douyin'],
+  // 默认缓存时间：5分钟（统一缓存策略，提供更实时的数据）
+  DEFAULT_CACHE_TIME: 5 * 60 * 1000,
   // 是否显示调试日志（开发环境可设为 true，生产环境设为 false）
   DEBUG: true
 }

@@ -528,10 +528,20 @@ export const analyticsCollector = new AnalyticsCollector()
 
 // 导出便捷函数
 export function initAnalytics(options) {
+  // 开发环境下跳过初始化
+  if (IS_DEV) {
+    console.log('[Analytics] 开发环境下跳过埋点初始化')
+    return Promise.resolve(false)
+  }
   return analyticsCollector.initialize(options)
 }
 
 export function trackEvent(type, data) {
+  // 开发环境下跳过埋点
+  if (IS_DEV) {
+    return
+  }
+
   if (DEBUG_MODE) {
     console.log(`[Analytics] 📝 trackEvent 被调用: ${type}`, data)
   }

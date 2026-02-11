@@ -139,7 +139,9 @@ const handleToggleVisibility = (platformId, event) => {
         <!-- 平台顺序设置 -->
         <section class="settings-section">
           <h3>平台顺序</h3>
-          <p class="section-desc">拖拽调整平台显示顺序</p>
+          <p class="section-desc">
+            拖拽调整平台显示顺序
+          </p>
 
           <div class="platform-list">
             <div
@@ -168,6 +170,69 @@ const handleToggleVisibility = (platformId, event) => {
               </button>
             </div>
           </div>
+        </section>
+
+        <!-- 键盘快捷键 -->
+        <section class="settings-section">
+          <h3>⌨️ 键盘快捷键</h3>
+
+          <div class="keyboard-shortcuts-list">
+            <div class="shortcut-item">
+              <div class="shortcut-desc">
+                <span class="shortcut-name">切换平台</span>
+                <span class="shortcut-detail">上一个/下一个平台</span>
+              </div>
+              <div class="shortcut-keys">
+                <kbd>←</kbd>
+                <kbd>→</kbd>
+              </div>
+            </div>
+
+            <div class="shortcut-item">
+              <div class="shortcut-desc">
+                <span class="shortcut-name">选择热搜</span>
+                <span class="shortcut-detail">上一条/下一条热搜</span>
+              </div>
+              <div class="shortcut-keys">
+                <kbd>↑</kbd>
+                <kbd>↓</kbd>
+              </div>
+            </div>
+
+            <div class="shortcut-item">
+              <div class="shortcut-desc">
+                <span class="shortcut-name">打开链接</span>
+                <span class="shortcut-detail">打开选中的热搜</span>
+              </div>
+              <div class="shortcut-keys">
+                <kbd>Enter</kbd>
+              </div>
+            </div>
+
+            <div class="shortcut-item">
+              <div class="shortcut-desc">
+                <span class="shortcut-name">刷新数据</span>
+                <span class="shortcut-detail">刷新当前平台数据</span>
+              </div>
+              <div class="shortcut-keys">
+                <kbd>F5</kbd>
+                <span class="shortcut-or">或</span>
+                <kbd>Ctrl</kbd> + <kbd>R</kbd>
+              </div>
+            </div>
+
+            <div class="shortcut-item">
+              <div class="shortcut-desc">
+                <span class="shortcut-name">翻译内容</span>
+                <span class="shortcut-detail">翻译当前内容</span>
+              </div>
+              <div class="shortcut-keys">
+                <kbd>Ctrl</kbd> + <kbd>T</kbd>
+              </div>
+            </div>
+          </div>
+
+          <p class="section-hint">💡 提示：在输入框中输入时快捷键不会触发</p>
         </section>
 
         <!-- 其他操作 -->
@@ -398,6 +463,9 @@ const handleToggleVisibility = (platformId, event) => {
   font-weight: 500;
   color: #333;
   margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .setting-desc {
@@ -554,6 +622,83 @@ const handleToggleVisibility = (platformId, event) => {
   color: #999;
 }
 
+/* 键盘快捷键列表 */
+.keyboard-shortcuts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.shortcut-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  transition: background-color 0.2s;
+}
+
+.shortcut-item:hover {
+  background: #f0f1f3;
+}
+
+.shortcut-desc {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.shortcut-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+}
+
+.shortcut-detail {
+  font-size: 12px;
+  color: #999;
+}
+
+.shortcut-keys {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.shortcut-keys kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  background: #ffffff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: #555;
+}
+
+.shortcut-or {
+  font-size: 11px;
+  color: #999;
+  margin: 0 2px;
+}
+
+.section-hint {
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: #e7f3ff;
+  border-left: 3px solid #007bff;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #0056b3;
+}
+
 /* 操作按钮 */
 .action-btn {
   width: 100%;
@@ -654,6 +799,39 @@ const handleToggleVisibility = (platformId, event) => {
 
 :global(.dark-mode) .platform-item.hidden .platform-item-name {
   color: #666;
+}
+
+:global(.dark-mode) .shortcut-item {
+  background: #2a2a2a;
+}
+
+:global(.dark-mode) .shortcut-item:hover {
+  background: #3a3a3a;
+}
+
+:global(.dark-mode) .shortcut-name {
+  color: #e0e0e0;
+}
+
+:global(.dark-mode) .shortcut-detail {
+  color: #999;
+}
+
+:global(.dark-mode) .shortcut-keys kbd {
+  background: #3a3a3a;
+  border-color: #555;
+  color: #e0e0e0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+:global(.dark-mode) .shortcut-or {
+  color: #777;
+}
+
+:global(.dark-mode) .section-hint {
+  background: #1e3a5f;
+  border-left-color: #4dabf7;
+  color: #4dabf7;
 }
 
 :global(.dark-mode) .about-info p {

@@ -37,5 +37,5 @@ if (import.meta.env.DEV) {
   console.log('🚀 摸鱼热搜插件已启动')
   console.log('📦 当前环境:', import.meta.env.MODE)
   console.log('🔧 uTools API:', window.utools ? '已加载' : '未加载')
-  console.log('📊 埋点系统: 已集成')
+  console.log('📊 埋点系统: 开发环境下已禁用')
 }

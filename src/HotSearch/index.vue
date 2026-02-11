@@ -56,9 +56,15 @@ const recentPlatforms = ref([])
 const favoriteItems = ref(new Set())
 const autoRefreshTimer = ref(null)
 
+// 平台更新时间记录
+const platformUpdateTimes = ref({})
+
 // 加载超时控制
 const loadingTimeout = ref(null)
 const lastRequestTime = ref(0)
+
+// 键盘导航 - 当前选中的热搜索引
+const selectedHotIndex = ref(-1)
 
 // UI 设置
 const showDonate = ref(false)
@@ -132,9 +138,10 @@ const filteredPlatforms = computed(() => {
 
   // 极简模式：始终显示主流平台
   if (DISPLAY_MODE.DEFAULT_MODE === 'simple') {
-    // 将 store 中的平台对象数组转换为 ID 数组传给 getPlatformsByMode
+    // 使用用户自定义的顺序
     const orderIds = settingsStore.customPlatformOrder.map(p => p.id)
     platforms = getPlatformsByMode(orderIds)
+    debug.log('📋 使用平台排序:', platforms.map(p => p.name))
   } else if (!selectedCategory.value || selectedCategory.value === '全部') {
     // "全部"分类下显示所有平台
     platforms = PLATFORMS
@@ -150,6 +157,40 @@ const filteredPlatforms = computed(() => {
 // 获取当前选中的平台对象
 const currentPlatformObj = computed(() => {
   return PLATFORMS.find(p => p.id === selectedPlatform.value)
+})
+
+// 数据新鲜度计算
+const dataFreshness = computed(() => {
+  const platformId = selectedPlatform.value
+  const lastUpdate = platformUpdateTimes.value[platformId]
+
+  if (!lastUpdate) {
+    return { status: 'unknown', text: '加载中...', icon: '⚪', minutes: 0 }
+  }
+
+  const now = Date.now()
+  const elapsed = now - lastUpdate
+  const minutes = Math.floor(elapsed / (1000 * 60))
+
+  // 获取平台缓存时间配置
+  const cacheTime = API.PLATFORM_CACHE_TIME[platformId] || API.PLATFORM_CACHE_TIME['default']
+  const cacheMinutes = Math.floor(cacheTime / (1000 * 60))
+
+  // 计算新鲜度（基于5分钟缓存）
+  if (minutes <= 5) {
+    return { status: 'fresh', text: '刚刚更新', icon: '🟢', minutes }
+  } else if (minutes <= 15) {
+    return { status: 'good', text: `${minutes}分钟前`, icon: '🟡', minutes }
+  } else if (minutes <= 30) {
+    return { status: 'okay', text: `${minutes}分钟前`, icon: '🟠', minutes }
+  } else {
+    return { status: 'stale', text: `${minutes}分钟前`, icon: '🔴', minutes }
+  }
+})
+
+// 是否需要刷新提示
+const shouldRefresh = computed(() => {
+  return dataFreshness.value.status === 'stale'
 })
 
 // 获取热搜数据
@@ -232,6 +273,14 @@ const fetchHotData = async (platformId, loadMore = false) => {
         hotList.value = [...hotList.value, ...result.data]
       } else {
         hotList.value = result.data
+        // 记录平台更新时间（仅在首次加载时）
+        platformUpdateTimes.value[platformId] = Date.now()
+        // 保存到localStorage
+        try {
+          localStorage.setItem(`platform_update_${platformId}`, Date.now())
+        } catch (e) {
+          debug.warn('保存更新时间失败:', e)
+        }
       }
       hasMore.value = result.hasMore
       totalCount.value = result.total
@@ -248,6 +297,15 @@ const fetchHotData = async (platformId, loadMore = false) => {
       hasMore.value = false
       totalCount.value = result.length
       debug.log(`✅ 成功获取 ${result.length} 条热搜数据`)
+      // 记录平台更新时间
+      if (!loadMore) {
+        platformUpdateTimes.value[platformId] = Date.now()
+        try {
+          localStorage.setItem(`platform_update_${platformId}`, Date.now())
+        } catch (e) {
+          debug.warn('保存更新时间失败:', e)
+        }
+      }
     } else {
       // 空数据或其他格式
       hotList.value = []
@@ -332,6 +390,7 @@ const switchPlatform = (platformId) => {
 
   const fromPlatform = selectedPlatform.value
   selectedPlatform.value = platformId
+
   // 重置翻译偏移量
   translateOffset.value = 0
   // 如果不是艺术品平台，重置筛选
@@ -826,9 +885,144 @@ const handleSystemThemeChange = (e) => {
   }
 }
 
+// 使用键盘左右箭头切换平台，上下键选择热搜，回车打开
+const handleKeyPress = (event) => {
+  // 如果用户正在输入框中输入，不触发快捷键
+  if (event.target.tagName === 'INPUT' ||
+      event.target.tagName === 'TEXTAREA' ||
+      event.target.isContentEditable) {
+    return
+  }
+
+  const platforms = filteredPlatforms.value
+  if (platforms.length === 0) return
+
+  // 获取当前平台的索引
+  const currentIndex = platforms.findIndex(p => p.id === selectedPlatform.value)
+  if (currentIndex === -1) return
+
+  let nextIndex = currentIndex
+
+  // 左箭头键 - 切换到上一个平台
+  if (event.key === 'ArrowLeft') {
+    event.preventDefault()
+    nextIndex = currentIndex > 0 ? currentIndex - 1 : platforms.length - 1
+    const nextPlatform = platforms[nextIndex]
+    debug.log(`⬅️ 键盘切换: ${selectedPlatform.value} -> ${nextPlatform.id}`)
+    switchPlatform(nextPlatform.id)
+    scrollToPlatformTab(nextIndex)
+    // 切换平台后重置热搜选中状态
+    selectedHotIndex.value = -1
+  }
+  // 右箭头键 - 切换到下一个平台
+  else if (event.key === 'ArrowRight') {
+    event.preventDefault()
+    nextIndex = currentIndex < platforms.length - 1 ? currentIndex + 1 : 0
+    const nextPlatform = platforms[nextIndex]
+    debug.log(`➡️ 键盘切换: ${selectedPlatform.value} -> ${nextPlatform.id}`)
+    switchPlatform(nextPlatform.id)
+    scrollToPlatformTab(nextIndex)
+    // 切换平台后重置热搜选中状态
+    selectedHotIndex.value = -1
+  }
+  // 上箭头键 - 选择上一个热搜
+  else if (event.key === 'ArrowUp') {
+    event.preventDefault()
+    if (hotList.value.length === 0) return
+    if (selectedHotIndex.value > 0) {
+      selectedHotIndex.value--
+      scrollToHotItem(selectedHotIndex.value)
+    } else if (selectedHotIndex.value === -1) {
+      selectedHotIndex.value = 0
+      scrollToHotItem(0)
+    }
+    debug.log(`⬆️ 选择热搜: ${selectedHotIndex.value + 1}`)
+  }
+  // 下箭头键 - 选择下一个热搜
+  else if (event.key === 'ArrowDown') {
+    event.preventDefault()
+    if (hotList.value.length === 0) return
+    if (selectedHotIndex.value < hotList.value.length - 1) {
+      selectedHotIndex.value++
+      scrollToHotItem(selectedHotIndex.value)
+    }
+    debug.log(`⬇️ 选择热搜: ${selectedHotIndex.value + 1}`)
+  }
+  // 回车键 - 打开选中的热搜
+  else if (event.key === 'Enter') {
+    if (selectedHotIndex.value >= 0 && selectedHotIndex.value < hotList.value.length) {
+      event.preventDefault()
+      const item = hotList.value[selectedHotIndex.value]
+      const url = item.url || item.mobileUrl
+      debug.log(`🔗 打开热搜: ${item.title}`)
+      openUrl(url)
+    }
+  }
+  // F5 或 Ctrl+R / Cmd+R - 刷新当前平台数据
+  else if (event.key === 'F5' || (event.ctrlKey && event.key === 'r') || (event.metaKey && event.key === 'r')) {
+    event.preventDefault()
+    debug.log('🔄 快捷键刷新')
+    refresh()
+  }
+  // Ctrl+T / Cmd+T - 翻译（仅对支持翻译的平台）
+  else if ((event.ctrlKey || event.metaKey) && event.key === 't') {
+    if (isTranslatablePlatform.value) {
+      event.preventDefault()
+      debug.log('🌐 快捷键翻译')
+      toggleTranslate()
+    }
+  }
+}
+
+// 滚动到指定热搜条目
+const scrollToHotItem = (index) => {
+  const contentSection = document.querySelector('.content-section')
+  if (!contentSection) return
+
+  const items = contentSection.querySelectorAll('.hot-item')
+  if (!items || items.length === 0) return
+
+  const targetItem = items[index]
+  if (!targetItem) return
+
+  // 计算滚动位置，使目标条目居中显示
+  const containerHeight = contentSection.clientHeight
+  const itemTop = targetItem.offsetTop
+  const itemHeight = targetItem.offsetHeight
+  const scrollTop = itemTop - (containerHeight - itemHeight) / 2
+
+  contentSection.scrollTo({
+    top: scrollTop,
+    behavior: 'smooth'
+  })
+}
+
+// 滚动到指定平台标签
+const scrollToPlatformTab = (index) => {
+  if (!platformTabsRef.value) return
+
+  const tabs = platformTabsRef.value.querySelectorAll('.platform-tab')
+  if (!tabs || tabs.length === 0) return
+
+  const targetTab = tabs[index]
+  if (!targetTab) return
+
+  // 计算滚动位置，使目标标签居中显示
+  const containerWidth = platformTabsRef.value.clientWidth
+  const tabLeft = targetTab.offsetLeft
+  const tabWidth = targetTab.offsetWidth
+  const scrollLeft = tabLeft - (containerWidth - tabWidth) / 2
+
+  platformTabsRef.value.scrollTo({
+    left: scrollLeft,
+    behavior: 'smooth'
+  })
+}
+
 // 组件卸载时移除事件监听
 onUnmounted(() => {
   window.removeEventListener('settingChange', handleSettingChange)
+  window.removeEventListener('keydown', handleKeyPress)
   if (darkModeQuery) {
     darkModeQuery.removeEventListener('change', handleSystemThemeChange)
   }
@@ -935,6 +1129,19 @@ onMounted(() => {
   // 监听设置变更事件
   window.addEventListener('settingChange', handleSettingChange)
 
+  // 加载各平台的更新时间
+  try {
+    PLATFORMS.forEach(platform => {
+      const saved = localStorage.getItem(`platform_update_${platform.id}`)
+      if (saved) {
+        platformUpdateTimes.value[platform.id] = parseInt(saved)
+        debug.log(`⏰ ${platform.name} 更新时间: ${new Date(parseInt(saved)).toLocaleString()}`)
+      }
+    })
+  } catch (e) {
+    debug.warn('加载平台更新时间失败:', e)
+  }
+
   // 监听系统主题变化
   if (window.matchMedia) {
     darkModeQuery = window.matchMedia('(prefers-color-scheme: dark)')
@@ -956,6 +1163,10 @@ onMounted(() => {
       updateScrollState(platformTabsRef.value)
     }
   }, 100)
+
+  // 添加键盘事件监听（左右箭头切换平台）
+  window.addEventListener('keydown', handleKeyPress)
+  debug.log('⌨️ 已启用键盘快捷键：← → 切换平台')
 })
 
 // 处理滚动事件
@@ -1057,6 +1268,14 @@ watch(selectedCategory, (newCategory) => {
         <!-- 当前选中平台 - 独立显示在最左侧 -->
         <div v-if="currentPlatformObj" class="current-platform">
           <span class="current-platform-name">{{ currentPlatformObj.name }}</span>
+          <!-- 数据新鲜度指示器 -->
+          <span
+            v-if="dataFreshness"
+            :class="['freshness-indicator', `freshness-${dataFreshness.status}`]"
+            :title="`数据更新于 ${dataFreshness.text}`"
+          >
+            {{ dataFreshness.icon }} {{ dataFreshness.text }}
+          </span>
         </div>
 
         <!-- 平台标签容器 -->
@@ -1185,7 +1404,10 @@ watch(selectedCategory, (newCategory) => {
             v-for="(item, index) in hotList"
             :key="index"
             @click="openUrl(item.url || item.mobileUrl)"
-            :class="['hot-item', { 'no-desc': !settingsStore.showDescription || !item.desc }]"
+            :class="['hot-item', {
+              'no-desc': !settingsStore.showDescription || !item.desc,
+              'selected': selectedHotIndex === index
+            }]"
           >
             <div class="hot-rank" :style="getRankStyle(index + 1)">
               {{ index + 1 }}
@@ -1376,6 +1598,59 @@ watch(selectedCategory, (newCategory) => {
 
 .current-platform-name {
   flex: 1;
+}
+
+/* 数据新鲜度指示器 */
+.freshness-indicator {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  padding: 2px 6px;
+  margin-left: 8px;
+  border-radius: 10px;
+  white-space: nowrap;
+  animation: fadeIn 0.3s ease;
+  font-weight: 500;
+}
+
+.freshness-fresh {
+  background: rgba(76, 175, 80, 0.2);
+  color: #fff;
+}
+
+.freshness-good {
+  background: rgba(255, 193, 7, 0.2);
+  color: #fff;
+}
+
+.freshness-okay {
+  background: rgba(255, 152, 0, 0.2);
+  color: #fff;
+}
+
+.freshness-stale {
+  background: rgba(244, 67, 54, 0.2);
+  color: #fff;
+  animation: pulse 2s infinite;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-2px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* 在小窗口中优化显示 */
+@media (max-height: 600px) {
+  .freshness-indicator {
+    font-size: 10px;
+    padding: 1px 4px;
+    margin-left: 4px;
+  }
 }
 
 /* 平台标签容器（包含可滚动的标签） */
@@ -1702,6 +1977,23 @@ watch(selectedCategory, (newCategory) => {
   background-color: #f8f9fa;
 }
 
+/* 键盘选中状态 */
+.hot-item.selected {
+  background-color: #e7f3ff;
+  border-left: 3px solid #007bff;
+  padding-left: 5px;
+  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.15);
+}
+
+.hot-item.selected.no-desc {
+  padding-left: 13px;
+}
+
+.hot-item.selected .hot-title {
+  color: #0056b3;
+  font-weight: 500;
+}
+
 .hot-rank {
   width: 22px;
   height: 22px;
@@ -1853,6 +2145,15 @@ html.dark-mode .hot-item {
 
 html.dark-mode .hot-item:hover {
   background-color: #3a3a3a;
+}
+
+html.dark-mode .hot-item.selected {
+  background-color: #1e3a5f;
+  border-left-color: #4dabf7;
+}
+
+html.dark-mode .hot-item.selected .hot-title {
+  color: #4dabf7;
 }
 
 html.dark-mode .hot-title {
