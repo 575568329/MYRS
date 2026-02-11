@@ -2,7 +2,7 @@
  * @Author: fjyu9 fjyu9@iflytek.com
  * @Date: 2026-01-29 15:38:01
  * @LastEditors: fjyu9 fjyu9@iflytek.com
- * @LastEditTime: 2026-02-09 14:48:24
+ * @LastEditTime: 2026-02-11 13:56:02
  * @FilePath: \摸鱼热搜\src\config.js
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -20,6 +20,7 @@ export const DISPLAY_MODE = {
 
   // 极简模式主流平台ID列表（基于用户行为数据按使用频率排序）
   SIMPLE_MODE_PLATFORMS: [
+    '60s-news',         // 60秒早报
     'zhihu',            // 知乎 - 45+ (15%)
     'baidu',            // 百度 - 40+ (13%)
     'weibo',            // 微博 - 35+ (12%)
@@ -35,7 +36,6 @@ export const DISPLAY_MODE = {
     'zhuishu',          // 追书神器 - 6+ (2%)
     'artic',            // 芝加哥艺术学院 - 5+ (2%)
     'metmuseum',        // 大都会博物馆 - 4+ (1%)
-    '60s-news',         // 60秒早报
     'stock-hot',        // 热门股票
     'epic-free',        // Epic免费游戏
     'github-trending',  // GitHub热榜
