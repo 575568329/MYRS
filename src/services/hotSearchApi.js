@@ -680,7 +680,7 @@ function parseMovieBoxText(text) {
       // 上映天数和总票房
       const daysMatch = line.match(/^上映(\d+)天\s+(.+)$/)
       if (daysMatch) {
-        currentMovie.desc = `上映${daysMatch[1]}天 · 总票房${daysMatch[2]}`
+        currentMovie.desc = `上映${daysMatch[1]}天 · 累计${daysMatch[2]}`
         continue
       }
 
@@ -688,16 +688,22 @@ function parseMovieBoxText(text) {
       const boxMatch = line.match(/^综合票房\s+(.+)$/)
       if (boxMatch) {
         currentMovie.hot = boxMatch[1]
-        currentMovie.desc += ` · 当日${boxMatch[1]}`
         continue
       }
 
-      // 票房占比（可选显示）
-      // const percentMatch = line.match(/^综合票房占比\s+(.+)$/)
-      // if (percentMatch) {
-      //   currentMovie.desc += ` · 占比${percentMatch[1]}`
-      //   continue
-      // }
+      // 票房占比
+      const percentMatch = line.match(/^综合票房占比\s+(.+)$/)
+      if (percentMatch) {
+        currentMovie.desc += ` · 票房占比${percentMatch[1]}`
+        continue
+      }
+
+      // 排片/排座占比
+      const scheduleMatch = line.match(/^排片\/排座占比\s+(.+)$/)
+      if (scheduleMatch) {
+        currentMovie.desc += ` · 排片${scheduleMatch[1]}`
+        continue
+      }
     }
   }
 

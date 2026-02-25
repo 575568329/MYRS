@@ -1953,7 +1953,7 @@ watch(selectedCategory, (newCategory) => {
 .hot-item {
   display: flex;
   align-items: center;
-  padding: 5px 8px;
+  padding: 8px 16px;
   margin-bottom: 0;
   background: #ffffff;
   border: none;
@@ -1962,11 +1962,6 @@ watch(selectedCategory, (newCategory) => {
   cursor: pointer;
   transition: background-color 0.2s ease;
   box-shadow: none;
-}
-
-/* 没有简介时的高度更紧凑 */
-.hot-item.no-desc {
-  padding: 8px 16px;
 }
 
 .hot-item:last-child {
@@ -1981,12 +1976,7 @@ watch(selectedCategory, (newCategory) => {
 .hot-item.selected {
   background-color: #e7f3ff;
   border-left: 3px solid #007bff;
-  padding-left: 5px;
   box-shadow: 0 2px 8px rgba(0, 123, 255, 0.15);
-}
-
-.hot-item.selected.no-desc {
-  padding-left: 13px;
 }
 
 .hot-item.selected .hot-title {
@@ -2394,11 +2384,6 @@ html.dark-mode .filter-btn.active {
   border-color: #0056b3;
   background: linear-gradient(135deg, #0056b3, #003d82);
   color: #ffffff;
-}
-
-/* 暗色模式下没有简介时的样式保持一致 */
-html.dark-mode .hot-item.no-desc {
-  padding: 10px 16px !important;
 }
 
 /* 滚动指示器夜间模式 */
