@@ -38,7 +38,16 @@
         >
           <span class="side-dot" :style="{ background: dotColor(p.category) }"></span>
           <span class="side-name">{{ p.name }}</span>
-          <Pin class="side-ico pin-mark pinned" :size="11" @click.stop="$emit('pin-toggle', p.id)" />
+          <span
+            class="pin-btn pinned"
+            role="button"
+            tabindex="-1"
+            title="取消钉住（常用区将移除，分类里仍可找到）"
+            aria-label="取消钉住"
+            @click.stop="$emit('pin-toggle', p.id)"
+          >
+            <Pin :size="14" />
+          </span>
         </button>
       </template>
 
@@ -59,7 +68,17 @@
           >
             <span class="side-dot" :style="{ background: dotColor(p.category) }"></span>
             <span class="side-name">{{ p.name }}</span>
-            <Pin class="side-ico pin-mark" :size="11" @click.stop="$emit('pin-toggle', p.id)" />
+            <span
+              class="pin-btn"
+              :class="{ pinned: settingsStore.isPinned(p.id) }"
+              role="button"
+              tabindex="-1"
+              title="钉住：固定到侧栏最前，并加入聚合首页"
+              aria-label="钉住平台"
+              @click.stop="$emit('pin-toggle', p.id)"
+            >
+              <Pin :size="14" />
+            </span>
           </button>
         </template>
       </template>
@@ -292,28 +311,40 @@ function dotColor(category) {
   text-overflow: ellipsis;
 }
 
-.pin-mark {
-  color: var(--color-text-muted);
+/* 钉住按钮：hover 浮现，24px 热区 + 提示文案 */
+.pin-btn {
+  width: 24px;
+  height: 24px;
+  margin-right: -5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex: none;
+  border-radius: 6px;
+  color: var(--color-text-muted);
   opacity: 0;
   cursor: pointer;
-  transition: opacity 0.15s, color 0.15s;
-  border-radius: 3px;
-  padding: 2px;
+  transition: opacity 0.15s, color 0.15s, background 0.15s;
 }
 
-.side-item:hover .pin-mark {
-  opacity: 0.85;
+.side-item:hover .pin-btn {
+  opacity: 0.9;
 }
 
-.pin-mark:hover {
+.pin-btn:hover {
+  background: var(--color-surface-muted-hover);
   color: var(--color-brand-text);
+  opacity: 1;
 }
 
-/* 已钉住：常显 + 品牌色 */
-.pin-mark.pinned {
+/* 已钉住：常显 + 品牌色 + 实心 */
+.pin-btn.pinned {
   opacity: 1;
   color: var(--color-brand-text);
+}
+
+.pin-btn.pinned svg {
+  fill: currentColor;
 }
 
 .sidebar-foot {
