@@ -91,20 +91,12 @@ const showDonate = ref(false)
 const autoTranslate = ref(false) // 自动翻译开关（仅对芝加哥艺术学院有效）
 const translateOffset = ref(0) // 翻译偏移量（用于分页翻译）
 
-// 大都会博物馆筛选选项
-const metMuseumFilter = ref('all') // 'all' 或 'china'
-
 // 开发环境标志
 const isDev = import.meta.env.DEV
 
 // 判断是否为芝加哥艺术学院平台（使用卡片式布局）
 const isArticPlatform = computed(() => {
   return selectedPlatform.value === 'artic'
-})
-
-// 判断是否为大都会博物馆平台（使用卡片式布局）
-const isMetMuseumPlatform = computed(() => {
-  return selectedPlatform.value === 'metmuseum'
 })
 
 // 判断是否为 Epic 免费游戏平台（使用卡片式布局）
@@ -124,7 +116,7 @@ const isHackerNewsPlatform = computed(() => {
 
 // 判断是否为艺术品平台（使用卡片式布局）
 const isArtworkPlatform = computed(() => {
-  return isArticPlatform.value || isMetMuseumPlatform.value
+  return isArticPlatform.value
 })
 
 // 判断是否为游戏平台（使用卡片式布局，类似于艺术品）
@@ -135,7 +127,6 @@ const isGamePlatform = computed(() => {
 // 判断是否为支持翻译的平台（芝加哥艺术学院、大都会博物馆、GitHub Trending、Hacker News）
 const isTranslatablePlatform = computed(() => {
   return isArticPlatform.value ||
-         isMetMuseumPlatform.value ||
          isGithubTrendingPlatform.value ||
          isHackerNewsPlatform.value
 })
@@ -270,11 +261,6 @@ const fetchHotData = async (platformId, loadMore = false) => {
     const requestParams = {
       page: currentPage.value,
       pageSize: 50
-    }
-
-    // 如果是大都会博物馆且有筛选条件，添加地理位置筛选
-    if (platformId === 'metmuseum' && metMuseumFilter.value === 'china') {
-      requestParams.geoLocation = 'China'
     }
 
     const result = await getHotData(platformId, requestParams)
@@ -488,26 +474,6 @@ const refreshAggregate = () => {
   setTimeout(() => { aggregateLoading.value = false }, 1200)
 }
 
-// 切换大都会博物馆筛选
-const switchMetMuseumFilter = (filter) => {
-  if (metMuseumFilter.value === filter) return
-  metMuseumFilter.value = filter
-  // 重置页码
-  currentPage.value = 1
-  // 重置翻译偏移量（因为筛选条件变了）
-  translateOffset.value = 0
-
-  // 追踪筛选器变更事件
-  trackEvent(EventType.FILTER_CHANGE, {
-    platform: 'metmuseum',
-    filter_type: 'region',
-    filter_value: filter
-  })
-
-  // 重新获取数据
-  fetchHotData('metmuseum')
-}
-
 // 打开链接（P0.3 统一入口：默认 ubrowser 摸鱼小窗）
 const openItem = (item) => {
   const url = item.url || item.mobileUrl
@@ -666,7 +632,7 @@ const translateAllArtworks = async () => {
   const getPlatformTypeName = () => {
     if (isGithubTrendingPlatform.value) return '开源项目'
     if (isHackerNewsPlatform.value) return '科技资讯'
-    if (isMetMuseumPlatform.value) return '艺术品'
+    
     if (isArticPlatform.value) return '艺术品'
     return '项目'
   }
@@ -854,7 +820,7 @@ const toggleTranslate = async () => {
   const getPlatformTypeName = () => {
     if (isGithubTrendingPlatform.value) return '开源项目'
     if (isHackerNewsPlatform.value) return '科技资讯'
-    if (isMetMuseumPlatform.value) return '艺术品'
+    
     if (isArticPlatform.value) return '艺术品'
     return '项目'
   }
@@ -1364,36 +1330,8 @@ watch(selectedPlatform, (newPlatform) => {
 
           <!-- 列表 -->
           <div v-else class="hot-list">
-            <!-- 大都会博物馆 - 卡片式布局 -->
-            <template v-if="isMetMuseumPlatform">
-              <div class="metmuseum-filters">
-                <button
-                  @click="switchMetMuseumFilter('all')"
-                  :class="['filter-btn', { active: metMuseumFilter === 'all' }]"
-                >
-                  🌍 全部作品
-                </button>
-                <button
-                  @click="switchMetMuseumFilter('china')"
-                  :class="['filter-btn', { active: metMuseumFilter === 'china' }]"
-                >
-                  🏮 中国作品
-                </button>
-              </div>
-              <div class="artwork-grid">
-                <ArtworkCard
-                  v-for="(item, index) in hotList"
-                  :key="item.id || index"
-                  :artwork="item"
-                  :index="item.index || index + 1"
-                  :showDescription="settingsStore.showDescription"
-                  @click="openItem(item)"
-                />
-              </div>
-            </template>
-
             <!-- Epic 免费游戏 - 卡片布局 -->
-            <template v-else-if="isGamePlatform">
+            <template v-if="isGamePlatform">
               <div class="artwork-grid">
                 <ArtworkCard
                   v-for="(item, index) in hotList"
@@ -1790,47 +1728,6 @@ watch(selectedPlatform, (newPlatform) => {
   background-color: transparent;
   border-radius: 8px;
   overflow: hidden;
-}
-
-/* 艺术品网格布局（大都会博物馆） */
-.metmuseum-filters {
-  display: flex;
-  gap: 12px;
-  padding: 12px 16px;
-  margin-bottom: 16px;
-  background: var(--color-surface);
-  border-radius: 8px;
-  box-shadow: var(--shadow-sm);
-}
-
-.filter-btn {
-  flex: 1;
-  padding: 10px 20px;
-  border: 2px solid var(--color-border);
-  border-radius: 8px;
-  background: var(--color-surface);
-  color: var(--color-text-2);
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-}
-
-.filter-btn:hover {
-  border-color: var(--color-accent-text);
-  color: var(--color-accent-text);
-  background: var(--color-surface-hover);
-}
-
-.filter-btn.active {
-  border-color: #007bff;
-  background: linear-gradient(135deg, #007bff, #0056b3);
-  color: #ffffff;
-  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
 }
 
 .artwork-grid {

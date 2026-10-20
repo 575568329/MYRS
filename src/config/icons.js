@@ -22,10 +22,8 @@ export const ICON_IMPORTS = {
   'douban-group': () => import('vue-remix-icons/icons/ri-team-line.vue'),
   'tieba': () => import('vue-remix-icons/icons/ri-group-line.vue'),
   'hupu': () => import('vue-remix-icons/icons/ri-basketball-line.vue'),
-  'ngabbs': () => import('vue-remix-icons/icons/ri-gamepad-line.vue'),
   'v2ex': () => import('vue-remix-icons/icons/ri-chat-smile-2-line.vue'),
   '52pojie': () => import('vue-remix-icons/icons/ri-lock-2-line.vue'),
-  'hostloc': () => import('vue-remix-icons/icons/ri-server-line.vue'),
   'coolapk': () => import('vue-remix-icons/icons/ri-android-line.vue'),
 
   // 新闻/资讯
@@ -62,7 +60,6 @@ export const ICON_IMPORTS = {
 
   // 阅读类
   'weread': () => import('vue-remix-icons/icons/ri-book-read-line.vue'),
-  'zhuishu': () => import('vue-remix-icons/icons/ri-bookmark-line.vue'),
 
   // 生活/综合
   'smzdm': () => import('vue-remix-icons/icons/ri-shopping-bag-3-line.vue'),
@@ -103,10 +100,8 @@ export function getPlatformIconName(platformId) {
     'douban-group': 'ri-team-line',
     'tieba': 'ri-group-line',
     'hupu': 'ri-basketball-line',
-    'ngabbs': 'ri-gamepad-line',
     'v2ex': 'ri-chat-smile-2-line',
     '52pojie': 'ri-lock-2-line',
-    'hostloc': 'ri-server-line',
     'coolapk': 'ri-android-line',
     'baidu': 'ri-search-2-line',
     'thepaper': 'ri-article-line',
@@ -135,7 +130,6 @@ export function getPlatformIconName(platformId) {
     'starrail': 'ri-rocket-line',
     'miyoushe': 'ri-game-line',
     'weread': 'ri-book-read-line',
-    'zhuishu': 'ri-bookmark-line',
     'smzdm': 'ri-shopping-bag-3-line',
     'newsmth': 'ri-chat-3-line',
     'history': 'ri-calendar-line',

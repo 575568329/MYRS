@@ -20,7 +20,6 @@ export const DISPLAY_MODE = {
 
   // 极简模式主流平台ID列表（基于用户行为数据按使用频率排序）
   SIMPLE_MODE_PLATFORMS: [
-    '60s-news',         // 60秒早报
     'zhihu',            // 知乎 - 45+ (15%)
     'baidu',            // 百度 - 40+ (13%)
     'weibo',            // 微博 - 35+ (12%)
@@ -33,13 +32,10 @@ export const DISPLAY_MODE = {
     'weread',           // 微信读书 - 10+ (3%)
     'douban-movie',     // 豆瓣电影 - 8+ (3%)
     'sspai',            // 少数派 - 8+ (3%)
-    'zhuishu',          // 追书神器 - 6+ (2%)
     'artic',            // 芝加哥艺术学院 - 5+ (2%)
-    'metmuseum',        // 大都会博物馆 - 4+ (1%)
     'stock-hot',        // 热门股票
     'epic-free',        // Epic免费游戏
     'github-trending',  // GitHub热榜
-    'movie-box'         // 电影票房榜
   ]
 }
 
@@ -60,11 +56,7 @@ export const API = {
   MIN_REQUEST_INTERVAL: 500,
   // 各平台特殊超时配置（毫秒）
   PLATFORM_TIMEOUT: {
-    '60s-news': 10000,  // 60秒早报API（10秒）
-    'zhuishu': 20000,   // 追书神器使用CORS代理，需要更长时间（20秒）
-    'movie-box': 10000, // 电影票房榜API（10秒）
     'artic': 10000,     // 芝加哥艺术学院API（10秒）
-    'metmuseum': 15000, // 大都会博物馆API（15秒，需要多次请求）
     'stock-hot': 25000, // 股票行情API（25秒，一次请求多个股票）
     'stock-sh': 25000,  // 上证指数API（25秒，一次请求多个股票）
     'stock-tech': 25000 // 科技股API（25秒，一次请求多个股票）
@@ -81,7 +73,6 @@ export const API = {
     'stock-hot': 5 * 60 * 1000,   // 热门股票
     'stock-sh': 5 * 60 * 1000,    // 上证指数
     'stock-tech': 5 * 60 * 1000,  // 科技股
-    '60s-news': 5 * 60 * 1000,    // 60秒早报
 
     // 其他平台 - 默认5分钟缓存
     'default': 5 * 60 * 1000
