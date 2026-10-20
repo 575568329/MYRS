@@ -70,6 +70,12 @@ let toastTimer = null
 const aggregateRef = ref(null)
 const aggregateLoading = ref(false)
 
+// 当前视图是否处于加载中（驱动顶部进度条）
+const isLoadingView = computed(() => {
+  if (currentView.value === 'home') return aggregateLoading.value
+  return loading.value && currentView.value === selectedPlatform.value
+})
+
 // 平台更新时间记录
 const platformUpdateTimes = ref({})
 
@@ -226,7 +232,11 @@ const fetchHotData = async (platformId, loadMore = false) => {
       platformUpdateTimes.value[platformId] = mirror.ts
       debug.log(`🪞 命中数据镜像：${mirror.data.length} 条，先渲染后刷新`)
     } else {
+      // 无镜像：立即清空旧平台数据并显示骨架屏（避免"点了新标签还显示旧内容"）
       staleInfo.value = null
+      hotList.value = []
+      hasMore.value = false
+      totalCount.value = 0
     }
     loading.value = true
     error.value = null
@@ -1279,6 +1289,9 @@ watch(selectedPlatform, (newPlatform) => {
         </template>
       </div>
 
+      <!-- 加载进度条：切平台/刷新期间（无镜像时配合骨架屏，有镜像时提示后台更新中） -->
+      <div v-if="isLoadingView" class="loading-bar" aria-hidden="true"><span></span></div>
+
       <div class="main-body">
         <!-- 聚合首页（默认视图） -->
         <AggregateHome
@@ -1528,6 +1541,37 @@ watch(selectedPlatform, (newPlatform) => {
 
 .head-btn .spinning {
   animation: spin 0.8s linear infinite;
+}
+
+/* 加载进度条（主区头部下方，2px 品牌渐变滑动） */
+.loading-bar {
+  height: 2px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.loading-bar span {
+  display: block;
+  height: 100%;
+  width: 40%;
+  border-radius: 2px;
+  background: var(--gradient-brand);
+  animation: loadingSlide 1.1s ease-in-out infinite;
+}
+
+@keyframes loadingSlide {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(350%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loading-bar span {
+    animation-duration: 3s;
+  }
 }
 
 /* 镜像滞后角标（P0.1） */
