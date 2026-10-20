@@ -73,6 +73,7 @@ export const PLATFORMS = [
   { id: 'douban-group', name: '豆瓣小组', icon: 'ri-team-line', category: '娱乐' },
   { id: 'tieba', name: '贴吧', icon: 'ri-group-line', category: '社交' },
   { id: 'hupu', name: '虎扑', icon: 'ri-basketball-line', category: '生活' },
+  { id: 'newsmth', name: '水木社区', icon: 'ri-chat-3-line', category: '社交' },
   // { id: 'miyoushe', name: '米游社', icon: 'ri-game-line', category: '游戏' },
   { id: 'ngabbs', name: 'NGA', icon: 'ri-gamepad-line', category: '游戏' },
   { id: 'v2ex', name: 'V2EX', icon: 'ri-chat-smile-2-line', category: '科技' },
@@ -103,6 +104,7 @@ export const PLATFORMS = [
   { id: '51cto', name: '51CTO', icon: 'ri-terminal-line', category: '科技' },
   { id: 'csdn', name: 'CSDN', icon: 'ri-code-box-line', category: '科技' },
   { id: 'nodeseek', name: 'NodeSeek', icon: 'ri-nodejs-line', category: '科技' },
+  { id: 'geekpark', name: '极客公园', icon: 'ri-rocket-2-line', category: '科技' },
 
   // 游戏
   { id: 'lol', name: '英雄联盟', icon: 'ri-sword-line', category: '游戏' },
@@ -123,6 +125,8 @@ export const PLATFORMS = [
 
   // 其他
   { id: 'weread', name: '微信读书', icon: 'ri-book-read-line', category: '阅读' },
+  { id: 'smzdm', name: '什么值得买', icon: 'ri-shopping-bag-3-line', category: '生活' },
+  { id: 'history', name: '历史上的今天', icon: 'ri-calendar-line', category: '综合' },
   { id: 'hellogithub', name: 'HelloGitHub', icon: 'ri-github-line', category: '科技' },
   { id: 'jianshu', name: '简书', icon: 'ri-quill-pen-line', category: '综合' },
   { id: 'zhuishu', name: '追书排行', icon: 'ri-bookmark-line', category: '阅读' },
@@ -169,6 +173,81 @@ export async function getHotData(platformId, options = {}) {
 
   // 直接调用热搜 API（支持 uTools 和浏览器环境）
   return await getHotDataViaFetch(platformId, page, pageSize, geoLocation)
+}
+
+/**
+ * 平台ID → 本地 DailyHotApi 路由名的映射（绝大多数平台两者一致）
+ */
+const LOCAL_API_ROUTE_ALIAS = {
+  'hacker-news': 'hackernews',
+  'product-hunt': 'producthunt'
+}
+
+/**
+ * 归一化 DailyHotApi 格式：{ code: 200, data: [{ id, title, desc, hot, url, mobileUrl, cover? }] }
+ * 适用于本地服务与 api-hot.imsyy.com 公共实例（同源项目）
+ * @param {Object} data - API 返回的原始数据
+ * @param {string} platformId - 平台ID
+ * @returns {Array} 统一格式的热搜列表
+ */
+function normalizeDailyHotData(data, platformId) {
+  if (!data || !Array.isArray(data.data)) {
+    throw new Error('API 返回数据格式不正确')
+  }
+  return data.data.map((item, index) => {
+    let url = item.url || ''
+    // 豆瓣电影平台使用豆瓣搜索链接
+    if (platformId === 'douban-movie' && item.title) {
+      url = `https://search.douban.com/movie/subject_search?search_text=${encodeURIComponent(item.title)}`
+    }
+    return {
+      index: index + 1,
+      title: item.title,
+      desc: item.desc || '',
+      img: item.cover || '',
+      url: url,
+      mobileUrl: item.mobileUrl || url,
+      hot: item.hot ?? ''
+    }
+  })
+}
+
+/**
+ * 归一化 uapis.cn 格式（兼容新旧两种返回结构）
+ * @param {Object} data - API 返回的原始数据
+ * @param {string} platformId - 平台ID
+ * @returns {Array} 统一格式的热搜列表
+ */
+function normalizeUapisData(data, platformId) {
+  // 新格式: { type: "...", list: [...], update_time: "..." }
+  if (data && Array.isArray(data.list)) {
+    return data.list.map(item => {
+      const url = (platformId === 'douban-movie')
+        ? `https://search.douban.com/movie/subject_search?search_text=${encodeURIComponent(item.title)}`
+        : (item.url || '')
+      return {
+        index: item.index,
+        title: item.title,
+        desc: item.extra?.desc || '',
+        img: item.extra?.img || '',
+        url: url,
+        hot: item.hot_value || ''
+      }
+    })
+  }
+  // 旧格式: { code: 200, data: [...], message: "success" }
+  if (data && data.code === 200 && Array.isArray(data.data)) {
+    return data.data.map(item => {
+      if (platformId === 'douban-movie' && item.title) {
+        return {
+          ...item,
+          url: `https://search.douban.com/movie/subject_search?search_text=${encodeURIComponent(item.title)}`
+        }
+      }
+      return item
+    })
+  }
+  throw new Error('API 返回数据格式不正确')
 }
 
 /**
@@ -226,7 +305,7 @@ async function getHotDataViaFetch(platformId, page, pageSize, geoLocation) {
     return await getProductHuntData(page, pageSize)
   }
 
-  // uapis.cn 支持的所有平台（根据官方文档）
+  // uapis.cn 支持的平台（根据官方文档）
   const uapisPlatforms = [
     'baidu', 'weibo', 'zhihu', 'douyin', 'bilibili', 'kuaishou',
     'toutiao', 'tieba', 'hupu', 'douban-movie', 'douban-group', 'juejin', 'jianshu',
@@ -236,145 +315,102 @@ async function getHotDataViaFetch(platformId, page, pageSize, geoLocation) {
     'nodeseek', '52pojie', 'hostloc', 'weread', 'hellogithub', 'zhihu-daily'
   ]
 
-  // 使用 api-hot.imsyy.com 的平台
-  const imsyyPlatforms = [
-    '36kr'
+  // 数据源链：本地 DailyHotApi → uapis.cn → api-hot.imsyy.com 公共实例
+  // 本地服务由 preload 启动（uTools 环境）；纯浏览器开发环境下不可用会自动跳过
+  const platformTimeout = API.PLATFORM_TIMEOUT[platformId] || API.REQUEST_TIMEOUT
+  const sources = [
+    {
+      name: 'local',
+      available: true,
+      url: `${API.LOCAL_API_BASE}/${LOCAL_API_ROUTE_ALIAS[platformId] || platformId}?cache=true`,
+      // 本地服务命中冷缓存时会实时请求上游站点，超时留出额外余量
+      timeout: platformTimeout + 4000,
+      normalize: normalizeDailyHotData
+    },
+    {
+      name: 'uapis',
+      available: uapisPlatforms.includes(platformId),
+      url: `https://uapis.cn/api/v1/misc/hotboard?type=${platformId}`,
+      timeout: platformTimeout,
+      normalize: normalizeUapisData
+    },
+    {
+      name: 'imsyy',
+      available: true,
+      url: `https://api-hot.imsyy.com/${platformId}?cache=true`,
+      timeout: platformTimeout + 4000,
+      normalize: normalizeDailyHotData
+    }
   ]
 
-  // 选择 API 源
-  let apiUrl
-  // Epic 免费游戏使用特殊端点
-  if (platformId === 'epic-free') {
-    apiUrl = `https://uapis.cn/api/v1/game/epic-free`
-  } else if (uapisPlatforms.includes(platformId)) {
-    apiUrl = `https://uapis.cn/api/v1/misc/hotboard?type=${platformId}`
-  } else if (imsyyPlatforms.includes(platformId)) {
-    apiUrl = `https://api-hot.imsyy.com/${platformId}?cache=true`
-  } else {
-    apiUrl = `https://api-hot.imsyy.com/${platformId}?cache=true`
-  }
-
-  debug.log(`📡 正在请求 API: ${apiUrl}`)
-
-  // 获取平台特定的超时配置,如果没有则使用默认超时
-  const timeout = API.PLATFORM_TIMEOUT[platformId] || API.REQUEST_TIMEOUT
   debug.log(`⏱️ 超时配置:`, {
     platform: platformId,
     platformTimeout: API.PLATFORM_TIMEOUT[platformId],
     defaultTimeout: API.REQUEST_TIMEOUT,
-    finalTimeout: timeout
+    finalTimeout: platformTimeout
   })
 
-  try {
-    // 使用 AbortController 实现超时控制
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), timeout)
+  let hotList = null
+  let usedSource = null
+  let lastError = null
 
-    const response = await fetch(apiUrl, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      signal: controller.signal
-    })
+  for (const source of sources) {
+    if (source.available === false) continue
+    debug.log(`📡 正在请求 API (${source.name}): ${source.url}`)
+    try {
+      // 使用 AbortController 实现超时控制
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), source.timeout)
 
-    clearTimeout(timeoutId)
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-    }
-
-    const data = await response.json()
-
-    // 处理不同 API 的返回格式
-    let hotList = []
-
-    // uapis.cn 新格式: { type: "...", list: [...], update_time: "..." }
-    if (data.list && Array.isArray(data.list)) {
-      hotList = data.list.map(item => {
-        // 豆瓣电影平台使用豆瓣搜索链接
-        const url = (platformId === 'douban-movie')
-          ? `https://search.douban.com/movie/subject_search?search_text=${encodeURIComponent(item.title)}`
-          : (item.url || '')
-
-        // 调试日志
-        if (platformId === 'douban-movie') {
-          debug.log(`🎬 豆瓣电影: ${item.title} -> ${url}`)
-        }
-
-        return {
-          index: item.index,
-          title: item.title,
-          desc: item.extra?.desc || '',
-          img: item.extra?.img || '',
-          url: url,
-          hot: item.hot_value || ''
-        }
+      const response = await fetch(source.url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        signal: controller.signal
       })
-      debug.log(`✅ 成功从 uapis.cn 获取 ${hotList.length} 条热搜数据`)
-    }
-    // uapis.cn 旧格式: { code: 200, data: [...], message: "success" }
-    else if (data.code === 200 && Array.isArray(data.data)) {
-      hotList = data.data.map(item => {
-        // 豆瓣电影平台使用豆瓣搜索链接
-        if (platformId === 'douban-movie' && item.title) {
-          const url = `https://search.douban.com/movie/subject_search?search_text=${encodeURIComponent(item.title)}`
-          debug.log(`🎬 豆瓣电影(旧格式): ${item.title} -> ${url}`)
-          return {
-            ...item,
-            url: url
-          }
-        }
-        return item
-      })
-      debug.log(`✅ 成功从 uapis.cn 获取 ${hotList.length} 条热搜数据`)
-    }
-    // imsyy.top 格式: { data: [...], success: true }
-    else if (data && data.data && Array.isArray(data.data)) {
-      hotList = data.data.map(item => {
-        // 豆瓣电影平台使用豆瓣搜索链接
-        if (platformId === 'douban-movie' && item.title) {
-          const url = `https://search.douban.com/movie/subject_search?search_text=${encodeURIComponent(item.title)}`
-          debug.log(`🎬 豆瓣电影(imsyy): ${item.title} -> ${url}`)
-          return {
-            ...item,
-            url: url
-          }
-        }
-        return item
-      })
-      debug.log(`✅ 成功从 imsyy.top 获取 ${hotList.length} 条热搜数据`)
-    } else {
-      throw new Error('API 返回数据格式不正确')
-    }
 
-    // 简单分页处理
-    const start = (page - 1) * pageSize
-    const end = start + pageSize
-    const paginatedData = hotList.slice(start, end)
+      clearTimeout(timeoutId)
 
-    const result = {
-      data: paginatedData,
-      total: hotList.length,
-      hasMore: end < hotList.length
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      const data = await response.json()
+      hotList = source.normalize(data, platformId)
+      usedSource = source.name
+      debug.log(`✅ 成功从 ${source.name} 获取 ${hotList.length} 条热搜数据`)
+      break
+    } catch (error) {
+      lastError = error
+      debug.warn(`⚠️ 数据源 ${source.name} 请求失败: ${error.message}，尝试下一个数据源...`)
     }
+  }
 
-    return result
-  } catch (error) {
-    console.error('❌ 请求失败:', error)
-
-    // 超时错误处理
-    if (error.name === 'AbortError') {
+  // 所有数据源均失败
+  if (!hotList) {
+    console.error('❌ 请求失败(所有数据源):', lastError)
+    if (lastError && lastError.name === 'AbortError') {
       throw new Error('请求超时')
-    }
-    // 网络错误处理
-    else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+    } else if (lastError && (lastError.message.includes('Failed to fetch') || lastError.message.includes('NetworkError'))) {
       throw new Error('网络请求失败，请检查网络连接')
-    } else if (error.message.includes('CORS')) {
+    } else if (lastError && lastError.message.includes('CORS')) {
       throw new Error('跨域请求被阻止（建议在uTools中使用）')
     } else {
-      throw error
+      throw lastError || new Error('所有数据源均请求失败')
     }
+  }
+
+  // 简单分页处理
+  const start = (page - 1) * pageSize
+  const end = start + pageSize
+  const paginatedData = hotList.slice(start, end)
+
+  return {
+    data: paginatedData,
+    total: hotList.length,
+    hasMore: end < hotList.length,
+    source: usedSource
   }
 }
 

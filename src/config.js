@@ -51,6 +51,9 @@ export const PAGINATION = {
 
 // API 请求配置
 export const API = {
+  // 本地热榜 API（DailyHotApi，由 preload 在插件内启动）
+  // 独立用浏览器跑 vite dev 时服务不存在，会自动跳过本地源走远程
+  LOCAL_API_BASE: 'http://localhost:6688',
   // 请求超时时间（毫秒）- 防止请求卡住
   REQUEST_TIMEOUT: 5000,
   // 最小请求间隔（毫秒）- 防止频繁请求

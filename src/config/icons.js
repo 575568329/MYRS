@@ -50,6 +50,7 @@ export const ICON_IMPORTS = {
   '51cto': () => import('vue-remix-icons/icons/ri-terminal-line.vue'),
   'csdn': () => import('vue-remix-icons/icons/ri-code-box-line.vue'),
   'nodeseek': () => import('vue-remix-icons/icons/ri-nodejs-line.vue'),
+  'geekpark': () => import('vue-remix-icons/icons/ri-rocket-2-line.vue'),
   'hellogithub': () => import('vue-remix-icons/icons/ri-github-line.vue'),
 
   // 游戏
@@ -62,6 +63,11 @@ export const ICON_IMPORTS = {
   // 阅读类
   'weread': () => import('vue-remix-icons/icons/ri-book-read-line.vue'),
   'zhuishu': () => import('vue-remix-icons/icons/ri-bookmark-line.vue'),
+
+  // 生活/综合
+  'smzdm': () => import('vue-remix-icons/icons/ri-shopping-bag-3-line.vue'),
+  'newsmth': () => import('vue-remix-icons/icons/ri-chat-3-line.vue'),
+  'history': () => import('vue-remix-icons/icons/ri-calendar-line.vue'),
 
   // 艺术类
   'artic': () => import('vue-remix-icons/icons/ri-building-2-line.vue'),
@@ -121,6 +127,7 @@ export function getPlatformIconName(platformId) {
     '51cto': 'ri-terminal-line',
     'csdn': 'ri-code-box-line',
     'nodeseek': 'ri-nodejs-line',
+    'geekpark': 'ri-rocket-2-line',
     'hellogithub': 'ri-github-line',
     'lol': 'ri-sword-line',
     'genshin': 'ri-star-smile-line',
@@ -129,6 +136,9 @@ export function getPlatformIconName(platformId) {
     'miyoushe': 'ri-game-line',
     'weread': 'ri-book-read-line',
     'zhuishu': 'ri-bookmark-line',
+    'smzdm': 'ri-shopping-bag-3-line',
+    'newsmth': 'ri-chat-3-line',
+    'history': 'ri-calendar-line',
     'artic': 'ri-building-2-line'
   }
   return nameMap[platformId] || 'ri-apps-line'
