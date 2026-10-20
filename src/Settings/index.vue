@@ -411,14 +411,7 @@ const handleToggleVisibility = (platformId, event) => {
   padding: 24px;
 }
 
-.settings-content::-webkit-scrollbar {
-  width: 6px;
-}
-
-.settings-content::-webkit-scrollbar-thumb {
-  background: #ccc;
-  border-radius: 3px;
-}
+/* 滚动条：统一走 main.css 全局令牌化样式 */
 
 .settings-section {
   margin-bottom: 28px;

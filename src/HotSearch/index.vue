@@ -1032,10 +1032,9 @@ onUnmounted(() => {
   }
 })
 
-// 获取排名样式
-const getRankStyle = (index) => {
-  if (index <= 3) return { backgroundColor: '#ff6600', fontWeight: 'bold' }
-  return { backgroundColor: '#999' }
+// 获取排名样式类（Top3 高亮）
+const getRankClass = (index) => {
+  return index <= 3 ? 'rank-top' : ''
 }
 
 // 格式化热度数值
@@ -1409,7 +1408,7 @@ watch(selectedCategory, (newCategory) => {
               'selected': selectedHotIndex === index
             }]"
           >
-            <div class="hot-rank" :style="getRankStyle(index + 1)">
+            <div class="hot-rank" :class="getRankClass(index + 1)">
               {{ index + 1 }}
             </div>
             <div class="hot-content">
@@ -1520,7 +1519,7 @@ watch(selectedCategory, (newCategory) => {
 .hot-search-container {
   width: 100%;
   height: 100vh;
-  background-color: #f5f5f5;
+  background-color: var(--color-bg);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1528,8 +1527,8 @@ watch(selectedCategory, (newCategory) => {
 
 /* 平台选择区域 */
 .platform-section {
-  background-color: #ffffff;
-  border-bottom: 1px solid #eee;
+  background-color: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
   flex-shrink: 0;
 }
 
@@ -1549,8 +1548,8 @@ watch(selectedCategory, (newCategory) => {
   padding: 6px 16px;
   border: none;
   border-radius: 20px;
-  background-color: #f0f0f0;
-  color: #666;
+  background-color: var(--color-surface-muted);
+  color: var(--color-text-2);
   font-size: 14px;
   cursor: pointer;
   white-space: nowrap;
@@ -1558,7 +1557,7 @@ watch(selectedCategory, (newCategory) => {
 }
 
 .category-tab:hover {
-  background-color: #e0e0e0;
+  background-color: var(--color-surface-muted-hover);
 }
 
 .category-tab.active {
@@ -1711,7 +1710,7 @@ watch(selectedCategory, (newCategory) => {
 /* 箭头样式 */
 .scroll-arrow {
   font-size: 24px;
-  color: #007bff;
+  color: var(--color-accent-text);
   font-weight: bold;
   text-shadow: 0 0 3px rgba(255, 255, 255, 0.8);
   pointer-events: none;
@@ -1722,10 +1721,10 @@ watch(selectedCategory, (newCategory) => {
   align-items: center;
   gap: 4px;
   padding: 6px 12px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--color-border);
   border-radius: 6px;
-  background-color: #ffffff;
-  color: #333;
+  background-color: var(--color-surface);
+  color: var(--color-text);
   font-size: 14px;
   cursor: pointer;
   white-space: nowrap;
@@ -1733,8 +1732,8 @@ watch(selectedCategory, (newCategory) => {
 }
 
 .platform-tab:hover {
-  background-color: #f9f9f9;
-  border-color: #007bff;
+  background-color: var(--color-surface-hover);
+  border-color: var(--color-primary);
 }
 
 .platform-tab.active {
@@ -1789,11 +1788,11 @@ watch(selectedCategory, (newCategory) => {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(255, 255, 255, 0.8);
+  background-color: var(--color-overlay);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 100;
+  z-index: var(--z-sticky);
   backdrop-filter: blur(2px);
   animation: fadeIn 0.2s ease;
 }
@@ -1807,7 +1806,7 @@ watch(selectedCategory, (newCategory) => {
 
 .loading-overlay p {
   font-size: 14px;
-  color: #666;
+  color: var(--color-text-2);
   margin: 0;
 }
 
@@ -1829,13 +1828,13 @@ watch(selectedCategory, (newCategory) => {
 }
 
 .error-message {
-  color: #ff4444;
+  color: var(--color-error);
   margin-bottom: 12px;
   font-size: 14px;
 }
 
 .empty-tip {
-  color: #999;
+  color: var(--color-text-muted);
   font-size: 13px;
   margin-top: 8px;
 }
@@ -1845,7 +1844,7 @@ watch(selectedCategory, (newCategory) => {
   padding: 8px 24px;
   border: none;
   border-radius: 6px;
-  background-color: #007bff;
+  background-color: var(--color-btn-primary);
   color: #ffffff;
   font-size: 14px;
   cursor: pointer;
@@ -1854,7 +1853,7 @@ watch(selectedCategory, (newCategory) => {
 
 .retry-btn:hover,
 .load-more-btn:hover:not(:disabled) {
-  background-color: #0056b3;
+  background-color: var(--color-btn-primary-hover);
 }
 
 .retry-btn:disabled {
@@ -1865,8 +1864,8 @@ watch(selectedCategory, (newCategory) => {
 .loading-spinner {
   width: 40px;
   height: 40px;
-  border: 3px solid #f0f0f0;
-  border-top-color: #007bff;
+  border: 3px solid var(--color-border-light);
+  border-top-color: var(--color-accent-text);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -1894,18 +1893,18 @@ watch(selectedCategory, (newCategory) => {
   gap: 12px;
   padding: 12px 16px;
   margin-bottom: 16px;
-  background: #ffffff;
+  background: var(--color-surface);
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--shadow-sm);
 }
 
 .filter-btn {
   flex: 1;
   padding: 10px 20px;
-  border: 2px solid #e0e0e0;
+  border: 2px solid var(--color-border);
   border-radius: 8px;
-  background: #ffffff;
-  color: #666;
+  background: var(--color-surface);
+  color: var(--color-text-2);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -1917,9 +1916,9 @@ watch(selectedCategory, (newCategory) => {
 }
 
 .filter-btn:hover {
-  border-color: #007bff;
-  color: #007bff;
-  background: #f8f9fa;
+  border-color: var(--color-accent-text);
+  color: var(--color-accent-text);
+  background: var(--color-surface-hover);
 }
 
 .filter-btn.active {
@@ -1955,10 +1954,10 @@ watch(selectedCategory, (newCategory) => {
   align-items: center;
   padding: 8px 16px;
   margin-bottom: 0;
-  background: #ffffff;
+  background: var(--color-surface);
   border: none;
   border-radius: 0;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--color-border-light);
   cursor: pointer;
   transition: background-color 0.2s ease;
   box-shadow: none;
@@ -1969,18 +1968,18 @@ watch(selectedCategory, (newCategory) => {
 }
 
 .hot-item:hover {
-  background-color: #f8f9fa;
+  background-color: var(--color-surface-hover);
 }
 
 /* 键盘选中状态 */
 .hot-item.selected {
-  background-color: #e7f3ff;
-  border-left: 3px solid #007bff;
+  background-color: var(--color-selected-bg);
+  border-left: 3px solid var(--color-accent-text);
   box-shadow: 0 2px 8px rgba(0, 123, 255, 0.15);
 }
 
 .hot-item.selected .hot-title {
-  color: #0056b3;
+  color: var(--color-accent-text-hover);
   font-weight: 500;
 }
 
@@ -1988,7 +1987,7 @@ watch(selectedCategory, (newCategory) => {
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background-color: #999;
+  background-color: var(--color-rank);
   color: #ffffff;
   display: flex;
   align-items: center;
@@ -1999,6 +1998,11 @@ watch(selectedCategory, (newCategory) => {
   margin-right: 10px;
 }
 
+/* Top3 排名高亮（getRankClass 输出，替代原内联样式 hack） */
+.hot-rank.rank-top {
+  background-color: var(--color-rank-top);
+}
+
 .hot-content {
   flex: 1;
   min-width: 0;
@@ -2006,7 +2010,7 @@ watch(selectedCategory, (newCategory) => {
 
 .hot-title {
   font-size: 15px;
-  color: #007bff;
+  color: var(--color-accent-text);
   margin-bottom: 4px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2015,7 +2019,7 @@ watch(selectedCategory, (newCategory) => {
 
 .hot-desc {
   font-size: 13px;
-  color: #666;
+  color: var(--color-text-3);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2024,7 +2028,7 @@ watch(selectedCategory, (newCategory) => {
 
 .hot-value {
   font-size: 12px;
-  color: #ff6600;
+  color: var(--color-hot);
   flex-shrink: 0;
   margin-left: 12px;
   white-space: nowrap;
@@ -2039,7 +2043,7 @@ watch(selectedCategory, (newCategory) => {
 .no-more-tip {
   padding: 16px;
   text-align: center;
-  color: #999;
+  color: var(--color-text-muted);
   font-size: 13px;
 }
 
@@ -2048,7 +2052,7 @@ watch(selectedCategory, (newCategory) => {
   flex-direction: column;
   align-items: center;
   padding: 16px;
-  color: #999;
+  color: var(--color-text-muted);
 }
 
 .loading-more p {
@@ -2056,328 +2060,14 @@ watch(selectedCategory, (newCategory) => {
   font-size: 13px;
 }
 
-/* 滚动条样式 */
-.content-section::-webkit-scrollbar,
-.category-tabs::-webkit-scrollbar,
-.platform-tabs::-webkit-scrollbar {
-  height: 6px;
-  width: 6px;
-}
-
-.content-section::-webkit-scrollbar-track,
-.category-tabs::-webkit-scrollbar-track,
-.platform-tabs::-webkit-scrollbar-track {
-  background: #f0f0f0;
-}
-
-.content-section::-webkit-scrollbar-thumb,
-.category-tabs::-webkit-scrollbar-thumb,
-.platform-tabs::-webkit-scrollbar-thumb {
-  background: #ccc;
-  border-radius: 3px;
-}
-
-.content-section::-webkit-scrollbar-thumb:hover,
-.category-tabs::-webkit-scrollbar-thumb:hover,
-.platform-tabs::-webkit-scrollbar-thumb:hover {
-  background: #999;
-}
-
-/* 夜间模式样式 */
-html.dark-mode .hot-search-container {
-  background-color: #1a1a1a;
-}
-
-html.dark-mode .platform-section {
-  background-color: #2c2c2c;
-  border-bottom-color: #444;
-}
-
-html.dark-mode .category-tab {
-  background-color: #3a3a3a;
-  color: #e0e0e0;
-  border-color: #555;
-}
-
-html.dark-mode .category-tab:hover {
-  background-color: #4a4a4a;
-}
-
-html.dark-mode .category-tab.active {
-  background-color: #007bff;
-  color: #ffffff;
-}
-
-html.dark-mode .platform-tab {
-  background-color: #3a3a3a;
-  color: #e0e0e0;
-  border-color: #555;
-}
-
-html.dark-mode .platform-tab:hover {
-  background-color: #4a4a4a;
-  border-color: #007bff;
-}
-
-html.dark-mode .platform-tab.active {
-  background-color: #007bff;
-  color: #ffffff;
-  border-color: #007bff;
-}
-
-html.dark-mode .hot-list {
-  background-color: #2c2c2c;
-}
-
-html.dark-mode .hot-item {
-  border-bottom-color: #3a3a3a;
-}
-
-html.dark-mode .hot-item:hover {
-  background-color: #3a3a3a;
-}
-
-html.dark-mode .hot-item.selected {
-  background-color: #1e3a5f;
-  border-left-color: #4dabf7;
-}
-
-html.dark-mode .hot-item.selected .hot-title {
-  color: #4dabf7;
-}
-
-html.dark-mode .hot-title {
-  color: #4dabf7;
-}
-
-html.dark-mode .hot-desc {
-  color: #999;
-}
-
-html.dark-mode .hot-value {
-  color: #ff8c42;
-}
-
-html.dark-mode .hot-list-header {
-  border-bottom-color: #444;
-}
-
-html.dark-mode .hot-list-title {
-  color: #e0e0e0;
-}
-
-html.dark-mode .hot-count {
-  color: #999;
-}
-
-html.dark-mode .error-message {
-  color: #ff6b6b;
-}
-
-html.dark-mode .empty-tip {
-  color: #999;
-}
-
-html.dark-mode .loading-more p {
-  color: #999;
-}
-
-html.dark-mode .no-more-tip {
-  color: #999;
-}
-
-html.dark-mode .content-section::-webkit-scrollbar-track,
-html.dark-mode .category-tabs::-webkit-scrollbar-track,
-html.dark-mode .platform-tabs::-webkit-scrollbar-track {
-  background: #2c2c2c;
-}
-
-html.dark-mode .content-section::-webkit-scrollbar-thumb,
-html.dark-mode .category-tabs::-webkit-scrollbar-thumb,
-html.dark-mode .platform-tabs::-webkit-scrollbar-thumb {
-  background: #555;
-}
-
-html.dark-mode .content-section::-webkit-scrollbar-thumb:hover,
-html.dark-mode .category-tabs::-webkit-scrollbar-thumb:hover,
-html.dark-mode .platform-tabs::-webkit-scrollbar-thumb:hover {
-  background: #777;
-}
-</style>
-
-<style>
-/* 全局暗色模式样式 */
-html.dark-mode .hot-search-container {
-  background-color: #1a1a1a !important;
-}
-
-html.dark-mode .platform-section {
-  background-color: #2c2c2c !important;
-  border-bottom-color: #444 !important;
-}
-
-html.dark-mode .category-tab {
-  background-color: #3a3a3a !important;
-  color: #e0e0e0 !important;
-  border-color: #555 !important;
-}
-
-html.dark-mode .category-tab:hover {
-  background-color: #4a4a4a !important;
-}
-
-html.dark-mode .category-tab.active {
-  background-color: #007bff !important;
-  color: #ffffff !important;
-}
-
-html.dark-mode .platform-tab {
-  background-color: #3a3a3a !important;
-  color: #e0e0e0 !important;
-  border-color: #555 !important;
-}
-
-html.dark-mode .platform-tab:hover {
-  background-color: #4a4a4a !important;
-  border-color: #007bff !important;
-}
-
-html.dark-mode .platform-tab.active {
-  background-color: #007bff !important;
-  color: #ffffff !important;
-  border-color: #007bff !important;
-}
-
-html.dark-mode .hot-list {
-  background-color: #2c2c2c !important;
-}
-
-html.dark-mode .hot-item {
-  background: #2c2c2c !important;
-  border: none !important;
-  border-bottom: 1px solid #3a3a3a !important;
-}
-
-html.dark-mode .hot-item:last-child {
-  border-bottom: none !important;
-}
-
-html.dark-mode .hot-item:hover {
-  background: #3a3a3a !important;
-}
-
-html.dark-mode .hot-title {
-  color: #4dabf7 !important;
-}
-
-html.dark-mode .hot-desc {
-  color: #999 !important;
-}
-
-html.dark-mode .hot-value {
-  color: #ff8c42 !important;
-}
-
-html.dark-mode .hot-list-header {
-  border-bottom-color: #444 !important;
-}
-
-html.dark-mode .hot-list-title {
-  color: #e0e0e0 !important;
-}
-
-html.dark-mode .hot-count {
-  color: #999 !important;
-}
-
-html.dark-mode .error-message {
-  color: #ff6b6b !important;
-}
-
-html.dark-mode .empty-tip {
-  color: #999 !important;
-}
-
-html.dark-mode .loading-more p {
-  color: #999 !important;
-}
-
-html.dark-mode .no-more-tip {
-  color: #999 !important;
-}
-
-html.dark-mode .content-section::-webkit-scrollbar-track,
-html.dark-mode .category-tabs::-webkit-scrollbar-track,
-html.dark-mode .platform-tabs::-webkit-scrollbar-track {
-  background: #2c2c2c !important;
-}
-
-html.dark-mode .content-section::-webkit-scrollbar-thumb,
-html.dark-mode .category-tabs::-webkit-scrollbar-thumb,
-html.dark-mode .platform-tabs::-webkit-scrollbar-thumb {
-  background: #555 !important;
-}
-
-html.dark-mode .content-section::-webkit-scrollbar-thumb:hover,
-html.dark-mode .category-tabs::-webkit-scrollbar-thumb:hover,
-html.dark-mode .platform-tabs::-webkit-scrollbar-thumb:hover {
-  background: #777 !important;
+/* ========== 暗色特例（无法变量化的渐变，仅保留以下几条） ========== */
+html.dark-mode .current-platform {
+  background: linear-gradient(135deg, #0056b3, #003d82);
 }
 
 html.dark-mode .scroll-arrow {
-  color: #4dabf7 !important;
-  text-shadow: 0 0 3px rgba(0, 0, 0, 0.5) !important;
-}
-
-html.dark-mode .current-platform {
-  background: linear-gradient(135deg, #0056b3, #003d82) !important;
-}
-
-html.dark-mode .loading-state p,
-html.dark-mode .error-state p,
-html.dark-mode .empty-state p {
-  color: #e0e0e0 !important;
-}
-
-html.dark-mode .retry-btn,
-html.dark-mode .load-more-btn {
-  background-color: #0056b3 !important;
-}
-
-html.dark-mode .retry-btn:hover,
-html.dark-mode .load-more-btn:hover:not(:disabled) {
-  background-color: #004494 !important;
-}
-
-html.dark-mode .loading-spinner {
-  border-color: #3a3a3a !important;
-  border-top-color: #4dabf7 !important;
-}
-
-html.dark-mode .hot-rank {
-  background-color: #666 !important;
-}
-
-html.dark-mode .hot-rank[style*="ff6600"] {
-  background-color: #cc5200 !important;
-}
-
-/* 大都会博物馆筛选按钮暗色模式 */
-html.dark-mode .metmuseum-filters {
-  background: #2c2c2c;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-}
-
-html.dark-mode .filter-btn {
-  background: #3a3a3a;
-  border-color: #555;
-  color: #e0e0e0;
-}
-
-html.dark-mode .filter-btn:hover {
-  border-color: #4dabf7;
-  color: #4dabf7;
-  background: #4a4a4a;
+  color: var(--color-accent-text);
+  text-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
 }
 
 html.dark-mode .filter-btn.active {
@@ -2386,18 +2076,15 @@ html.dark-mode .filter-btn.active {
   color: #ffffff;
 }
 
-/* 滚动指示器夜间模式 */
 html.dark-mode .scroll-indicator-left {
-  background: linear-gradient(to right, rgba(42, 42, 42, 1), rgba(42, 42, 42, 0)) !important;
+  background: linear-gradient(to right, rgba(42, 42, 42, 1), rgba(42, 42, 42, 0));
 }
 
 html.dark-mode .scroll-indicator-right {
-  background: linear-gradient(to left, rgba(42, 42, 42, 1), rgba(42, 42, 42, 0)) !important;
+  background: linear-gradient(to left, rgba(42, 42, 42, 1), rgba(42, 42, 42, 0));
 }
 
-/* ========== 悬浮按钮样式 ========== */
-
-/* 悬浮按钮组容器 */
+/* ========== 悬浮按钮（自全局块迁入并令牌化；v4 布局落地后由侧栏底部操作取代） ========== */
 .floating-buttons {
   position: fixed;
   bottom: 24px;
@@ -2405,19 +2092,18 @@ html.dark-mode .scroll-indicator-right {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  z-index: 1000;
+  z-index: var(--z-floating);
   pointer-events: none;
 }
 
-/* 悬浮按钮 */
 .floating-btn {
   pointer-events: auto;
   width: 48px;
   height: 48px;
   border: none;
   border-radius: 50%;
-  background-color: #ffffff;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  background-color: var(--color-surface);
+  box-shadow: var(--shadow-btn);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2425,48 +2111,38 @@ html.dark-mode .scroll-indicator-right {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* 悬浮按钮悬停效果 */
 .floating-btn:hover {
   transform: translateY(-2px) scale(1.05);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-btn-hover);
 }
 
-/* 悬浮按钮点击效果 */
 .floating-btn:active {
   transform: translateY(0) scale(0.95);
 }
 
-/* 悬浮按钮禁用状态 */
 .floating-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
 }
 
-/* 悬浮按钮图标 */
 .floating-icon {
   font-size: 20px;
   line-height: 1;
   transition: transform 0.3s;
 }
 
-/* 刷新按钮旋转动画 */
 .floating-icon.spinning {
   animation: floatSpin 0.8s linear infinite;
 }
 
 @keyframes floatSpin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
-/* 刷新按钮 - 蓝色 */
 .refresh-btn {
-  background: linear-gradient(135deg, #007bff, #0056b3);
+  background: var(--gradient-primary);
 }
 
 .refresh-btn:hover {
@@ -2477,7 +2153,6 @@ html.dark-mode .scroll-indicator-right {
   background: linear-gradient(135deg, #6c757d, #5a6268);
 }
 
-/* 设置按钮 - 灰色 */
 .settings-btn {
   background: linear-gradient(135deg, #6c757d, #5a6268);
 }
@@ -2486,7 +2161,6 @@ html.dark-mode .scroll-indicator-right {
   background: linear-gradient(135deg, #5a6268, #495057);
 }
 
-/* 翻译按钮 */
 .translate-btn {
   background: linear-gradient(135deg, #17a2b8, #138496);
   position: relative;
@@ -2514,17 +2188,6 @@ html.dark-mode .scroll-indicator-right {
   border-radius: 8px;
   white-space: nowrap;
   pointer-events: none;
-}
-
-/* ========== 夜间模式悬浮按钮样式 ========== */
-
-html.dark-mode .floating-btn {
-  background-color: #2c2c2c;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
-
-html.dark-mode .floating-btn:hover {
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
 }
 
 html.dark-mode .refresh-btn {
@@ -2555,9 +2218,7 @@ html.dark-mode .settings-btn:hover {
   background: linear-gradient(135deg, #343a40, #212529);
 }
 
-/* ========== 打赏按钮样式 ========== */
-
-/* 打赏按钮 - 红色渐变 */
+/* ========== 打赏按钮与弹窗（自全局块迁入并令牌化） ========== */
 .donate-btn {
   background: linear-gradient(135deg, #ff6b6b, #ee5a52);
 }
@@ -2566,7 +2227,6 @@ html.dark-mode .settings-btn:hover {
   background: linear-gradient(135deg, #ee5a52, #dc4c47);
 }
 
-/* 夜间模式打赏按钮 */
 html.dark-mode .donate-btn {
   background: linear-gradient(135deg, #ee5a52, #dc4c47);
 }
@@ -2575,9 +2235,6 @@ html.dark-mode .donate-btn:hover {
   background: linear-gradient(135deg, #dc4c47, #c9453f);
 }
 
-/* ========== 打赏弹窗样式 ========== */
-
-/* 打赏弹窗遮罩 */
 .donate-modal {
   position: fixed;
   top: 0;
@@ -2588,43 +2245,31 @@ html.dark-mode .donate-btn:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2000;
-  animation: fadeIn 0.3s ease;
+  z-index: var(--z-modal);
+  animation: donateFadeIn 0.3s ease;
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+@keyframes donateFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-/* 打赏内容容器 */
 .donate-content {
-  background-color: #ffffff;
-  border-radius: 16px;
+  background-color: var(--color-surface);
+  border-radius: var(--radius-xl);
   padding: 32px;
   max-width: 400px;
   width: 90%;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-lg);
   animation: slideUp 0.3s ease;
   position: relative;
 }
 
 @keyframes slideUp {
-  from {
-    transform: translateY(20px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
 
-/* 关闭按钮 */
 .donate-close {
   position: absolute;
   top: 16px;
@@ -2632,10 +2277,10 @@ html.dark-mode .donate-btn:hover {
   width: 32px;
   height: 32px;
   border: none;
-  background-color: #f5f5f5;
+  background-color: var(--color-bg);
   border-radius: 50%;
   font-size: 18px;
-  color: #666;
+  color: var(--color-text-2);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -2644,92 +2289,45 @@ html.dark-mode .donate-btn:hover {
 }
 
 .donate-close:hover {
-  background-color: #e0e0e0;
-  color: #333;
+  background-color: var(--color-surface-muted-hover);
+  color: var(--color-text);
 }
 
-/* 打赏标题 */
 .donate-title {
-  font-size: 24px;
+  font-size: var(--font-xxl);
   font-weight: 600;
-  color: #333;
+  color: var(--color-text);
   margin: 0 0 12px 0;
   text-align: center;
 }
 
-/* 打赏描述 */
 .donate-desc {
-  font-size: 14px;
-  color: #666;
+  font-size: var(--font-base);
+  color: var(--color-text-3);
   text-align: center;
   margin: 0 0 24px 0;
   line-height: 1.5;
 }
 
-/* 二维码容器 */
 .donate-qr-container {
   display: flex;
   justify-content: center;
   margin-bottom: 20px;
 }
 
-/* 二维码图片 */
 .donate-qr {
   width: 250px;
   height: 250px;
   object-fit: contain;
-  border-radius: 8px;
-  border: 2px solid #f0f0f0;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--color-border-light);
 }
 
-/* 打赏提示 */
 .donate-tip {
-  font-size: 13px;
-  color: #999;
+  font-size: var(--font-md);
+  color: var(--color-text-muted);
   text-align: center;
   margin: 0;
 }
-
-/* ========== 夜间模式打赏弹窗样式 ========== */
-
-html.dark-mode .donate-content {
-  background-color: #2c2c2c;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-}
-
-html.dark-mode .donate-close {
-  background-color: #3a3a3a;
-  color: #e0e0e0;
-}
-
-html.dark-mode .donate-close:hover {
-  background-color: #4a4a4a;
-  color: #ffffff;
-}
-
-html.dark-mode .donate-title {
-  color: #e0e0e0;
-}
-
-html.dark-mode .donate-desc {
-  color: #999;
-}
-
-html.dark-mode .donate-qr {
-  border-color: #444;
-}
-
-html.dark-mode .donate-tip {
-  color: #777;
-}
-
-/* ========== 暗色模式加载蒙版 ========== */
-
-html.dark-mode .loading-overlay {
-  background-color: rgba(42, 42, 42, 0.8);
-}
-
-html.dark-mode .loading-overlay p {
-  color: #e0e0e0;
-}
 </style>
+

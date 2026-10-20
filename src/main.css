@@ -1,4 +1,133 @@
-/* 全局样式重置 */
+/* ============================================================
+   设计令牌（P0.0）—— 唯一色值来源
+   规则：组件样式一律引用 var(--)；暗色只改变量值，不写覆盖选择器。
+   注：现有组件保持原色值（蓝系）仅做引用化；火焰橙品牌令牌
+   （--brand-*）供 P0.2 新组件使用，全站调色板统一在 P2 处理。
+   ============================================================ */
+:root {
+  /* 品牌与语义色 */
+  --color-primary: #007bff;
+  --color-primary-dark: #0056b3;
+  --color-primary-light: #4dabf7;
+  --color-success: #28a745;
+  --color-warning: #ffc107;
+  --color-danger: #dc3545;
+  --color-info: #17a2b8;
+
+  /* 火焰品牌（与 logo 同源，新组件用） */
+  --brand-fire-1: #ff9f1c;
+  --brand-fire-2: #ff5a1f;
+  --brand-fire-3: #ef2b1d;
+  --gradient-brand: linear-gradient(135deg, #ff9f1c 0%, #ff5a1f 55%, #ef2b1d 100%);
+  --gradient-primary: linear-gradient(135deg, #007bff, #0056b3);
+
+  /* 表面与边框 */
+  --color-bg: #f5f5f5;
+  --color-surface: #ffffff;
+  --color-surface-hover: #f8f9fa;
+  --color-surface-muted: #f0f0f0;
+  --color-surface-muted-hover: #e0e0e0;
+  --color-border: #dddddd;
+  --color-border-light: #f0f0f0;
+
+  /* 文本 */
+  --color-text: #333333;
+  --color-text-2: #666666;
+  --color-text-3: #666666;
+  --color-text-muted: #999999;
+
+  /* 强调/选中/热度 */
+  --color-accent-text: #007bff;
+  --color-accent-text-hover: #0056b3;
+  --color-selected-bg: #e7f3ff;
+  --color-hot: #ff6600;
+  --color-error: #ff4444;
+  --color-btn-primary: #007bff;
+  --color-btn-primary-hover: #0056b3;
+  --color-rank: #999999;
+  --color-rank-top: #ff6600;
+  --color-overlay: rgba(255, 255, 255, 0.8);
+
+  /* 滚动条 */
+  --scrollbar-track: #f0f0f0;
+  --scrollbar-thumb: #cccccc;
+  --scrollbar-thumb-hover: #999999;
+
+  /* 间距 */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  /* 圆角 */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-pill: 999px;
+
+  /* 字号 */
+  --font-xs: 11px;
+  --font-sm: 12px;
+  --font-md: 13px;
+  --font-base: 14px;
+  --font-lg: 15px;
+  --font-xl: 18px;
+  --font-xxl: 24px;
+
+  /* z-index 阶梯（悬浮按钮 900 < 弹窗 2000，根治旧代码同层冲突） */
+  --z-sticky: 100;
+  --z-popover: 500;
+  --z-floating: 900;
+  --z-modal: 2000;
+  --z-toast: 3000;
+
+  /* 阴影 */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
+  --shadow-btn: 0 4px 12px rgba(0, 0, 0, 0.15);
+  --shadow-btn-hover: 0 6px 16px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+/* 暗色模式：只覆盖变量值 */
+html.dark-mode {
+  --color-bg: #1a1a1a;
+  --color-surface: #2c2c2c;
+  --color-surface-hover: #3a3a3a;
+  --color-surface-muted: #3a3a3a;
+  --color-surface-muted-hover: #4a4a4a;
+  --color-border: #555555;
+  --color-border-light: #3a3a3a;
+
+  --color-text: #e0e0e0;
+  --color-text-2: #e0e0e0;
+  --color-text-3: #999999;
+  --color-text-muted: #999999;
+
+  --color-accent-text: #4dabf7;
+  --color-accent-text-hover: #4dabf7;
+  --color-selected-bg: #1e3a5f;
+  --color-hot: #ff8c42;
+  --color-error: #ff6b6b;
+  --color-btn-primary: #0056b3;
+  --color-btn-primary-hover: #004494;
+  --color-rank: #666666;
+  --color-rank-top: #cc5200;
+  --color-overlay: rgba(42, 42, 42, 0.8);
+
+  --scrollbar-track: #2c2c2c;
+  --scrollbar-thumb: #555555;
+  --scrollbar-thumb-hover: #777777;
+
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-btn: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-btn-hover: 0 6px 16px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+/* ===== 全局重置 ===== */
 * {
   margin: 0;
   padding: 0;
@@ -17,66 +146,178 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial,
     "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
     "Noto Color Emoji";
-  font-size: 14px;
+  font-size: var(--font-base);
   line-height: 1.5;
-  color: #333;
-  background-color: #f5f5f5;
+  color: var(--color-text);
+  background-color: var(--color-bg);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* 滚动条样式 */
+/* ===== 全局滚动条（唯一一份，各组件不得重复定义） ===== */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #f0f0f0;
+  background: var(--scrollbar-track);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #ccc;
+  background: var(--scrollbar-thumb);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #999;
+  background: var(--scrollbar-thumb-hover);
 }
 
-/* 链接样式 */
+/* ===== 基础元素 ===== */
 a {
-  color: #007bff;
+  color: var(--color-primary);
   text-decoration: none;
   transition: color 0.2s;
 }
 
 a:hover {
-  color: #0056b3;
+  color: var(--color-primary-dark);
 }
 
-/* 按钮基础样式 */
 button {
   font-family: inherit;
   font-size: inherit;
   line-height: inherit;
 }
 
-/* 文本选择样式 */
 ::selection {
-  background-color: #007bff;
+  background-color: var(--color-primary);
   color: #ffffff;
 }
 
-/* 禁用文本选择（在需要的地方） */
-.no-select {
-  user-select: none;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
+/* ===== 样式原语（P0.2/P0.3 新组件使用，旧组件 P2 迁移） ===== */
+
+/* 胶囊（平台切换/筛选等） */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: 28px;
+  padding: 0 12px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-muted);
+  color: var(--color-text-2);
+  font-size: var(--font-base);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
 }
 
-/* 过渡动画 */
+.pill:hover {
+  background: var(--color-surface-muted-hover);
+}
+
+.pill.active {
+  background: var(--gradient-brand);
+  color: #ffffff;
+  font-weight: 500;
+}
+
+/* 白卡片（聚合卡片/列表容器等） */
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+/* 主按钮 */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  height: 32px;
+  padding: 0 var(--space-4);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--color-btn-primary);
+  color: #ffffff;
+  font-size: var(--font-base);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn:hover {
+  background: var(--color-btn-primary-hover);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 幽灵图标按钮（列表行内操作等） */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.icon-btn:hover {
+  background: var(--color-surface-muted-hover);
+  color: var(--color-text);
+}
+
+/* 轻提示（P0.3 Toast 组件使用） */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 48px;
+  transform: translateX(-50%);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-lg);
+  z-index: var(--z-toast);
+  font-size: var(--font-md);
+}
+
+/* ===== lazyLoad 指令样式（原先断链，P0.0 补齐） ===== */
+.lazy-loading {
+  background: var(--color-surface-muted);
+}
+
+.lazy-loaded {
+  opacity: 1;
+  transition: opacity 0.3s ease;
+}
+
+.lazy-error {
+  background: var(--color-surface-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60px;
+  color: var(--color-text-muted);
+  font-size: var(--font-md);
+}
+
+.lazy-error::after {
+  content: "图片加载失败";
+}
+
+/* ===== 过渡动画 ===== */
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.3s;
@@ -87,7 +328,6 @@ button {
   opacity: 0;
 }
 
-/* 列表过渡动画 */
 .list-enter-active,
 .list-leave-active {
   transition: all 0.3s;
@@ -99,14 +339,14 @@ button {
   transform: translateX(-30px);
 }
 
-/* 响应式断点（uTools 窗口通常较小） */
-@media (max-width: 768px) {
-  body {
-    font-size: 13px;
-  }
+/* ===== 工具类 ===== */
+.no-select {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
 }
 
-/* 工具类 */
 .clearfix::after {
   content: "";
   display: table;
@@ -122,26 +362,26 @@ button {
 }
 
 .text-muted {
-  color: #999;
+  color: var(--color-text-muted);
 }
 
 .text-primary {
-  color: #007bff;
+  color: var(--color-primary);
 }
 
 .text-success {
-  color: #28a745;
+  color: var(--color-success);
 }
 
 .text-danger {
-  color: #dc3545;
+  color: var(--color-danger);
 }
 
 .text-warning {
-  color: #ffc107;
+  color: var(--color-warning);
 }
 
-/* uTools 插件特定样式 */
+/* uTools 插件容器 */
 .utools-window {
   width: 100%;
   height: 100%;
@@ -149,15 +389,31 @@ button {
   flex-direction: column;
 }
 
-/* 加载动画 */
+/* 响应式断点（uTools 窗口通常较小） */
+@media (max-width: 768px) {
+  body {
+    font-size: var(--font-md);
+  }
+}
+
+/* ===== 动画 ===== */
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 
 @keyframes slideIn {

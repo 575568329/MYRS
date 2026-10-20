@@ -1251,25 +1251,5 @@ h3 {
   margin: 0;
 }
 
-/* 滚动条 */
-.events-list::-webkit-scrollbar,
-.uploads-list::-webkit-scrollbar {
-  width: 6px;
-}
-
-.events-list::-webkit-scrollbar-track,
-.uploads-list::-webkit-scrollbar-track {
-  background: #f3f4f6;
-}
-
-.events-list::-webkit-scrollbar-thumb,
-.uploads-list::-webkit-scrollbar-thumb {
-  background: #d1d5db;
-  border-radius: 3px;
-}
-
-.events-list::-webkit-scrollbar-thumb:hover,
-.uploads-list::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
-}
+/* 滚动条：统一走 main.css 全局令牌化样式 */
 </style>
