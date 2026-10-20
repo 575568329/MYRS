@@ -365,9 +365,8 @@ async function getHotDataViaFetch(platformId, page, pageSize, geoLocation) {
 
       const response = await fetch(source.url, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        // 注意：GET 请求不携带 Content-Type —— 该头会把跨域请求升级为 CORS 预检，
+        // 大量第三方接口（腾讯股票/60s早报等）不支持 OPTIONS 预检会直接失败
         signal: controller.signal
       })
 
@@ -780,9 +779,6 @@ async function get60sNewsData(page, pageSize) {
 
     const response = await fetch(apiUrl, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json'
-      },
       signal: controller.signal
     })
 
@@ -965,10 +961,7 @@ async function getArticData(page, pageSize) {
 
       const response = await fetch(`${apiUrl}?${params}`, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        signal: controller.signal
+                signal: controller.signal
       })
 
       clearTimeout(timeoutId)
@@ -1092,10 +1085,7 @@ async function fetchArticPage(page, pageSize) {
 
   const response = await fetch(`${apiUrl}?${params}`, {
     method: 'GET',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    signal: controller.signal
+        signal: controller.signal
   })
 
   clearTimeout(timeoutId)
@@ -1187,10 +1177,7 @@ async function getMetMuseumData(page, pageSize, options = {}) {
 
   const searchResponse = await fetch(`${apiUrl}?${params}`, {
     method: 'GET',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    signal: controller.signal
+        signal: controller.signal
   })
 
   clearTimeout(timeoutId)
@@ -1224,10 +1211,7 @@ async function getMetMuseumData(page, pageSize, options = {}) {
             `https://collectionapi.metmuseum.org/public/collection/v1/objects/${objectId}`,
             {
               method: 'GET',
-              headers: {
-                'Content-Type': 'application/json'
-              },
-              signal: detailController.signal
+                            signal: detailController.signal
             }
           )
 
@@ -1355,9 +1339,6 @@ async function getEpicFreeData(page, pageSize) {
 
     const response = await fetch(apiUrl, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json'
-      },
       signal: controller.signal
     })
 
@@ -1567,8 +1548,7 @@ async function getStockData(platformId, page, pageSize) {
           method: 'GET',
           headers: {
             'Accept': 'text/plain, */*; q=0.01',
-            'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-            'Cache-Control': 'no-cache'
+            'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8'
           },
           signal: controller.signal,
           cache: 'no-store'
@@ -1850,7 +1830,6 @@ async function getGitHubTrendingData(page, pageSize) {
     const response = await fetch(apiUrl, {
       method: 'GET',
       headers: {
-        'Content-Type': 'application/json',
         'Accept': 'application/vnd.github.v3+json'
       },
       signal: controller.signal
@@ -1993,9 +1972,6 @@ async function getHackerNewsData(page, pageSize) {
 
     const response = await fetch(apiUrl, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json'
-      },
       signal: controller.signal
     })
 

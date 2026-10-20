@@ -96956,7 +96956,7 @@ app.use(
   cors({
     origin: (origin2) => config.ALLOWED_HOST && origin2.endsWith(config.ALLOWED_HOST) ? origin2 : config.ALLOWED_DOMAIN,
     allowMethods: ["POST", "GET", "OPTIONS"],
-    allowHeaders: ["X-Custom-Header", "Upgrade-Insecure-Requests"],
+    allowHeaders: ["X-Custom-Header", "Upgrade-Insecure-Requests", "Content-Type"],
     credentials: true
   })
 );
