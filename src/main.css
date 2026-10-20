@@ -40,6 +40,8 @@
   --color-accent-text: #007bff;
   --color-accent-text-hover: #0056b3;
   --color-selected-bg: #e7f3ff;
+  --color-brand-selected-bg: #fde8dd;
+  --color-brand-text: #c23a12;
   --color-hot: #ff6600;
   --color-error: #ff4444;
   --color-btn-primary: #007bff;
@@ -52,6 +54,9 @@
   --scrollbar-track: #f0f0f0;
   --scrollbar-thumb: #cccccc;
   --scrollbar-thumb-hover: #999999;
+
+  /* 骨架屏高光 */
+  --skeleton-sheen: rgba(255, 255, 255, 0.55);
 
   /* 间距 */
   --space-1: 4px;
@@ -109,6 +114,8 @@ html.dark-mode {
   --color-accent-text: #4dabf7;
   --color-accent-text-hover: #4dabf7;
   --color-selected-bg: #1e3a5f;
+  --color-brand-selected-bg: #33271f;
+  --color-brand-text: #ff8a5c;
   --color-hot: #ff8c42;
   --color-error: #ff6b6b;
   --color-btn-primary: #0056b3;
@@ -120,6 +127,8 @@ html.dark-mode {
   --scrollbar-track: #2c2c2c;
   --scrollbar-thumb: #555555;
   --scrollbar-thumb-hover: #777777;
+
+  --skeleton-sheen: rgba(255, 255, 255, 0.06);
 
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
   --shadow-btn: 0 4px 12px rgba(0, 0, 0, 0.3);
@@ -315,6 +324,35 @@ button {
 
 .lazy-error::after {
   content: "图片加载失败";
+}
+
+/* 骨架屏（P0.1 秒开加载态） */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--color-surface-muted);
+  border-radius: var(--radius-sm);
+}
+
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, var(--skeleton-sheen), transparent);
+  animation: skeletonShimmer 1.4s infinite;
+}
+
+@keyframes skeletonShimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after {
+    animation: none;
+  }
 }
 
 /* ===== 过渡动画 ===== */

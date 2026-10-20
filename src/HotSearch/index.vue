@@ -1,13 +1,20 @@
 <script setup>
 import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
-import { getHotData, PLATFORMS, getPlatformsByCategory, getCategories, getPlatformsByMode } from '../services/hotSearchApi.js'
-import { DISPLAY_MODE, STORAGE_KEYS, UI, AUTO_REFRESH, HOT_LEVELS, API } from '../config.js'
+import { getHotData, PLATFORMS } from '../services/hotSearchApi.js'
+import { STORAGE_KEYS, UI, AUTO_REFRESH, HOT_LEVELS, API } from '../config.js'
 import { trackEvent, EventType } from '../services/analytics/index.js'
 import { useSettingsStore } from '../stores/settingsStore.js'
 import Settings from '../Settings/index.vue'
 import ArtworkListItem from '../components/ArtworkListItem.vue'
 import ArtworkCard from '../components/ArtworkCard.vue'
 import AnalyticsDebugPanel from '../components/AnalyticsDebugPanel.vue'
+import PlatformSidebar from '../components/PlatformSidebar.vue'
+import AggregateHome from '../components/AggregateHome.vue'
+import ErrorState from '../components/ErrorState.vue'
+import { RefreshCw, Star, Copy, Link } from 'lucide-vue-next'
+import { openUrl } from '../utils/openUrl.js'
+import { saveMirror, peekMirror, mirrorAgeText } from '../utils/dataMirror.js'
+import { useFavorites } from '../utils/favorites.js'
 
 // 使用 settingsStore
 const settingsStore = useSettingsStore()
@@ -39,8 +46,8 @@ const props = defineProps({
 
 // 响应式数据
 const selectedPlatform = ref('baidu')
-// 从配置文件读取默认模式：如果是 'simple' 则默认显示 '全部'，如果是 'category' 则可以显示其他分类
-const selectedCategory = ref(DISPLAY_MODE.DEFAULT_MODE === 'simple' ? '全部' : '全部')
+// 当前视图：'home'（聚合首页，默认）| 'favorites'（P1）| 平台ID（单平台列表）
+const currentView = ref('home')
 const hotList = ref([])
 const loading = ref(false)
 const error = ref(null)
@@ -48,13 +55,22 @@ const loadingMore = ref(false)
 const hasMore = ref(false)
 const currentPage = ref(1)
 const totalCount = ref(0)
-const canScrollLeft = ref(false)
-const canScrollRight = ref(false)
-const platformTabsRef = ref(null)
 const updateTime = ref('')
-const recentPlatforms = ref([])
-const favoriteItems = ref(new Set())
 const autoRefreshTimer = ref(null)
+
+// 最近使用平台（LRU，持久化）
+const recentIds = ref([])
+
+// P0.1 镜像滞后提示：{ ts } 非空时显示"缓存 N分钟前"角标
+const staleInfo = ref(null)
+
+// P0.3 Toast
+const toastMsg = ref('')
+let toastTimer = null
+
+// 聚合视图
+const aggregateRef = ref(null)
+const aggregateLoading = ref(false)
 
 // 平台更新时间记录
 const platformUpdateTimes = ref({})
@@ -76,13 +92,6 @@ const metMuseumFilter = ref('all') // 'all' 或 'china'
 
 // 开发环境标志
 const isDev = import.meta.env.DEV
-
-const categories = getCategories()
-
-// 判断是否为极简模式（基于配置文件）
-const isSimpleMode = computed(() => {
-  return DISPLAY_MODE.DEFAULT_MODE === 'simple'
-})
 
 // 判断是否为芝加哥艺术学院平台（使用卡片式布局）
 const isArticPlatform = computed(() => {
@@ -132,27 +141,21 @@ const filteredArtworks = computed(() => {
   return hotList.value
 })
 
-// 根据选中的分类过滤平台（与配置联动）
-const filteredPlatforms = computed(() => {
-  let platforms = []
-
-  // 极简模式：始终显示主流平台
-  if (DISPLAY_MODE.DEFAULT_MODE === 'simple') {
-    // 使用用户自定义的顺序
-    const orderIds = settingsStore.customPlatformOrder.map(p => p.id)
-    platforms = getPlatformsByMode(orderIds)
-    debug.log('📋 使用平台排序:', platforms.map(p => p.name))
-  } else if (!selectedCategory.value || selectedCategory.value === '全部') {
-    // "全部"分类下显示所有平台
-    platforms = PLATFORMS
-  } else {
-    // 具体分类：显示该分类下的所有平台
-    platforms = getPlatformsByCategory(selectedCategory.value)
-  }
-
-  // 过滤掉隐藏的平台
-  return platforms.filter(p => !settingsStore.hiddenPlatforms.has(p.id))
+// 键盘 ←→ 导航用的平台序列（全部可见平台，按定义顺序）
+const navigablePlatforms = computed(() => {
+  return PLATFORMS.filter(p => !settingsStore.hiddenPlatforms.has(p.id))
 })
+
+// 今日文案（聚合首页头部）
+const todayText = computed(() => {
+  const d = new Date()
+  return `${d.getMonth() + 1}月${d.getDate()}日 ${['周日', '周一', '周二', '周三', '周四', '周五', '周六'][d.getDay()]}`
+})
+
+// 收藏（P0.3 数据模型 v2）
+const { favorites: favoriteList, load: loadFavorites, isFavorited, toggleFavorite } = useFavorites()
+const favoriteCount = computed(() => favoriteList.value.length)
+const isFav = (item) => isFavorited(selectedPlatform.value, item.title)
 
 // 获取当前选中的平台对象
 const currentPlatformObj = computed(() => {
@@ -214,6 +217,19 @@ const fetchHotData = async (platformId, loadMore = false) => {
   if (loadMore) {
     loadingMore.value = true
   } else {
+    // P0.1 秒开：先渲染上次成功的数据镜像，再后台刷新（stale-while-revalidate）
+    const mirror = peekMirror(platformId)
+    if (mirror && mirror.data.length > 0) {
+      hotList.value = mirror.data
+      totalCount.value = mirror.total || mirror.data.length
+      hasMore.value = !!mirror.hasMore
+      staleInfo.value = { ts: mirror.ts }
+      // 新鲜度指示按镜像时间显示
+      platformUpdateTimes.value[platformId] = mirror.ts
+      debug.log(`🪞 命中数据镜像：${mirror.data.length} 条，先渲染后刷新`)
+    } else {
+      staleInfo.value = null
+    }
     loading.value = true
     error.value = null
     currentPage.value = 1
@@ -275,6 +291,15 @@ const fetchHotData = async (platformId, loadMore = false) => {
         hotList.value = result.data
         // 记录平台更新时间（仅在首次加载时）
         platformUpdateTimes.value[platformId] = Date.now()
+        // P0.1 保存数据镜像（下次秒开）+ 清除滞后角标
+        saveMirror(platformId, {
+          data: result.data,
+          total: result.total,
+          hasMore: result.hasMore
+        })
+        staleInfo.value = null
+        // P0.2 记录最近使用
+        addToRecent(platformId)
         // 保存到localStorage
         try {
           localStorage.setItem(`platform_update_${platformId}`, Date.now())
@@ -323,14 +348,16 @@ const fetchHotData = async (platformId, loadMore = false) => {
       loadingTimeout.value = null
     }
 
-    // 超时错误直接显示暂无数据
+    // 超时错误直接显示暂无数据（有镜像时保留镜像数据）
     // AbortError 是由 AbortController 触发的标准超时错误
     if (err.name === 'AbortError' || err.message === '请求超时') {
       debug.log('⏰ 请求超时，显示暂无数据')
       error.value = null
-      hotList.value = []
-      hasMore.value = false
-      totalCount.value = 0
+      if (!staleInfo.value) {
+        hotList.value = []
+        hasMore.value = false
+        totalCount.value = 0
+      }
     }
     // 其他错误显示友好的错误信息
     else if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
@@ -345,8 +372,8 @@ const fetchHotData = async (platformId, loadMore = false) => {
       error.value = err.message || '获取数据失败'
     }
 
-    // 如果有错误信息，清空列表
-    if (error.value) {
+    // 如果有错误信息：有镜像数据时保留（角标提示滞后），否则清空列表
+    if (error.value && !staleInfo.value) {
       hotList.value = []
       hasMore.value = false
       totalCount.value = 0
@@ -384,27 +411,76 @@ const loadMore = () => {
   fetchHotData(selectedPlatform.value, true)
 }
 
-// 切换平台
-const switchPlatform = (platformId) => {
-  if (selectedPlatform.value === platformId) return
+// 视图切换（P0.2 双视图）：'home' | 'favorites' | 平台ID
+const switchView = (view) => {
+  if (view === currentView.value && view !== selectedPlatform.value) return
 
-  const fromPlatform = selectedPlatform.value
-  selectedPlatform.value = platformId
-
-  // 重置翻译偏移量
-  translateOffset.value = 0
-  // 如果不是艺术品平台，重置筛选
-  if (platformId !== 'metmuseum') {
-    metMuseumFilter.value = 'all'
+  if (view === 'home') {
+    currentView.value = 'home'
+    trackEvent(EventType.PLATFORM_SWITCH, { to_view: 'home', source: 'sidebar' })
+    return
   }
 
-  // 追踪平台切换事件
+  if (view === 'favorites') {
+    // P1 版本开放的收藏流，当前先提示
+    showToast('收藏流将在下个版本开放，可先在条目上点 ★ 收藏')
+    return
+  }
+
+  const fromView = currentView.value
+  const fromPlatform = selectedPlatform.value
+  selectedPlatform.value = view
+  currentView.value = view
+  selectedHotIndex.value = -1
   trackEvent(EventType.PLATFORM_SWITCH, {
     from_platform: fromPlatform,
-    to_platform: platformId
+    to_platform: view,
+    source: fromView === 'home' ? 'card' : 'sidebar'
   })
+  fetchHotData(view)
+}
 
-  fetchHotData(platformId)
+// 记录最近使用平台（LRU 5，持久化）
+function addToRecent(platformId) {
+  const list = recentIds.value.filter(id => id !== platformId)
+  list.unshift(platformId)
+  recentIds.value = list.slice(0, 5)
+  if (window.utools && window.utools.dbStorage) {
+    try {
+      window.utools.dbStorage.setItem(
+        STORAGE_KEYS.RECENT_PLATFORMS,
+        JSON.stringify(recentIds.value)
+      )
+    } catch (e) {
+      /* 忽略 */
+    }
+  }
+}
+
+function loadRecent() {
+  if (window.utools && window.utools.dbStorage) {
+    try {
+      const saved = window.utools.dbStorage.getItem(STORAGE_KEYS.RECENT_PLATFORMS)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed)) {
+          recentIds.value = parsed.filter(id => PLATFORMS.some(p => p.id === id)).slice(0, 5)
+        }
+      }
+    } catch (e) {
+      /* 忽略 */
+    }
+  }
+}
+
+// 聚合首页刷新
+const refreshAggregate = () => {
+  aggregateLoading.value = true
+  if (aggregateRef.value && aggregateRef.value.reload) {
+    aggregateRef.value.reload()
+  }
+  // reload 是异步的，简单起见用固定时长收起旋转态
+  setTimeout(() => { aggregateLoading.value = false }, 1200)
 }
 
 // 切换大都会博物馆筛选
@@ -427,56 +503,69 @@ const switchMetMuseumFilter = (filter) => {
   fetchHotData('metmuseum')
 }
 
-// 切换分类
-const switchCategory = (category) => {
-  if (selectedCategory.value === category) return
-
-  selectedCategory.value = category
-
-  // 追踪分类切换事件
-  trackEvent(EventType.CATEGORY_SWITCH, {
-    from_category: selectedCategory.value,
-    to_category: category
-  })
-
-  // 获取新分类下的平台列表
-  const platformsInCategory = filteredPlatforms.value
-
-  // 检查当前选中的平台是否在新分类中
-  const currentPlatformInCategory = platformsInCategory.find(p => p.id === selectedPlatform.value)
-
-  if (currentPlatformInCategory) {
-    // 当前平台在新分类中，保持不变
-    debug.log(`📂 切换到分类 "${category}"，当前平台 "${selectedPlatform.value}" 仍在该分类中`)
-  } else if (platformsInCategory.length > 0) {
-    // 当前平台不在新分类中，自动切换到该分类的第一个平台
-    const firstPlatform = platformsInCategory[0]
-    debug.log(`📂 切换到分类 "${category}"，自动切换到平台 "${firstPlatform.name}"`)
-    selectedPlatform.value = firstPlatform.id
-    fetchHotData(firstPlatform.id)
-  } else {
-    debug.warn(`⚠️ 分类 "${category}" 下没有可用平台`)
-  }
-}
-
-// 打开链接
-const openUrl = (url) => {
+// 打开链接（P0.3 统一入口：默认 ubrowser 摸鱼小窗）
+const openItem = (item) => {
+  const url = item.url || item.mobileUrl
   if (!url || url === '#') {
     debug.log('⚠️ 无效链接:', url)
     return
   }
+  openUrl(url, { platform: selectedPlatform.value })
+}
 
-  // 追踪打开链接事件
-  trackEvent(EventType.OPEN_LINK, {
-    platform: selectedPlatform.value,
-    url: url
-  })
+// 聚合卡片上的条目直接打开
+const openFromCard = ({ platform, item }) => {
+  const url = (item && (item.url || item.mobileUrl)) || ''
+  if (!url || url === '#') return
+  openUrl(url, { platform })
+}
 
-  if (window.utools) {
-    window.utools.shellOpenExternal(url)
-  } else {
-    window.open(url, '_blank')
+// Toast（P0.3，替代弹窗反馈）
+function showToast(msg) {
+  toastMsg.value = msg
+  if (toastTimer) clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => { toastMsg.value = '' }, 2000)
+}
+
+// 复制文本（utools 优先，浏览器降级 clipboard API）
+function copyText(text) {
+  if (window.utools && window.utools.copyText) {
+    window.utools.copyText(text)
+    return true
   }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).catch(() => {})
+    return true
+  }
+  return false
+}
+
+const copyTitle = (item) => {
+  if (!item.title) return
+  copyText(item.title)
+  showToast('已复制标题')
+  trackEvent(EventType.OPEN_LINK, { kind: 'copy_title', platform: selectedPlatform.value })
+}
+
+const copyLink = (item) => {
+  const url = item.url || item.mobileUrl
+  if (!url) {
+    showToast('该条目没有链接')
+    return
+  }
+  copyText(url)
+  showToast('已复制链接')
+  trackEvent(EventType.OPEN_LINK, { kind: 'copy_link', platform: selectedPlatform.value })
+}
+
+// 收藏切换（P0.3）
+const toggleFav = (item) => {
+  const on = toggleFavorite(selectedPlatform.value, item)
+  showToast(on ? '已收藏 ★' : '已取消收藏')
+  trackEvent(EventType.FAVORITE_TOGGLE, {
+    platform: selectedPlatform.value,
+    on
+  })
 }
 
 // 刷新当前平台
@@ -858,9 +947,6 @@ const handleSettingChange = (event) => {
   } else if (key === 'customPlatformOrder') {
     // settingsStore 已经自动更新了，这里只需要记录日志
     debug.log('✅ 自定义平台顺序已更新 (ID数组):', value)
-    // 验证顺序是否正确
-    const platforms = getPlatformsByMode(value)
-    debug.log('✅ 实际显示的平台顺序:', platforms.map(p => `${p.icon} ${p.name}`))
   } else if (key === 'hiddenPlatforms') {
     // settingsStore 已经自动更新了，这里只需要记录日志
     debug.log('✅ 隐藏平台列表已更新:', Array.from(settingsStore.hiddenPlatforms))
@@ -885,90 +971,131 @@ const handleSystemThemeChange = (e) => {
   }
 }
 
-// 使用键盘左右箭头切换平台，上下键选择热搜，回车打开
+// 键盘流（P0.3 终版：←→ 切平台、↑↓/PageUp/Down 移动、1-9 跳条、c 复制、f 收藏、Esc 分层退出）
 const handleKeyPress = (event) => {
-  // 如果用户正在输入框中输入，不触发快捷键
+  // IME 组合态（中文输入法候选期）不触发任何快捷键
+  if (event.isComposing) return
+
+  // 输入框聚焦时不触发
   if (event.target.tagName === 'INPUT' ||
       event.target.tagName === 'TEXTAREA' ||
       event.target.isContentEditable) {
     return
   }
 
-  const platforms = filteredPlatforms.value
-  if (platforms.length === 0) return
-
-  // 获取当前平台的索引
-  const currentIndex = platforms.findIndex(p => p.id === selectedPlatform.value)
-  if (currentIndex === -1) return
-
-  let nextIndex = currentIndex
-
-  // 左箭头键 - 切换到上一个平台
-  if (event.key === 'ArrowLeft') {
-    event.preventDefault()
-    nextIndex = currentIndex > 0 ? currentIndex - 1 : platforms.length - 1
-    const nextPlatform = platforms[nextIndex]
-    debug.log(`⬅️ 键盘切换: ${selectedPlatform.value} -> ${nextPlatform.id}`)
-    switchPlatform(nextPlatform.id)
-    scrollToPlatformTab(nextIndex)
-    // 切换平台后重置热搜选中状态
-    selectedHotIndex.value = -1
+  // 弹层打开时：仅 Esc 关闭弹层，其余快捷键失效
+  const overlayOpen = settingsStore.showSettings || showDonate.value
+  if (overlayOpen) {
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      settingsStore.closeSettings()
+      showDonate.value = false
+    }
+    return
   }
-  // 右箭头键 - 切换到下一个平台
-  else if (event.key === 'ArrowRight') {
+
+  // Esc 分层退出（无弹层 → 退出插件）
+  if (event.key === 'Escape') {
     event.preventDefault()
-    nextIndex = currentIndex < platforms.length - 1 ? currentIndex + 1 : 0
-    const nextPlatform = platforms[nextIndex]
-    debug.log(`➡️ 键盘切换: ${selectedPlatform.value} -> ${nextPlatform.id}`)
-    switchPlatform(nextPlatform.id)
-    scrollToPlatformTab(nextIndex)
-    // 切换平台后重置热搜选中状态
-    selectedHotIndex.value = -1
+    if (window.utools && window.utools.outPlugin) {
+      window.utools.outPlugin()
+    }
+    return
   }
-  // 上箭头键 - 选择上一个热搜
-  else if (event.key === 'ArrowUp') {
+
+  // 聚合首页视图：仅支持 ←→ 进入平台
+  const inListView = currentView.value === selectedPlatform.value
+
+  // ← → 切换平台
+  if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+    event.preventDefault()
+    const platforms = navigablePlatforms.value
+    if (platforms.length === 0) return
+    const currentIndex = platforms.findIndex(p => p.id === selectedPlatform.value)
+    const base = currentIndex === -1 ? 0 : currentIndex
+    const nextIndex = event.key === 'ArrowRight'
+      ? (base + 1) % platforms.length
+      : (base - 1 + platforms.length) % platforms.length
+    switchView(platforms[nextIndex].id)
+    return
+  }
+
+  if (!inListView) return
+
+  // ↑ ↓ 选择热搜
+  if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
     event.preventDefault()
     if (hotList.value.length === 0) return
-    if (selectedHotIndex.value > 0) {
+    if (event.key === 'ArrowDown') {
+      if (selectedHotIndex.value < hotList.value.length - 1) {
+        selectedHotIndex.value++
+      }
+    } else if (selectedHotIndex.value > 0) {
       selectedHotIndex.value--
-      scrollToHotItem(selectedHotIndex.value)
     } else if (selectedHotIndex.value === -1) {
       selectedHotIndex.value = 0
-      scrollToHotItem(0)
     }
-    debug.log(`⬆️ 选择热搜: ${selectedHotIndex.value + 1}`)
+    scrollToHotItem(selectedHotIndex.value)
+    return
   }
-  // 下箭头键 - 选择下一个热搜
-  else if (event.key === 'ArrowDown') {
+
+  // PageUp / PageDown 翻页滚动
+  if (event.key === 'PageUp' || event.key === 'PageDown') {
     event.preventDefault()
-    if (hotList.value.length === 0) return
-    if (selectedHotIndex.value < hotList.value.length - 1) {
-      selectedHotIndex.value++
-      scrollToHotItem(selectedHotIndex.value)
+    const el = document.querySelector('.content-section')
+    if (el) {
+      el.scrollBy({
+        top: (event.key === 'PageDown' ? 1 : -1) * el.clientHeight * 0.85,
+        behavior: 'smooth'
+      })
     }
-    debug.log(`⬇️ 选择热搜: ${selectedHotIndex.value + 1}`)
+    return
   }
-  // 回车键 - 打开选中的热搜
-  else if (event.key === 'Enter') {
-    if (selectedHotIndex.value >= 0 && selectedHotIndex.value < hotList.value.length) {
+
+  // 1-9 跳到第 N 条并选中
+  if (/^[1-9]$/.test(event.key)) {
+    const idx = parseInt(event.key, 10) - 1
+    if (idx < hotList.value.length) {
+      selectedHotIndex.value = idx
+      scrollToHotItem(idx)
+    }
+    return
+  }
+
+  // c 复制标题 / f 收藏当前选中条
+  if (event.key === 'c' || event.key === 'f') {
+    const item = hotList.value[selectedHotIndex.value]
+    if (!item) return
+    event.preventDefault()
+    if (event.key === 'c') {
+      copyTitle(item)
+    } else {
+      toggleFav(item)
+    }
+    return
+  }
+
+  // Enter 打开选中条目
+  if (event.key === 'Enter') {
+    const item = hotList.value[selectedHotIndex.value]
+    if (item) {
       event.preventDefault()
-      const item = hotList.value[selectedHotIndex.value]
-      const url = item.url || item.mobileUrl
-      debug.log(`🔗 打开热搜: ${item.title}`)
-      openUrl(url)
+      openItem(item)
     }
+    return
   }
-  // F5 或 Ctrl+R / Cmd+R - 刷新当前平台数据
-  else if (event.key === 'F5' || (event.ctrlKey && event.key === 'r') || (event.metaKey && event.key === 'r')) {
+
+  // F5 / Ctrl+R 刷新
+  if (event.key === 'F5' || ((event.ctrlKey || event.metaKey) && event.key === 'r')) {
     event.preventDefault()
-    debug.log('🔄 快捷键刷新')
     refresh()
+    return
   }
-  // Ctrl+T / Cmd+T - 翻译（仅对支持翻译的平台）
-  else if ((event.ctrlKey || event.metaKey) && event.key === 't') {
+
+  // Ctrl+T 翻译
+  if ((event.ctrlKey || event.metaKey) && event.key === 't') {
     if (isTranslatablePlatform.value) {
       event.preventDefault()
-      debug.log('🌐 快捷键翻译')
       toggleTranslate()
     }
   }
@@ -993,28 +1120,6 @@ const scrollToHotItem = (index) => {
 
   contentSection.scrollTo({
     top: scrollTop,
-    behavior: 'smooth'
-  })
-}
-
-// 滚动到指定平台标签
-const scrollToPlatformTab = (index) => {
-  if (!platformTabsRef.value) return
-
-  const tabs = platformTabsRef.value.querySelectorAll('.platform-tab')
-  if (!tabs || tabs.length === 0) return
-
-  const targetTab = tabs[index]
-  if (!targetTab) return
-
-  // 计算滚动位置，使目标标签居中显示
-  const containerWidth = platformTabsRef.value.clientWidth
-  const tabLeft = targetTab.offsetLeft
-  const tabWidth = targetTab.offsetWidth
-  const scrollLeft = tabLeft - (containerWidth - tabWidth) / 2
-
-  platformTabsRef.value.scrollTo({
-    left: scrollLeft,
     behavior: 'smooth'
   })
 }
@@ -1086,40 +1191,26 @@ const applyTheme = (mode) => {
 // 监听滚动事件（实现下拉加载更多）
 onMounted(() => {
   debug.log('🔥 热搜组件已挂载')
-  debug.log('📍 当前平台:', selectedPlatform.value)
-  debug.log('📂 当前分类:', selectedCategory.value)
 
-  // 加载设置（包括平台顺序、隐藏平台、主题等）
+  // 加载设置（包括钉住平台、隐藏平台、主题等）
   settingsStore.loadSettings()
 
-  // 从本地存储读取保存的分类和平台设置
+  // 收藏与最近使用
+  loadFavorites()
+  loadRecent()
+
+  // 恢复上次平台 + 主题
   if (window.utools && window.utools.dbStorage) {
     try {
-      const savedCategory = window.utools.dbStorage.getItem(STORAGE_KEYS.SELECTED_CATEGORY)
       const savedPlatform = window.utools.dbStorage.getItem(STORAGE_KEYS.SELECTED_PLATFORM)
       const savedThemeMode = window.utools.dbStorage.getItem(STORAGE_KEYS.THEME_MODE)
 
-      if (savedCategory) {
-        debug.log('💾 从本地存储读取分类:', savedCategory)
-        selectedCategory.value = savedCategory
-      }
-
-      if (savedPlatform) {
-        debug.log('💾 从本地存储读取平台:', savedPlatform)
+      if (savedPlatform && PLATFORMS.some(p => p.id === savedPlatform)) {
         selectedPlatform.value = savedPlatform
       }
-
-      // 应用保存的主题
       if (savedThemeMode) {
         applyTheme(savedThemeMode)
       }
-
-      debug.log('✅ settingsStore 已初始化')
-      debug.log('  - 平台顺序:', settingsStore.customPlatformOrder.map(p => p.name))
-      debug.log('  - 隐藏平台:', Array.from(settingsStore.hiddenPlatforms))
-      debug.log('  - 显示热度值:', settingsStore.showHotValue)
-      debug.log('  - 显示描述:', settingsStore.showDescription)
-      debug.log('  - 主题模式:', settingsStore.themeMode)
     } catch (e) {
       debug.log('⚠️ 读取本地存储失败:', e)
     }
@@ -1134,7 +1225,6 @@ onMounted(() => {
       const saved = localStorage.getItem(`platform_update_${platform.id}`)
       if (saved) {
         platformUpdateTimes.value[platform.id] = parseInt(saved)
-        debug.log(`⏰ ${platform.name} 更新时间: ${new Date(parseInt(saved)).toLocaleString()}`)
       }
     })
   } catch (e) {
@@ -1147,25 +1237,14 @@ onMounted(() => {
     darkModeQuery.addEventListener('change', handleSystemThemeChange)
   }
 
-  // 加载热搜数据
-  fetchHotData(selectedPlatform.value)
-
-  // 设置滚动监听
-  const contentSection = document.querySelector('.content-section')
-  if (contentSection) {
-    contentSection.addEventListener('scroll', handleScroll)
+  // 默认进入聚合首页；仅在恢复到平台视图时直接拉数据
+  if (currentView.value !== 'home') {
+    fetchHotData(selectedPlatform.value)
   }
 
-  // 检测平台标签的初始滚动状态
-  setTimeout(() => {
-    if (platformTabsRef.value) {
-      updateScrollState(platformTabsRef.value)
-    }
-  }, 100)
-
-  // 添加键盘事件监听（左右箭头切换平台）
+  // 键盘流（P0.3）
   window.addEventListener('keydown', handleKeyPress)
-  debug.log('⌨️ 已启用键盘快捷键：← → 切换平台')
+  debug.log('⌨️ 键盘流已启用：←→ 平台 · ↑↓/1-9 选择 · Enter 打开 · c 复制 · f 收藏 · Esc 退出')
 })
 
 // 处理滚动事件
@@ -1181,42 +1260,6 @@ const handleScroll = (event) => {
   }
 }
 
-// 处理平台标签的鼠标滚轮横向滚动
-const handlePlatformWheel = (event) => {
-  const container = event.currentTarget
-  // 将垂直滚动转换为水平滚动
-  if (event.deltaY !== 0) {
-    event.preventDefault()
-    container.scrollLeft += event.deltaY
-  }
-  updateScrollState(container)
-}
-
-// 更新滚动状态（检测是否可以左右滚动）
-const updateScrollState = (container) => {
-  canScrollLeft.value = container.scrollLeft > 0
-  canScrollRight.value = container.scrollLeft < (container.scrollWidth - container.clientWidth - 1)
-}
-
-// 监听平台标签的滚动事件
-const handlePlatformScroll = (event) => {
-  updateScrollState(event.currentTarget)
-}
-
-// 点击左箭头滚动
-const scrollLeft = () => {
-  if (!platformTabsRef.value) return
-  const scrollAmount = platformTabsRef.value.clientWidth * 0.7
-  platformTabsRef.value.scrollBy({ left: -scrollAmount, behavior: 'smooth' })
-}
-
-// 点击右箭头滚动
-const scrollRight = () => {
-  if (!platformTabsRef.value) return
-  const scrollAmount = platformTabsRef.value.clientWidth * 0.7
-  platformTabsRef.value.scrollBy({ left: scrollAmount, behavior: 'smooth' })
-}
-
 // 监听平台变化，保存到本地存储
 watch(selectedPlatform, (newPlatform) => {
   if (window.utools && window.utools.dbStorage) {
@@ -1227,278 +1270,221 @@ watch(selectedPlatform, (newPlatform) => {
     }
   }
 })
-
-// 监听分类变化，保存到本地存储并重新检测滚动状态
-watch(selectedCategory, (newCategory) => {
-  if (window.utools && window.utools.dbStorage) {
-    try {
-      window.utools.dbStorage.setItem(STORAGE_KEYS.SELECTED_CATEGORY, newCategory)
-    } catch (e) {
-      debug.log('⚠️ 保存分类失败:', e)
-    }
-  }
-
-  // 延迟检测滚动状态
-  setTimeout(() => {
-    if (platformTabsRef.value) {
-      updateScrollState(platformTabsRef.value)
-    }
-  }, 100)
-})
 </script>
 
 <template>
   <div class="hot-search-container">
-    <!-- 平台选择区域 -->
-    <div class="platform-section">
-      <!-- 分类导航（仅在非极简模式下显示） -->
-      <div v-if="!isSimpleMode" class="category-tabs">
-        <button
-          v-for="category in categories"
-          :key="category"
-          @click="switchCategory(category)"
-          :class="['category-tab', { active: selectedCategory === category }]"
-        >
-          {{ category }}
-        </button>
-      </div>
+    <!-- 左侧栏（P0.2 定稿布局） -->
+    <PlatformSidebar
+      :current-view="currentView"
+      :recent-ids="recentIds"
+      :favorite-count="favoriteCount"
+      :show-translate="currentView !== 'home' && isTranslatablePlatform"
+      :translating="autoTranslate"
+      :translate-tip="translateButtonText"
+      :translate-progress="translateOffset > 0 && currentView !== 'home' ? `${translateOffset}/${hotList.length}` : ''"
+      :loading="loading"
+      @select="switchView"
+      @pin-toggle="settingsStore.togglePin"
+      @translate="toggleTranslate"
+      @refresh="refresh"
+      @settings="openSettings"
+      @donate="openDonate"
+    />
 
-      <div class="platform-tabs-wrapper">
-        <!-- 当前选中平台 - 独立显示在最左侧 -->
-        <div v-if="currentPlatformObj" class="current-platform">
-          <span class="current-platform-name">{{ currentPlatformObj.name }}</span>
-          <!-- 数据新鲜度指示器 -->
+    <!-- 主区 -->
+    <main class="main-area">
+      <div class="main-head">
+        <template v-if="currentView === 'home'">
+          <span class="main-title">我的热榜</span>
+          <span class="main-sub">{{ todayText }} · 钉住平台聚合</span>
+          <button class="head-btn" title="刷新聚合数据" @click="refreshAggregate">
+            <RefreshCw :size="14" :class="{ spinning: aggregateLoading }" />
+          </button>
+        </template>
+        <template v-else-if="currentPlatformObj">
+          <span class="main-title">{{ currentPlatformObj.name }}</span>
           <span
-            v-if="dataFreshness"
+            v-if="dataFreshness && currentView === selectedPlatform"
             :class="['freshness-indicator', `freshness-${dataFreshness.status}`]"
             :title="`数据更新于 ${dataFreshness.text}`"
           >
             {{ dataFreshness.icon }} {{ dataFreshness.text }}
           </span>
-        </div>
-
-        <!-- 平台标签容器 -->
-        <div class="platform-tabs-container">
-          <!-- 左侧渐变遮罩和箭头 -->
-          <div v-if="canScrollLeft" class="scroll-indicator scroll-indicator-left" @click="scrollLeft">
-            <span class="scroll-arrow">‹</span>
-          </div>
-
-          <div
-            class="platform-tabs"
-            @wheel="handlePlatformWheel"
-            @scroll="handlePlatformScroll"
-            ref="platformTabsRef"
-          >
-            <button
-              v-for="platform in filteredPlatforms"
-              :key="platform.id"
-              @click="switchPlatform(platform.id)"
-              :class="['platform-tab', { active: selectedPlatform === platform.id }]"
-            >
-              <span class="platform-name">{{ platform.name }}</span>
-            </button>
-          </div>
-
-          <!-- 右侧渐变遮罩和箭头 -->
-          <div v-if="canScrollRight" class="scroll-indicator scroll-indicator-right" @click="scrollRight">
-            <span class="scroll-arrow">›</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 热搜列表区域 -->
-    <div class="content-section" ref="contentSection">
-      <!-- 加载蒙版 -->
-      <div v-if="loading && hotList.length > 0" class="loading-overlay">
-        <div class="loading-overlay-content">
-          <div class="loading-spinner"></div>
-          <p>请稍等...</p>
-        </div>
-      </div>
-
-      <!-- 加载状态 -->
-      <div v-if="loading && hotList.length === 0" class="loading-state">
-        <div class="loading-spinner"></div>
-        <p>加载中...</p>
-      </div>
-
-      <!-- 错误状态 -->
-      <div v-else-if="error && hotList.length === 0" class="error-state">
-        <p class="error-icon">⚠️</p>
-        <p class="error-message">{{ error }}</p>
-        <button @click="refresh" class="retry-btn">重试</button>
-      </div>
-
-      <!-- 空数据状态 -->
-      <div v-else-if="!loading && hotList.length === 0" class="empty-state">
-        <p class="empty-icon">📭</p>
-        <p>暂无热搜数据</p>
-        <p class="empty-tip">请尝试切换其他平台</p>
-      </div>
-
-      <!-- 热搜列表 -->
-      <div v-else class="hot-list">
-        <!-- 艺术品平台 - 卡片式布局（大都会博物馆） -->
-        <template v-if="isMetMuseumPlatform">
-          <!-- 筛选按钮组 -->
-          <div class="metmuseum-filters">
-            <button
-              @click="switchMetMuseumFilter('all')"
-              :class="['filter-btn', { active: metMuseumFilter === 'all' }]"
-            >
-              🌍 全部作品
-            </button>
-            <button
-              @click="switchMetMuseumFilter('china')"
-              :class="['filter-btn', { active: metMuseumFilter === 'china' }]"
-            >
-              🏮 中国作品
-            </button>
-          </div>
-
-          <div class="artwork-grid">
-            <ArtworkCard
-              v-for="(item, index) in hotList"
-              :key="item.id || index"
-              :artwork="item"
-              :index="item.index || index + 1"
-              :showDescription="settingsStore.showDescription"
-              @click="openUrl(item.url || item.mobileUrl)"
-            />
-          </div>
-        </template>
-
-        <!-- Epic 免费游戏 - 游戏卡片布局 -->
-        <template v-else-if="isGamePlatform">
-          <div class="artwork-grid">
-            <ArtworkCard
-              v-for="(item, index) in hotList"
-              :key="item.id || index"
-              :artwork="item"
-              :index="item.index || index + 1"
-              :showDescription="settingsStore.showDescription"
-              @click="openUrl(item.url || item.mobileUrl)"
-            />
-          </div>
-        </template>
-
-        <!-- 芝加哥艺术学院 - 艺术品列表布局 -->
-        <template v-else-if="isArticPlatform">
-          <ArtworkListItem
-            v-for="(item, index) in filteredArtworks"
-            :key="item.id || index"
-            :artwork="item"
-            :index="item.index"
-            :showDescription="settingsStore.showDescription"
-            :autoTranslate="autoTranslate"
-            @click="openUrl(item.url || item.mobileUrl)"
-          />
-        </template>
-
-        <!-- 其他平台 - 普通热搜布局 -->
-        <template v-else>
-          <div
-            v-for="(item, index) in hotList"
-            :key="index"
-            @click="openUrl(item.url || item.mobileUrl)"
-            :class="['hot-item', {
-              'no-desc': !settingsStore.showDescription || !item.desc,
-              'selected': selectedHotIndex === index
-            }]"
-          >
-            <div class="hot-rank" :class="getRankClass(index + 1)">
-              {{ index + 1 }}
-            </div>
-            <div class="hot-content">
-              <div class="hot-title">{{ item.title }}</div>
-              <div v-if="item.desc && settingsStore.showDescription" class="hot-desc">{{ item.desc }}</div>
-            </div>
-            <div v-if="item.hot && settingsStore.showHotValue" class="hot-value">
-              🔥 {{ formatHotValue(item.hot) }}
-            </div>
-          </div>
-        </template>
-
-        <!-- 加载更多 -->
-        <div v-if="hasMore" class="load-more-container">
-          <button
-            @click="loadMore"
-            :disabled="loadingMore"
-            class="load-more-btn"
-          >
-            <span v-if="loadingMore">加载中...</span>
-            <span v-else>加载更多</span>
+          <span v-if="staleInfo" class="stale-badge" title="网络异常，正在展示缓存数据">
+            缓存 {{ mirrorAgeText(staleInfo.ts) }}
+          </span>
+          <button class="head-btn" :disabled="loading" :title="loading ? '加载中...' : '刷新数据'" @click="refresh">
+            <RefreshCw :size="14" :class="{ spinning: loading }" />
           </button>
-        </div>
-
-        <!-- 没有更多 -->
-        <div v-else-if="hotList.length > 0 && !hasMore" class="no-more-tip">
-          <p>— 已经到底了 —</p>
-        </div>
+        </template>
       </div>
 
-      <!-- 加载更多时的加载状态 -->
-      <div v-if="loadingMore" class="loading-more">
-        <div class="loading-spinner small"></div>
-        <p>加载更多...</p>
+      <div class="main-body">
+        <!-- 聚合首页（默认视图） -->
+        <AggregateHome
+          v-if="currentView === 'home'"
+          ref="aggregateRef"
+          :pinned-ids="settingsStore.pinnedPlatforms"
+          :show-hot-value="settingsStore.showHotValue"
+          @open-platform="switchView"
+          @open-item="openFromCard"
+        />
+
+        <!-- 单平台列表视图 -->
+        <div v-else class="content-section" @scroll="handleScroll">
+          <!-- 骨架屏（无镜像时的加载态） -->
+          <div v-if="loading && hotList.length === 0" class="skeleton-list">
+            <div v-for="n in 8" :key="'sk' + n" class="skeleton-item">
+              <span class="skeleton sk-rank"></span>
+              <span class="skeleton sk-line" :style="{ width: (68 - n * 4) + '%' }"></span>
+              <span class="skeleton sk-hot"></span>
+            </div>
+          </div>
+
+          <!-- 错误状态 -->
+          <ErrorState
+            v-else-if="error && hotList.length === 0"
+            :message="error"
+            @retry="refresh"
+          />
+
+          <!-- 空数据状态 -->
+          <div v-else-if="!loading && hotList.length === 0" class="empty-state">
+            <p class="empty-icon">📭</p>
+            <p>暂无热搜数据</p>
+            <p class="empty-tip">请尝试切换其他平台</p>
+          </div>
+
+          <!-- 列表 -->
+          <div v-else class="hot-list">
+            <!-- 大都会博物馆 - 卡片式布局 -->
+            <template v-if="isMetMuseumPlatform">
+              <div class="metmuseum-filters">
+                <button
+                  @click="switchMetMuseumFilter('all')"
+                  :class="['filter-btn', { active: metMuseumFilter === 'all' }]"
+                >
+                  🌍 全部作品
+                </button>
+                <button
+                  @click="switchMetMuseumFilter('china')"
+                  :class="['filter-btn', { active: metMuseumFilter === 'china' }]"
+                >
+                  🏮 中国作品
+                </button>
+              </div>
+              <div class="artwork-grid">
+                <ArtworkCard
+                  v-for="(item, index) in hotList"
+                  :key="item.id || index"
+                  :artwork="item"
+                  :index="item.index || index + 1"
+                  :showDescription="settingsStore.showDescription"
+                  @click="openItem(item)"
+                />
+              </div>
+            </template>
+
+            <!-- Epic 免费游戏 - 卡片布局 -->
+            <template v-else-if="isGamePlatform">
+              <div class="artwork-grid">
+                <ArtworkCard
+                  v-for="(item, index) in hotList"
+                  :key="item.id || index"
+                  :artwork="item"
+                  :index="item.index || index + 1"
+                  :showDescription="settingsStore.showDescription"
+                  @click="openItem(item)"
+                />
+              </div>
+            </template>
+
+            <!-- 芝加哥艺术学院 - 列表布局 -->
+            <template v-else-if="isArticPlatform">
+              <ArtworkListItem
+                v-for="(item, index) in filteredArtworks"
+                :key="item.id || index"
+                :artwork="item"
+                :index="item.index"
+                :showDescription="settingsStore.showDescription"
+                :autoTranslate="autoTranslate"
+                @click="openItem(item)"
+              />
+            </template>
+
+            <!-- 普通热搜布局（含 P0.3 行内操作） -->
+            <template v-else>
+              <div
+                v-for="(item, index) in hotList"
+                :key="index"
+                @click="openItem(item)"
+                @mouseenter="selectedHotIndex = index"
+                :class="['hot-item', {
+                  'no-desc': !settingsStore.showDescription || !item.desc,
+                  'selected': selectedHotIndex === index
+                }]"
+              >
+                <div class="hot-rank" :class="getRankClass(index + 1)">
+                  {{ index + 1 }}
+                </div>
+                <div class="hot-content">
+                  <div class="hot-title">{{ item.title }}</div>
+                  <div v-if="item.desc && settingsStore.showDescription" class="hot-desc">{{ item.desc }}</div>
+                </div>
+                <div class="item-acts" @click.stop>
+                  <button
+                    class="act-btn"
+                    :class="{ on: isFav(item) }"
+                    :title="isFav(item) ? '取消收藏' : '收藏'"
+                    @click="toggleFav(item)"
+                  >
+                    <Star :size="13" />
+                  </button>
+                  <button class="act-btn" title="复制标题" @click="copyTitle(item)">
+                    <Copy :size="13" />
+                  </button>
+                  <button class="act-btn" title="复制链接" @click="copyLink(item)">
+                    <Link :size="13" />
+                  </button>
+                </div>
+                <div v-if="item.hot && settingsStore.showHotValue" class="hot-value">
+                  🔥 {{ formatHotValue(item.hot) }}
+                </div>
+              </div>
+            </template>
+
+            <!-- 加载更多 -->
+            <div v-if="hasMore" class="load-more-container">
+              <button
+                @click="loadMore"
+                :disabled="loadingMore"
+                class="load-more-btn"
+              >
+                <span v-if="loadingMore">加载中...</span>
+                <span v-else>加载更多</span>
+              </button>
+            </div>
+
+            <div v-else-if="hotList.length > 0 && !hasMore" class="no-more-tip">
+              <p>— 已经到底了 —</p>
+            </div>
+          </div>
+
+          <!-- 加载更多时的加载状态 -->
+          <div v-if="loadingMore" class="loading-more">
+            <div class="loading-spinner small"></div>
+            <p>加载更多...</p>
+          </div>
+        </div>
       </div>
-    </div>
+    </main>
 
     <!-- 设置面板 -->
     <Settings :show="settingsStore.showSettings" @close="closeSettings"></Settings>
 
     <!-- 埋点调试面板 - 仅在开发环境显示 -->
     <AnalyticsDebugPanel v-if="isDev" />
-
-    <!-- 悬浮按钮组 - 右下角 -->
-    <div class="floating-buttons">
-      <!-- 翻译按钮 - 在芝加哥艺术学院和大都会博物馆平台显示 -->
-      <button
-        v-if="isTranslatablePlatform"
-        @click="toggleTranslate"
-        class="floating-btn translate-btn"
-        :class="{ active: autoTranslate }"
-        :title="translateButtonText"
-        :disabled="autoTranslate"
-      >
-        <span class="floating-icon" :class="{ spinning: autoTranslate }">
-          {{ autoTranslate ? '⏳' : '🌐' }}
-        </span>
-        <span v-if="translateOffset > 0 || autoTranslate" class="translate-progress">
-          {{ translateOffset }}/{{ hotList.length }}
-        </span>
-      </button>
-
-      <!-- 打赏按钮 -->
-      <button
-        @click="openDonate"
-        class="floating-btn donate-btn"
-        title="打赏"
-      >
-        <span class="floating-icon">❤️</span>
-      </button>
-
-      <!-- 刷新按钮 -->
-      <button
-        @click="refresh"
-        class="floating-btn refresh-btn"
-        :disabled="loading"
-        :title="loading ? '加载中...' : '刷新数据'"
-      >
-        <span :class="['floating-icon', { spinning: loading }]">🔄</span>
-      </button>
-
-      <!-- 设置按钮 -->
-      <button
-        @click="openSettings"
-        class="floating-btn settings-btn"
-        title="设置"
-      >
-        <span class="floating-icon">⚙️</span>
-      </button>
-    </div>
 
     <!-- 打赏弹窗 -->
     <div v-if="showDonate" class="donate-modal" @click="closeDonate">
@@ -1512,6 +1498,11 @@ watch(selectedCategory, (newCategory) => {
         <p class="donate-tip">扫码打赏，感谢您的支持！</p>
       </div>
     </div>
+
+    <!-- Toast（P0.3 轻提示） -->
+    <Transition name="fade">
+      <div v-if="toastMsg" class="toast">{{ toastMsg }}</div>
+    </Transition>
   </div>
 </template>
 
@@ -1521,82 +1512,79 @@ watch(selectedCategory, (newCategory) => {
   height: 100vh;
   background-color: var(--color-bg);
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   overflow: hidden;
 }
 
-/* 平台选择区域 */
-.platform-section {
-  background-color: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
-  flex-shrink: 0;
+/* 主区（P0.2 侧栏右侧） */
+.main-area {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
-.category-tabs {
+.main-head {
   display: flex;
+  align-items: center;
   gap: 8px;
-  padding: 12px 16px 8px;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.category-tabs::-webkit-scrollbar {
-  display: none;
-}
-
-.category-tab {
-  padding: 6px 16px;
-  border: none;
-  border-radius: 20px;
-  background-color: var(--color-surface-muted);
-  color: var(--color-text-2);
-  font-size: 14px;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.2s;
-}
-
-.category-tab:hover {
-  background-color: var(--color-surface-muted-hover);
-}
-
-.category-tab.active {
-  background-color: #007bff;
-  color: #ffffff;
-}
-
-/* 平台标签容器（用于定位渐变和箭头） */
-.platform-tabs-wrapper {
-  position: relative;
-  padding: 8px 16px 12px;
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
-
-/* 当前选中平台 - 独立显示 */
-.current-platform {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  background: linear-gradient(135deg, #007bff, #0056b3);
-  color: #ffffff;
-  border-radius: 8px;
-  font-size: 15px;
-  font-weight: 600;
-  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
+  padding: 13px 16px 9px;
   flex-shrink: 0;
 }
 
-.current-platform-icon {
+.main-title {
+  font-size: var(--font-xl);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.main-sub {
+  font-size: var(--font-sm);
+  color: var(--color-text-muted);
+}
+
+.head-btn {
+  margin-left: auto;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  color: var(--color-text-muted);
+  cursor: pointer;
 }
 
-.current-platform-name {
+.head-btn:hover:not(:disabled) {
+  background: var(--color-surface-muted-hover);
+  color: var(--color-text);
+}
+
+.head-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.head-btn .spinning {
+  animation: spin 0.8s linear infinite;
+}
+
+/* 镜像滞后角标（P0.1） */
+.stale-badge {
+  font-size: var(--font-xs);
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-muted);
+  color: var(--color-text-3);
+}
+
+.main-body {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 /* 数据新鲜度指示器 */
@@ -1652,127 +1640,6 @@ watch(selectedCategory, (newCategory) => {
   }
 }
 
-/* 平台标签容器（包含可滚动的标签） */
-.platform-tabs-container {
-  position: relative;
-  flex: 1;
-  overflow: hidden;
-}
-
-.platform-tabs {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  scrollbar-width: none;
-  scroll-behavior: smooth;
-}
-
-.platform-tabs::-webkit-scrollbar {
-  display: none;
-}
-
-/* 滚动指示器容器 */
-.scroll-indicator {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 80px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10;
-  transition: opacity 0.3s;
-  cursor: pointer;
-}
-
-.scroll-indicator:hover {
-  opacity: 0.8;
-}
-
-.scroll-indicator:active {
-  opacity: 0.6;
-}
-
-/* 左侧指示器 */
-.scroll-indicator-left {
-  left: 0;
-  background: linear-gradient(to right, rgba(255, 255, 255, 1), rgba(255, 255, 255, 0));
-  padding-right: 30px;
-}
-
-/* 右侧指示器 */
-.scroll-indicator-right {
-  right: 0;
-  background: linear-gradient(to left, rgba(255, 255, 255, 1), rgba(255, 255, 255, 0));
-  padding-left: 30px;
-}
-
-/* 箭头样式 */
-.scroll-arrow {
-  font-size: 24px;
-  color: var(--color-accent-text);
-  font-weight: bold;
-  text-shadow: 0 0 3px rgba(255, 255, 255, 0.8);
-  pointer-events: none;
-}
-
-.platform-tab {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 12px;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  background-color: var(--color-surface);
-  color: var(--color-text);
-  font-size: 14px;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.2s;
-}
-
-.platform-tab:hover {
-  background-color: var(--color-surface-hover);
-  border-color: var(--color-primary);
-}
-
-.platform-tab.active {
-  background-color: #007bff;
-  color: #ffffff;
-  border-color: #007bff;
-}
-
-.platform-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* 刷新图标动画 */
-.refresh-icon {
-  font-size: 14px;
-  margin-left: 4px;
-  transition: transform 0.3s;
-  cursor: pointer;
-}
-
-.refresh-icon.spinning {
-  animation: spin 0.8s linear infinite;
-  display: inline-block;
-}
-
-.settings-icon {
-  font-size: 16px;
-  margin-left: 6px;
-  cursor: pointer;
-  opacity: 0.7;
-  transition: opacity 0.2s;
-}
-
-.settings-icon:hover {
-  opacity: 1;
-}
-
 /* 内容区域 */
 .content-section {
   flex: 1;
@@ -1781,33 +1648,34 @@ watch(selectedCategory, (newCategory) => {
   position: relative;
 }
 
-/* 加载蒙版 */
-.loading-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: var(--color-overlay);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: var(--z-sticky);
-  backdrop-filter: blur(2px);
-  animation: fadeIn 0.2s ease;
+/* 骨架屏列表（P0.1 无镜像时的加载态） */
+.skeleton-list {
+  padding: 6px 16px;
 }
 
-.loading-overlay-content {
+.skeleton-item {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  padding: 11px 0;
 }
 
-.loading-overlay p {
-  font-size: 14px;
-  color: var(--color-text-2);
-  margin: 0;
+.sk-rank {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.sk-line {
+  height: 14px;
+  flex: 1;
+}
+
+.sk-hot {
+  width: 52px;
+  height: 12px;
+  flex: none;
 }
 
 .loading-state,
@@ -2034,6 +1902,47 @@ watch(selectedCategory, (newCategory) => {
   white-space: nowrap;
 }
 
+/* 行内操作（P0.3：hover/选中浮现，不与热度值重叠） */
+.item-acts {
+  display: none;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.hot-item:hover .item-acts,
+.hot-item.selected .item-acts,
+.hot-item:focus-within .item-acts {
+  display: inline-flex;
+}
+
+.act-btn {
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.act-btn:hover {
+  background: var(--color-surface-muted-hover);
+  color: var(--color-text);
+}
+
+.act-btn.on {
+  color: #f0a800;
+}
+
+.act-btn.on svg {
+  fill: currentColor;
+}
+
 /* 加载更多 */
 .load-more-container {
   padding: 16px;
@@ -2061,179 +1970,13 @@ watch(selectedCategory, (newCategory) => {
 }
 
 /* ========== 暗色特例（无法变量化的渐变，仅保留以下几条） ========== */
-html.dark-mode .current-platform {
-  background: linear-gradient(135deg, #0056b3, #003d82);
-}
-
-html.dark-mode .scroll-arrow {
-  color: var(--color-accent-text);
-  text-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
-}
-
 html.dark-mode .filter-btn.active {
   border-color: #0056b3;
   background: linear-gradient(135deg, #0056b3, #003d82);
   color: #ffffff;
 }
 
-html.dark-mode .scroll-indicator-left {
-  background: linear-gradient(to right, rgba(42, 42, 42, 1), rgba(42, 42, 42, 0));
-}
-
-html.dark-mode .scroll-indicator-right {
-  background: linear-gradient(to left, rgba(42, 42, 42, 1), rgba(42, 42, 42, 0));
-}
-
-/* ========== 悬浮按钮（自全局块迁入并令牌化；v4 布局落地后由侧栏底部操作取代） ========== */
-.floating-buttons {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  z-index: var(--z-floating);
-  pointer-events: none;
-}
-
-.floating-btn {
-  pointer-events: auto;
-  width: 48px;
-  height: 48px;
-  border: none;
-  border-radius: 50%;
-  background-color: var(--color-surface);
-  box-shadow: var(--shadow-btn);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.floating-btn:hover {
-  transform: translateY(-2px) scale(1.05);
-  box-shadow: var(--shadow-btn-hover);
-}
-
-.floating-btn:active {
-  transform: translateY(0) scale(0.95);
-}
-
-.floating-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.floating-icon {
-  font-size: 20px;
-  line-height: 1;
-  transition: transform 0.3s;
-}
-
-.floating-icon.spinning {
-  animation: floatSpin 0.8s linear infinite;
-}
-
-@keyframes floatSpin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-.refresh-btn {
-  background: var(--gradient-primary);
-}
-
-.refresh-btn:hover {
-  background: linear-gradient(135deg, #0056b3, #004494);
-}
-
-.refresh-btn:disabled {
-  background: linear-gradient(135deg, #6c757d, #5a6268);
-}
-
-.settings-btn {
-  background: linear-gradient(135deg, #6c757d, #5a6268);
-}
-
-.settings-btn:hover {
-  background: linear-gradient(135deg, #5a6268, #495057);
-}
-
-.translate-btn {
-  background: linear-gradient(135deg, #17a2b8, #138496);
-  position: relative;
-}
-
-.translate-btn:hover {
-  background: linear-gradient(135deg, #138496, #117a8b);
-}
-
-.translate-btn.active {
-  background: linear-gradient(135deg, #28a745, #218838);
-  box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.3);
-}
-
-.translate-progress {
-  position: absolute;
-  bottom: -2px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 10px;
-  font-weight: bold;
-  color: white;
-  background: rgba(0, 0, 0, 0.6);
-  padding: 2px 6px;
-  border-radius: 8px;
-  white-space: nowrap;
-  pointer-events: none;
-}
-
-html.dark-mode .refresh-btn {
-  background: linear-gradient(135deg, #0056b3, #003d82);
-}
-
-html.dark-mode .refresh-btn:hover {
-  background: linear-gradient(135deg, #004494, #003366);
-}
-
-html.dark-mode .translate-btn {
-  background: linear-gradient(135deg, #117a8b, #0e616e);
-}
-
-html.dark-mode .translate-btn:hover {
-  background: linear-gradient(135deg, #0e616e, #0b515b);
-}
-
-html.dark-mode .translate-btn.active {
-  background: linear-gradient(135deg, #218838, #1e7e34);
-}
-
-html.dark-mode .settings-btn {
-  background: linear-gradient(135deg, #495057, #343a40);
-}
-
-html.dark-mode .settings-btn:hover {
-  background: linear-gradient(135deg, #343a40, #212529);
-}
-
-/* ========== 打赏按钮与弹窗（自全局块迁入并令牌化） ========== */
-.donate-btn {
-  background: linear-gradient(135deg, #ff6b6b, #ee5a52);
-}
-
-.donate-btn:hover {
-  background: linear-gradient(135deg, #ee5a52, #dc4c47);
-}
-
-html.dark-mode .donate-btn {
-  background: linear-gradient(135deg, #ee5a52, #dc4c47);
-}
-
-html.dark-mode .donate-btn:hover {
-  background: linear-gradient(135deg, #dc4c47, #c9453f);
-}
+/* ========== 打赏弹窗（自全局块迁入并令牌化） ========== */
 
 .donate-modal {
   position: fixed;

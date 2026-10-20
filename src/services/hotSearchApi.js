@@ -61,77 +61,77 @@ debug.log('✅ API 配置已加载:', {
 // 支持的热搜平台配置
 export const PLATFORMS = [
   // 视频/社区
-  { id: 'bilibili', name: 'B站', icon: 'ri-bilibili-line', category: '视频' },
-  { id: 'acfun', name: 'AcFun', icon: 'ri-movie-line', category: '视频' },
-  { id: 'weibo', name: '微博', icon: 'ri-weibo-line', category: '社交' },
-  { id: 'zhihu', name: '知乎', icon: 'ri-zhihu-line', category: '社交' },
-  { id: 'zhihu-daily', name: '知乎日报', icon: 'ri-newspaper-line', category: '社交' },
-  { id: 'douyin', name: '抖音', icon: 'ri-music-2-line', category: '视频' },
-  { id: 'kuaishou', name: '快手', icon: 'ri-camera-lens-line', category: '视频' },
-  { id: 'douban-movie', name: '豆瓣电影', icon: 'ri-movie-2-line', category: '娱乐' },
-  { id: 'movie-box', name: '电影票房榜', icon: 'ri-film-line', category: '娱乐' },
-  { id: 'douban-group', name: '豆瓣小组', icon: 'ri-team-line', category: '娱乐' },
-  { id: 'tieba', name: '贴吧', icon: 'ri-group-line', category: '社交' },
-  { id: 'hupu', name: '虎扑', icon: 'ri-basketball-line', category: '生活' },
-  { id: 'newsmth', name: '水木社区', icon: 'ri-chat-3-line', category: '社交' },
+  { id: 'bilibili', name: 'B站', icon: 'ri-bilibili-line', category: '视频', alias: ["bz","bili","bilibili"] },
+  { id: 'acfun', name: 'AcFun', icon: 'ri-movie-line', category: '视频', alias: ["ac"] },
+  { id: 'weibo', name: '微博', icon: 'ri-weibo-line', category: '社交', alias: ["wb","weibo"] },
+  { id: 'zhihu', name: '知乎', icon: 'ri-zhihu-line', category: '社交', alias: ["zh","zhihu"] },
+  { id: 'zhihu-daily', name: '知乎日报', icon: 'ri-newspaper-line', category: '社交', alias: ["zhrb","daily"] },
+  { id: 'douyin', name: '抖音', icon: 'ri-music-2-line', category: '视频', alias: ["dy","douyin"] },
+  { id: 'kuaishou', name: '快手', icon: 'ri-camera-lens-line', category: '视频', alias: ["ks"] },
+  { id: 'douban-movie', name: '豆瓣电影', icon: 'ri-movie-2-line', category: '娱乐', alias: ["db","douban"] },
+  { id: 'movie-box', name: '电影票房榜', icon: 'ri-film-line', category: '娱乐', alias: ["pf","piaofang"] },
+  { id: 'douban-group', name: '豆瓣小组', icon: 'ri-team-line', category: '娱乐', alias: ["dbxz"] },
+  { id: 'tieba', name: '贴吧', icon: 'ri-group-line', category: '社交', alias: ["tb","tieba"] },
+  { id: 'hupu', name: '虎扑', icon: 'ri-basketball-line', category: '生活', alias: ["hupu","hp"] },
+  { id: 'newsmth', name: '水木社区', icon: 'ri-chat-3-line', category: '社交', alias: ["smth","shuimu"] },
   // { id: 'miyoushe', name: '米游社', icon: 'ri-game-line', category: '游戏' },
-  { id: 'ngabbs', name: 'NGA', icon: 'ri-gamepad-line', category: '游戏' },
-  { id: 'v2ex', name: 'V2EX', icon: 'ri-chat-smile-2-line', category: '科技' },
-  { id: '52pojie', name: '吾爱破解', icon: 'ri-lock-2-line', category: '科技' },
-  { id: 'hostloc', name: '主机交流', icon: 'ri-server-line', category: '科技' },
-  { id: 'coolapk', name: '酷安', icon: 'ri-android-line', category: '科技' },
+  { id: 'ngabbs', name: 'NGA', icon: 'ri-gamepad-line', category: '游戏', alias: ["nga"] },
+  { id: 'v2ex', name: 'V2EX', icon: 'ri-chat-smile-2-line', category: '科技', alias: ["v2ex"] },
+  { id: '52pojie', name: '吾爱破解', icon: 'ri-lock-2-line', category: '科技', alias: ["52","pojie"] },
+  { id: 'hostloc', name: '主机交流', icon: 'ri-server-line', category: '科技', alias: ["hostloc"] },
+  { id: 'coolapk', name: '酷安', icon: 'ri-android-line', category: '科技', alias: ["coolapk","kuan"] },
 
   // 新闻/资讯
-  { id: 'baidu', name: '百度', icon: 'ri-search-2-line', category: '综合' },
-  { id: '60s-news', name: '60秒早报', icon: 'ri-newspaper-line', category: '资讯' },
-  { id: 'thepaper', name: '澎湃新闻', icon: 'ri-article-line', category: '资讯' },
-  { id: 'toutiao', name: '今日头条', icon: 'ri-fire-line', category: '资讯' },
-  { id: 'qq-news', name: '腾讯新闻', icon: 'ri-qq-line', category: '资讯' },
-  { id: 'sina', name: '新浪热搜', icon: 'ri-rss-line', category: '资讯' },
-  { id: 'sina-news', name: '新浪新闻', icon: 'ri-rss-line', category: '资讯' },
-  { id: 'netease-news', name: '网易新闻', icon: 'ri-news-line', category: '资讯' },
-  { id: 'huxiu', name: '虎嗅', icon: 'ri-lightbulb-line', category: '资讯' },
-  { id: 'ifanr', name: '爱范儿', icon: 'ri-magic-line', category: '资讯' },
+  { id: 'baidu', name: '百度', icon: 'ri-search-2-line', category: '综合', alias: ["bd","baidu"] },
+  { id: '60s-news', name: '60秒早报', icon: 'ri-newspaper-line', category: '资讯', alias: ["60s","zaobao"] },
+  { id: 'thepaper', name: '澎湃新闻', icon: 'ri-article-line', category: '资讯', alias: ["paper","pengpai"] },
+  { id: 'toutiao', name: '今日头条', icon: 'ri-fire-line', category: '资讯', alias: ["tt","toutiao"] },
+  { id: 'qq-news', name: '腾讯新闻', icon: 'ri-qq-line', category: '资讯', alias: ["qq"] },
+  { id: 'sina', name: '新浪热搜', icon: 'ri-rss-line', category: '资讯', alias: ["xl","sina"] },
+  { id: 'sina-news', name: '新浪新闻', icon: 'ri-rss-line', category: '资讯', alias: ["xlxw"] },
+  { id: 'netease-news', name: '网易新闻', icon: 'ri-news-line', category: '资讯', alias: ["wy","wangyi"] },
+  { id: 'huxiu', name: '虎嗅', icon: 'ri-lightbulb-line', category: '资讯', alias: ["huxiu","hx"] },
+  { id: 'ifanr', name: '爱范儿', icon: 'ri-magic-line', category: '资讯', alias: ["ifanr","afr"] },
 
   // 技术/IT
-  { id: 'sspai', name: '少数派', icon: 'ri-tools-line', category: '科技' },
-  { id: 'ithome', name: 'IT之家', icon: 'ri-computer-line', category: '科技' },
-  { id: 'ithome-xijiayi', name: 'IT之家·喜加一', icon: 'ri-gamepad-line', category: '科技' },
-  { id: 'juejin', name: '掘金', icon: 'ri-code-s-slash-line', category: '科技' },
-  { id: 'jianshu', name: '简书', icon: 'ri-quill-pen-line', category: '综合' },
-  { id: 'guokr', name: '果壳', icon: 'ri-flask-line', category: '科技' },
-  { id: '36kr', name: '36氪', icon: 'ri-money-dollar-circle-line', category: '科技' },
-  { id: '51cto', name: '51CTO', icon: 'ri-terminal-line', category: '科技' },
-  { id: 'csdn', name: 'CSDN', icon: 'ri-code-box-line', category: '科技' },
-  { id: 'nodeseek', name: 'NodeSeek', icon: 'ri-nodejs-line', category: '科技' },
-  { id: 'geekpark', name: '极客公园', icon: 'ri-rocket-2-line', category: '科技' },
+  { id: 'sspai', name: '少数派', icon: 'ri-tools-line', category: '科技', alias: ["sspai","sp"] },
+  { id: 'ithome', name: 'IT之家', icon: 'ri-computer-line', category: '科技', alias: ["ithome","it"] },
+  { id: 'ithome-xijiayi', name: 'IT之家·喜加一', icon: 'ri-gamepad-line', category: '科技', alias: ["xjy","xijiayi"] },
+  { id: 'juejin', name: '掘金', icon: 'ri-code-s-slash-line', category: '科技', alias: ["jj","juejin"] },
+  { id: 'jianshu', name: '简书', icon: 'ri-quill-pen-line', category: '综合', alias: ["js","jianshu"] },
+  { id: 'guokr', name: '果壳', icon: 'ri-flask-line', category: '科技', alias: ["gk","guokr"] },
+  { id: '36kr', name: '36氪', icon: 'ri-money-dollar-circle-line', category: '科技', alias: ["kr","36kr"] },
+  { id: '51cto', name: '51CTO', icon: 'ri-terminal-line', category: '科技', alias: ["cto"] },
+  { id: 'csdn', name: 'CSDN', icon: 'ri-code-box-line', category: '科技', alias: ["csdn"] },
+  { id: 'nodeseek', name: 'NodeSeek', icon: 'ri-nodejs-line', category: '科技', alias: ["ns","nodeseek"] },
+  { id: 'geekpark', name: '极客公园', icon: 'ri-rocket-2-line', category: '科技', alias: ["geekpark","jike"] },
 
   // 游戏
-  { id: 'lol', name: '英雄联盟', icon: 'ri-sword-line', category: '游戏' },
-  { id: 'epic-free', name: 'Epic免费游戏', icon: 'ri-gamepad-line', category: '游戏' },
-  { id: 'genshin', name: '原神', icon: 'ri-star-smile-line', category: '游戏' },
-  { id: 'honkai', name: '崩坏3', icon: 'ri-planet-line', category: '游戏' },
-  { id: 'starrail', name: '星穹铁道', icon: 'ri-rocket-line', category: '游戏' },
+  { id: 'lol', name: '英雄联盟', icon: 'ri-sword-line', category: '游戏', alias: ["lol","yx"] },
+  { id: 'epic-free', name: 'Epic免费游戏', icon: 'ri-gamepad-line', category: '游戏', alias: ["epic","free"] },
+  { id: 'genshin', name: '原神', icon: 'ri-star-smile-line', category: '游戏', alias: ["ys","yuanshen"] },
+  { id: 'honkai', name: '崩坏3', icon: 'ri-planet-line', category: '游戏', alias: ["bh3","benghuai"] },
+  { id: 'starrail', name: '星穹铁道', icon: 'ri-rocket-line', category: '游戏', alias: ["sr","xingqiong"] },
 
   // 金融/股票
-  { id: 'stock-hot', name: '热门股票', icon: 'ri-stock-line', category: '金融' },
-  { id: 'stock-sh', name: '上证指数', icon: 'ri-funds-line', category: '金融' },
-  { id: 'stock-tech', name: '科技股', icon: 'ri-cpu-line', category: '金融' },
+  { id: 'stock-hot', name: '热门股票', icon: 'ri-stock-line', category: '金融', alias: ["gp","gupiao"] },
+  { id: 'stock-sh', name: '上证指数', icon: 'ri-funds-line', category: '金融', alias: ["szzs","shangzheng"] },
+  { id: 'stock-tech', name: '科技股', icon: 'ri-cpu-line', category: '金融', alias: ["kjg","tech"] },
 
   // 开发者工具
-  { id: 'github-trending', name: 'GitHub热榜', icon: 'ri-github-fill', category: '科技' },
-  { id: 'hacker-news', name: 'Hacker News', icon: 'ri-hacker-news-line', category: '科技' },
-  { id: 'product-hunt', name: 'Product Hunt', icon: 'ri-lightbulb-flash-line', category: '科技' },
+  { id: 'github-trending', name: 'GitHub热榜', icon: 'ri-github-fill', category: '科技', alias: ["gh","github"] },
+  { id: 'hacker-news', name: 'Hacker News', icon: 'ri-hacker-news-line', category: '科技', alias: ["hn","hackernews"] },
+  { id: 'product-hunt', name: 'Product Hunt', icon: 'ri-lightbulb-flash-line', category: '科技', alias: ["ph"] },
 
   // 其他
-  { id: 'weread', name: '微信读书', icon: 'ri-book-read-line', category: '阅读' },
-  { id: 'smzdm', name: '什么值得买', icon: 'ri-shopping-bag-3-line', category: '生活' },
-  { id: 'history', name: '历史上的今天', icon: 'ri-calendar-line', category: '综合' },
-  { id: 'hellogithub', name: 'HelloGitHub', icon: 'ri-github-line', category: '科技' },
-  { id: 'jianshu', name: '简书', icon: 'ri-quill-pen-line', category: '综合' },
-  { id: 'zhuishu', name: '追书排行', icon: 'ri-bookmark-line', category: '阅读' },
-  { id: 'artic', name: '芝加哥艺术学院', icon: 'ri-building-2-line', category: '艺术' },
-  { id: 'metmuseum', name: '大都会博物馆', icon: 'ri-gallery-line', category: '艺术' }
+  { id: 'weread', name: '微信读书', icon: 'ri-book-read-line', category: '阅读', alias: ["weread","wxds"] },
+  { id: 'smzdm', name: '什么值得买', icon: 'ri-shopping-bag-3-line', category: '生活', alias: ["smzdm","zdm"] },
+  { id: 'history', name: '历史上的今天', icon: 'ri-calendar-line', category: '综合', alias: ["ls","lishi"] },
+  { id: 'hellogithub', name: 'HelloGitHub', icon: 'ri-github-line', category: '科技', alias: ["hg","hellogithub"] },
+  { id: 'jianshu', name: '简书', icon: 'ri-quill-pen-line', category: '综合', alias: ["js","jianshu"] },
+  { id: 'zhuishu', name: '追书排行', icon: 'ri-bookmark-line', category: '阅读', alias: ["zs","zhuishu"] },
+  { id: 'artic', name: '芝加哥艺术学院', icon: 'ri-building-2-line', category: '艺术', alias: ["artic","meishu"] },
+  { id: 'metmuseum', name: '大都会博物馆', icon: 'ri-gallery-line', category: '艺术', alias: ['met', 'dahui'] }
 ]
 
 /**
@@ -195,7 +195,8 @@ function normalizeDailyHotData(data, platformId) {
     throw new Error('API 返回数据格式不正确')
   }
   return data.data.map((item, index) => {
-    let url = item.url || ''
+    // url 兜底：主链接缺失时回退移动版链接
+    let url = item.url || item.mobileUrl || ''
     // 豆瓣电影平台使用豆瓣搜索链接
     if (platformId === 'douban-movie' && item.title) {
       url = `https://search.douban.com/movie/subject_search?search_text=${encodeURIComponent(item.title)}`

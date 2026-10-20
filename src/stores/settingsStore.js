@@ -22,6 +22,12 @@ export const useSettingsStore = defineStore('settings', () => {
   // 隐藏的平台ID集合
   const hiddenPlatforms = ref(new Set())
 
+  // 钉住的平台ID列表（P0.2 侧栏钉住组）
+  const pinnedPlatforms = ref([])
+
+  // 侧栏分类折叠状态（P0.2）
+  const collapsedGroups = ref(new Set())
+
   // 系统主题监听器
   let darkModeQuery = null
 
@@ -110,7 +116,33 @@ export const useSettingsStore = defineStore('settings', () => {
               console.log('📋 加载隐藏平台列表:', Array.from(hiddenPlatforms.value))
             }
           } catch (e) {
-            console.log('⚠️ 解析隐藏平台列表失败:', e)
+            console.log('⚠️ 解析隐藏平台列表失败')
+          }
+        }
+        // 钉住平台（P0.2）
+        const savedPinned = window.utools.dbStorage.getItem(STORAGE_KEYS.PINNED_PLATFORMS)
+        if (savedPinned) {
+          try {
+            const parsedPinned = JSON.parse(savedPinned)
+            if (Array.isArray(parsedPinned)) {
+              pinnedPlatforms.value = parsedPinned.filter(id =>
+                PLATFORMS.some(p => p.id === id)
+              )
+            }
+          } catch (e) {
+            console.log('⚠️ 解析钉住平台失败')
+          }
+        }
+        // 分类折叠状态（P0.2）
+        const savedCollapsed = window.utools.dbStorage.getItem(STORAGE_KEYS.COLLAPSED_GROUPS)
+        if (savedCollapsed) {
+          try {
+            const parsedCollapsed = JSON.parse(savedCollapsed)
+            if (Array.isArray(parsedCollapsed)) {
+              collapsedGroups.value = new Set(parsedCollapsed)
+            }
+          } catch (e) {
+            console.log('⚠️ 解析折叠状态失败')
           }
         }
       } catch (e) {
@@ -281,6 +313,53 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   /**
+   * 钉住/取消钉住平台（P0.2 侧栏）
+   */
+  function togglePin(platformId) {
+    const idx = pinnedPlatforms.value.indexOf(platformId)
+    if (idx > -1) {
+      pinnedPlatforms.value.splice(idx, 1)
+    } else {
+      pinnedPlatforms.value.unshift(platformId)
+    }
+    if (window.utools && window.utools.dbStorage) {
+      try {
+        window.utools.dbStorage.setItem(
+          STORAGE_KEYS.PINNED_PLATFORMS,
+          JSON.stringify(pinnedPlatforms.value)
+        )
+      } catch (e) {
+        console.warn('⚠️ 保存钉住平台失败')
+      }
+    }
+  }
+
+  function isPinned(platformId) {
+    return pinnedPlatforms.value.includes(platformId)
+  }
+
+  /**
+   * 切换分类折叠（P0.2 侧栏）
+   */
+  function toggleGroupCollapse(category) {
+    if (collapsedGroups.value.has(category)) {
+      collapsedGroups.value.delete(category)
+    } else {
+      collapsedGroups.value.add(category)
+    }
+    if (window.utools && window.utools.dbStorage) {
+      try {
+        window.utools.dbStorage.setItem(
+          STORAGE_KEYS.COLLAPSED_GROUPS,
+          JSON.stringify(Array.from(collapsedGroups.value))
+        )
+      } catch (e) {
+        /* 忽略 */
+      }
+    }
+  }
+
+  /**
    * 清理监听器
    */
   function cleanup() {
@@ -364,6 +443,8 @@ export const useSettingsStore = defineStore('settings', () => {
     draggedItem,
     draggedIndex,
     hiddenPlatforms,
+    pinnedPlatforms,
+    collapsedGroups,
 
     // Actions
     loadSettings,
@@ -378,6 +459,9 @@ export const useSettingsStore = defineStore('settings', () => {
     onDrop,
     togglePlatformVisibility,
     isPlatformVisible,
+    togglePin,
+    isPinned,
+    toggleGroupCollapse,
     cleanup
   }
 })

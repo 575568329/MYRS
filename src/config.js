@@ -148,7 +148,15 @@ export const STORAGE_KEYS = {
   // 自定义平台顺序
   CUSTOM_PLATFORM_ORDER: 'customPlatformOrder',
   // 隐藏的平台列表
-  HIDDEN_PLATFORMS: 'hiddenPlatforms'
+  HIDDEN_PLATFORMS: 'hiddenPlatforms',
+  // 钉住的平台（P0.2 侧栏）
+  PINNED_PLATFORMS: 'pinnedPlatforms',
+  // 侧栏分类折叠状态
+  COLLAPSED_GROUPS: 'collapsedGroups',
+  // 收藏条目 v2（对象数组，P0.3）
+  FAVORITES_V2: 'favoriteItemsV2',
+  // 数据镜像索引（P0.1 秒开）
+  MIRROR_INDEX: 'dataMirrorIndex'
 }
 
 // 导出默认配置对象
