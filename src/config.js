@@ -142,8 +142,6 @@ export const STORAGE_KEYS = {
   HIDDEN_PLATFORMS: 'hiddenPlatforms',
   // 钉住的平台（P0.2 侧栏）
   PINNED_PLATFORMS: 'pinnedPlatforms',
-  // 侧栏分类展开状态（P0.2：默认全部收起，仅记录用户主动展开的组）
-  EXPANDED_GROUPS: 'expandedGroups',
   // 收藏条目 v2（对象数组，P0.3）
   FAVORITES_V2: 'favoriteItemsV2',
   // 数据镜像索引（P0.1 秒开）

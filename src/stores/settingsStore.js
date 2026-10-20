@@ -146,18 +146,6 @@ export const useSettingsStore = defineStore('settings', () => {
             console.log('⚠️ 解析钉住平台失败')
           }
         }
-        // 分类展开状态（默认全部收起，仅恢复用户主动展开过的组）
-        const savedExpanded = storage.getItem(STORAGE_KEYS.EXPANDED_GROUPS)
-        if (savedExpanded) {
-          try {
-            const parsedExpanded = JSON.parse(savedExpanded)
-            if (Array.isArray(parsedExpanded)) {
-              expandedGroups.value = new Set(parsedExpanded)
-            }
-          } catch (e) {
-            console.log('⚠️ 解析展开状态失败')
-          }
-        }
       } catch (e) {
         console.log('⚠️ 读取设置失败:', e)
       }
@@ -192,7 +180,6 @@ export const useSettingsStore = defineStore('settings', () => {
     persist(STORAGE_KEYS.THEME_MODE, themeMode.value)
     persist(STORAGE_KEYS.HIDDEN_PLATFORMS, JSON.stringify(Array.from(hiddenPlatforms.value)))
     persist(STORAGE_KEYS.PINNED_PLATFORMS, JSON.stringify(pinnedPlatforms.value))
-    persist(STORAGE_KEYS.EXPANDED_GROUPS, JSON.stringify(Array.from(expandedGroups.value)))
   }
 
   /**
@@ -329,7 +316,6 @@ export const useSettingsStore = defineStore('settings', () => {
     } else {
       expandedGroups.value.add(category)
     }
-    persist(STORAGE_KEYS.EXPANDED_GROUPS, JSON.stringify(Array.from(expandedGroups.value)))
   }
 
   /**
