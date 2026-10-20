@@ -125,6 +125,7 @@ html.dark-mode {
 
 | 文件 | 改动 |
 |---|---|
+| `src/services/hotSearchApi.js` | `PLATFORMS` 58 项各加 `alias: []` 静态别名（weibo→`['wb','weibo']`、bilibili→`['bz','bili']`…纯静态 0 依赖），供网格本地搜索与关键词直达共用 |
 | `src/stores/settingsStore.js` | 新增 `pinnedPlatforms: string[]`（dbStorage 持久化，键 `STORAGE_KEYS.PINNED_PLATFORMS`，config.js 补键名）；`togglePin/isPinned` |
 | `src/stores/settingsStore.js` | `customPlatformOrder/hiddenPlatforms` 初始化从"极简 20"扩到全部 58 平台；**迁移规则**：已存储的旧列表保留顺序，未出现的新平台默认可见、追加尾部 |
 | `src/HotSearch/index.vue` | `.platform-tabs`（L1282-1308）容器前置两组胶囊 + 尾部"全部"按钮；pill 右键/长按 = 钉住（`contextmenu` + 移动端 `touchstart` 500ms）；最近列表读 `hotSearchStore.recentPlatforms`（已有持久化，仅接 UI） |
