@@ -418,11 +418,36 @@ const loadMore = () => {
 }
 
 // 视图切换（P0.2 双视图）：'home' | 'favorites' | 平台ID
-const switchView = (view) => {
-  if (view === currentView.value && view !== selectedPlatform.value) return
+// origin：'pinned'（钉住组入口）| 'cat'（分类组入口）| 缺省（键盘/聚合卡片）
+// 钉住组与分类组的选中高亮各自独立，互不联动
+const pinnedActive = ref(null)
+const categoryActive = ref(null)
 
+function setActiveEntry(view, origin, cat) {
+  if (origin === 'pinned') {
+    pinnedActive.value = view
+    categoryActive.value = null
+  } else if (origin === 'cat') {
+    categoryActive.value = { id: view, cat }
+    pinnedActive.value = null
+  } else {
+    // 键盘/聚合卡片进入：优先亮钉住组入口，未钉住则亮分类组入口
+    if (settingsStore.isPinned(view)) {
+      pinnedActive.value = view
+      categoryActive.value = null
+    } else {
+      const meta = PLATFORMS.find(p => p.id === view)
+      categoryActive.value = { id: view, cat: meta ? meta.category : '' }
+      pinnedActive.value = null
+    }
+  }
+}
+
+const switchView = (view, origin, cat) => {
   if (view === 'home') {
     currentView.value = 'home'
+    pinnedActive.value = null
+    categoryActive.value = null
     trackEvent(EventType.PLATFORM_SWITCH, { to_view: 'home', source: 'sidebar' })
     return
   }
@@ -433,15 +458,22 @@ const switchView = (view) => {
     return
   }
 
+  // 已在该平台视图：仅切换高亮入口（钉住↔分类），不重新拉数据
+  if (view === selectedPlatform.value && currentView.value === view) {
+    setActiveEntry(view, origin, cat)
+    return
+  }
+
   const fromView = currentView.value
   const fromPlatform = selectedPlatform.value
   selectedPlatform.value = view
   currentView.value = view
   selectedHotIndex.value = -1
+  setActiveEntry(view, origin, cat)
   trackEvent(EventType.PLATFORM_SWITCH, {
     from_platform: fromPlatform,
     to_platform: view,
-    source: fromView === 'home' ? 'card' : 'sidebar'
+    source: origin === 'pinned' ? 'pin' : origin === 'cat' ? 'sidebar' : fromView === 'home' ? 'card' : 'keyboard'
   })
   fetchHotData(view)
 }
@@ -1247,6 +1279,8 @@ watch(selectedPlatform, (newPlatform) => {
     <!-- 左侧栏（P0.2 定稿布局） -->
     <PlatformSidebar
       :current-view="currentView"
+      :pinned-active="pinnedActive"
+      :category-active="categoryActive"
       :favorite-count="favoriteCount"
       :show-translate="currentView !== 'home' && isTranslatablePlatform"
       :translating="autoTranslate"

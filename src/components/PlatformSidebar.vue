@@ -26,15 +26,15 @@
         <span v-if="favoriteCount > 0" class="side-count mrs-tnum">{{ favoriteCount }}</span>
       </button>
 
-      <!-- 钉住组 -->
+      <!-- 钉住组（选中态独立于分类组：点这里只亮这里） -->
       <div v-if="pinnedPlatforms.length > 0" class="side-group-label">
         <Pin class="side-ico" :size="12" />我的钉住
       </div>
       <template v-for="p in pinnedPlatforms" :key="'pin-' + p.id">
         <button
           class="side-item"
-          :class="{ on: currentView === p.id }"
-          @click="$emit('select', p.id)"
+          :class="{ on: pinnedActive === p.id }"
+          @click="$emit('select', p.id, 'pinned')"
         >
           <span class="side-dot" :style="{ background: dotColor(p.category) }"></span>
           <span class="side-name">{{ p.name }}</span>
@@ -63,8 +63,8 @@
             v-for="p in group.platforms"
             :key="group.name + '-' + p.id"
             class="side-item"
-            :class="{ on: currentView === p.id }"
-            @click="$emit('select', p.id)"
+            :class="{ on: categoryActive && categoryActive.id === p.id && categoryActive.cat === group.name }"
+            @click="$emit('select', p.id, 'cat', group.name)"
           >
             <span class="side-dot" :style="{ background: dotColor(p.category) }"></span>
             <span class="side-name">{{ p.name }}</span>
@@ -124,6 +124,8 @@ import {
 
 const props = defineProps({
   currentView: { type: String, required: true }, // 'home' | 'favorites' | platformId
+  pinnedActive: { type: String, default: null }, // 钉住组当前选中平台ID（独立高亮）
+  categoryActive: { type: Object, default: null }, // 分类组当前选中 { id, cat }（独立高亮）
   favoriteCount: { type: Number, default: 0 },
   showTranslate: { type: Boolean, default: false },
   translating: { type: Boolean, default: false },
