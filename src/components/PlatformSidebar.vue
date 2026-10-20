@@ -35,37 +35,14 @@
           class="side-item"
           :class="{ on: currentView === p.id }"
           @click="$emit('select', p.id)"
-          @contextmenu.prevent="$emit('pin-toggle', p.id)"
-          @touchstart.passive="startLongPress(p.id)"
-          @touchend="cancelLongPress"
-          @touchmove="cancelLongPress"
         >
           <span class="side-dot" :style="{ background: dotColor(p.category) }"></span>
           <span class="side-name">{{ p.name }}</span>
-          <Pin class="side-ico pin-mark" :size="11" />
+          <Pin class="side-ico pin-mark pinned" :size="11" @click.stop="$emit('pin-toggle', p.id)" />
         </button>
       </template>
 
-      <!-- 最近组 -->
-      <div v-if="recentPlatforms.length > 0" class="side-group-label">
-        <Clock3 class="side-ico" :size="12" />最近
-      </div>
-      <template v-for="p in recentPlatforms" :key="'rec-' + p.id">
-        <button
-          class="side-item"
-          :class="{ on: currentView === p.id }"
-          @click="$emit('select', p.id)"
-          @contextmenu.prevent="$emit('pin-toggle', p.id)"
-          @touchstart.passive="startLongPress(p.id)"
-          @touchend="cancelLongPress"
-          @touchmove="cancelLongPress"
-        >
-          <span class="side-dot" :style="{ background: dotColor(p.category) }"></span>
-          <span class="side-name">{{ p.name }}</span>
-        </button>
-      </template>
-
-      <!-- 分类折叠组 -->
+      <!-- 分类折叠组（平台永远留在分类原位，不因浏览/钉住而消失） -->
       <template v-for="group in categoryGroups" :key="group.name">
         <button class="side-group-label toggle" @click="settingsStore.toggleGroupCollapse(group.name)">
           <component :is="group.collapsed ? ChevronRight : ChevronDown" class="side-ico" :size="12" />
@@ -79,13 +56,10 @@
             class="side-item"
             :class="{ on: currentView === p.id }"
             @click="$emit('select', p.id)"
-            @contextmenu.prevent="$emit('pin-toggle', p.id)"
-            @touchstart.passive="startLongPress(p.id)"
-            @touchend="cancelLongPress"
-            @touchmove="cancelLongPress"
           >
             <span class="side-dot" :style="{ background: dotColor(p.category) }"></span>
             <span class="side-name">{{ p.name }}</span>
+            <Pin class="side-ico pin-mark" :size="11" @click.stop="$emit('pin-toggle', p.id)" />
           </button>
         </template>
       </template>
@@ -125,13 +99,12 @@ import { computed } from 'vue'
 import { PLATFORMS } from '../services/hotSearchApi.js'
 import { useSettingsStore } from '../stores/settingsStore.js'
 import {
-  LayoutDashboard, Star, Pin, Clock3, ChevronDown, ChevronRight,
+  LayoutDashboard, Star, Pin, ChevronDown, ChevronRight,
   Languages, RefreshCw, Settings2, Heart, Flame
 } from 'lucide-vue-next'
 
 const props = defineProps({
   currentView: { type: String, required: true }, // 'home' | 'favorites' | platformId
-  recentIds: { type: Array, default: () => [] },
   favoriteCount: { type: Number, default: 0 },
   showTranslate: { type: Boolean, default: false },
   translating: { type: Boolean, default: false },
@@ -157,19 +130,13 @@ const pinnedPlatforms = computed(() =>
   settingsStore.pinnedPlatforms.map(byId).filter(Boolean)
 )
 
-const recentPlatforms = computed(() =>
-  props.recentIds.filter(id => !settingsStore.pinnedPlatforms.includes(id)).map(byId).filter(Boolean).slice(0, 5)
-)
-
 const categoryGroups = computed(() => {
   const groups = new Map()
-  const pinnedOrRecent = new Set([...settingsStore.pinnedPlatforms, ...props.recentIds.slice(0, 5)])
-  visiblePlatforms.value
-    .filter(p => !pinnedOrRecent.has(p.id))
-    .forEach(p => {
-      if (!groups.has(p.category)) groups.set(p.category, [])
-      groups.get(p.category).push(p)
-    })
+  // 已钉住的平台仍保留在分类组中（钉住 = 额外置顶展示，原位不消失）
+  visiblePlatforms.value.forEach(p => {
+    if (!groups.has(p.category)) groups.set(p.category, [])
+    groups.get(p.category).push(p)
+  })
   const names = [...groups.keys()].sort((a, b) => {
     const ia = CATEGORY_ORDER.indexOf(a)
     const ib = CATEGORY_ORDER.indexOf(b)
@@ -188,22 +155,6 @@ function dotColor(category) {
   let h = 0
   for (const c of String(category || '')) h = (h * 31 + c.charCodeAt(0)) >>> 0
   return DOT_PALETTE[h % DOT_PALETTE.length]
-}
-
-// 长按钉住（移动端等价右键）
-let longPressTimer = null
-function startLongPress(platformId) {
-  cancelLongPress()
-  longPressTimer = setTimeout(() => {
-    // 触发 pin-toggle 由父组件处理
-    settingsStore.togglePin(platformId)
-  }, 500)
-}
-function cancelLongPress() {
-  if (longPressTimer) {
-    clearTimeout(longPressTimer)
-    longPressTimer = null
-  }
 }
 </script>
 
@@ -344,6 +295,25 @@ function cancelLongPress() {
 .pin-mark {
   color: var(--color-text-muted);
   flex: none;
+  opacity: 0;
+  cursor: pointer;
+  transition: opacity 0.15s, color 0.15s;
+  border-radius: 3px;
+  padding: 2px;
+}
+
+.side-item:hover .pin-mark {
+  opacity: 0.85;
+}
+
+.pin-mark:hover {
+  color: var(--color-brand-text);
+}
+
+/* 已钉住：常显 + 品牌色 */
+.pin-mark.pinned {
+  opacity: 1;
+  color: var(--color-brand-text);
 }
 
 .sidebar-foot {

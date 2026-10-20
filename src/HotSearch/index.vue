@@ -11,7 +11,7 @@ import AnalyticsDebugPanel from '../components/AnalyticsDebugPanel.vue'
 import PlatformSidebar from '../components/PlatformSidebar.vue'
 import AggregateHome from '../components/AggregateHome.vue'
 import ErrorState from '../components/ErrorState.vue'
-import { RefreshCw, Star, Copy, Link } from 'lucide-vue-next'
+import { RefreshCw, Star, Copy, Link, Flame } from 'lucide-vue-next'
 import { openUrl } from '../utils/openUrl.js'
 import { saveMirror, peekMirror, mirrorAgeText } from '../utils/dataMirror.js'
 import { useFavorites } from '../utils/favorites.js'
@@ -57,9 +57,6 @@ const currentPage = ref(1)
 const totalCount = ref(0)
 const updateTime = ref('')
 const autoRefreshTimer = ref(null)
-
-// 最近使用平台（LRU，持久化）
-const recentIds = ref([])
 
 // P0.1 镜像滞后提示：{ ts } 非空时显示"缓存 N分钟前"角标
 const staleInfo = ref(null)
@@ -298,8 +295,6 @@ const fetchHotData = async (platformId, loadMore = false) => {
           hasMore: result.hasMore
         })
         staleInfo.value = null
-        // P0.2 记录最近使用
-        addToRecent(platformId)
         // 保存到localStorage
         try {
           localStorage.setItem(`platform_update_${platformId}`, Date.now())
@@ -438,39 +433,6 @@ const switchView = (view) => {
     source: fromView === 'home' ? 'card' : 'sidebar'
   })
   fetchHotData(view)
-}
-
-// 记录最近使用平台（LRU 5，持久化）
-function addToRecent(platformId) {
-  const list = recentIds.value.filter(id => id !== platformId)
-  list.unshift(platformId)
-  recentIds.value = list.slice(0, 5)
-  if (window.utools && window.utools.dbStorage) {
-    try {
-      window.utools.dbStorage.setItem(
-        STORAGE_KEYS.RECENT_PLATFORMS,
-        JSON.stringify(recentIds.value)
-      )
-    } catch (e) {
-      /* 忽略 */
-    }
-  }
-}
-
-function loadRecent() {
-  if (window.utools && window.utools.dbStorage) {
-    try {
-      const saved = window.utools.dbStorage.getItem(STORAGE_KEYS.RECENT_PLATFORMS)
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        if (Array.isArray(parsed)) {
-          recentIds.value = parsed.filter(id => PLATFORMS.some(p => p.id === id)).slice(0, 5)
-        }
-      }
-    } catch (e) {
-      /* 忽略 */
-    }
-  }
 }
 
 // 聚合首页刷新
@@ -1137,9 +1099,9 @@ onUnmounted(() => {
   }
 })
 
-// 获取排名样式类（Top3 高亮）
+// 获取排名样式类（Top3 渐变高亮）
 const getRankClass = (index) => {
-  return index <= 3 ? 'rank-top' : ''
+  return index <= 3 ? 'rank-top top-' + index : ''
 }
 
 // 格式化热度数值
@@ -1194,10 +1156,7 @@ onMounted(() => {
 
   // 加载设置（包括钉住平台、隐藏平台、主题等）
   settingsStore.loadSettings()
-
-  // 收藏与最近使用
   loadFavorites()
-  loadRecent()
 
   // 恢复上次平台 + 主题
   if (window.utools && window.utools.dbStorage) {
@@ -1277,7 +1236,6 @@ watch(selectedPlatform, (newPlatform) => {
     <!-- 左侧栏（P0.2 定稿布局） -->
     <PlatformSidebar
       :current-view="currentView"
-      :recent-ids="recentIds"
       :favorite-count="favoriteCount"
       :show-translate="currentView !== 'home' && isTranslatablePlatform"
       :translating="autoTranslate"
@@ -1449,7 +1407,7 @@ watch(selectedPlatform, (newPlatform) => {
                   </button>
                 </div>
                 <div v-if="item.hot && settingsStore.showHotValue" class="hot-value">
-                  🔥 {{ formatHotValue(item.hot) }}
+                  <Flame :size="12" class="hot-flame" />{{ formatHotValue(item.hot) }}
                 </div>
               </div>
             </template>
@@ -1852,9 +1810,9 @@ watch(selectedPlatform, (newPlatform) => {
 }
 
 .hot-rank {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
+  width: 21px;
+  height: 21px;
+  border-radius: 7px;
   background-color: var(--color-rank);
   color: #ffffff;
   display: flex;
@@ -1864,11 +1822,20 @@ watch(selectedPlatform, (newPlatform) => {
   font-weight: bold;
   flex-shrink: 0;
   margin-right: 10px;
+  font-variant-numeric: tabular-nums;
 }
 
-/* Top3 排名高亮（getRankClass 输出，替代原内联样式 hack） */
-.hot-rank.rank-top {
-  background-color: var(--color-rank-top);
+/* Top3 排名高亮（getRankClass 输出，§11.2 色阶） */
+.hot-rank.rank-top.top-1 {
+  background: linear-gradient(135deg, var(--brand-fire-2), var(--brand-fire-3));
+}
+
+.hot-rank.rank-top.top-2 {
+  background: var(--brand-fire-2);
+}
+
+.hot-rank.rank-top.top-3 {
+  background: var(--brand-fire-1);
 }
 
 .hot-content {
@@ -1878,7 +1845,7 @@ watch(selectedPlatform, (newPlatform) => {
 
 .hot-title {
   font-size: 15px;
-  color: var(--color-accent-text);
+  color: var(--color-text);
   margin-bottom: 4px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1900,6 +1867,14 @@ watch(selectedPlatform, (newPlatform) => {
   flex-shrink: 0;
   margin-left: 12px;
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-variant-numeric: tabular-nums;
+}
+
+.hot-flame {
+  color: var(--color-hot);
 }
 
 /* 行内操作（P0.3：hover/选中浮现，不与热度值重叠） */

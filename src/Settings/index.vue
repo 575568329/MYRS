@@ -1,8 +1,7 @@
 <script setup>
-import { onMounted, onUnmounted } from 'vue'
+import { onMounted, onUnmounted, computed, ref } from 'vue'
 import { useSettingsStore } from '../stores/settingsStore.js'
 import { PLATFORMS } from '../services/hotSearchApi.js'
-import { DISPLAY_MODE } from '../config.js'
 import PlatformIcon from '../components/PlatformIcon.vue'
 
 const props = defineProps({
@@ -38,25 +37,25 @@ const handleReset = () => {
   }
 }
 
-// 开始拖拽
-const handleDragStart = (item, index) => {
-  settingsStore.startDrag(item, index)
-}
-
-// 放置
-const handleDrop = (index) => {
-  settingsStore.onDrop(index)
-}
-
-// 拖拽结束
-const handleDragEnd = () => {
-  // Pinia store 的 onDrop 中已经清理了状态，这里不需要重复清理
-}
+// 平台按分类分组（全部 58 个平台，显隐管理；顺序由侧栏"钉住"决定）
+const CATEGORY_ORDER = ['资讯', '科技', '视频', '社交', '娱乐', '游戏', '生活', '阅读', '艺术', '金融', '综合']
+const platformGroups = computed(() => {
+  const groups = new Map()
+  PLATFORMS.forEach(p => {
+    const cat = p.category || '综合'
+    if (!groups.has(cat)) groups.set(cat, [])
+    groups.get(cat).push(p)
+  })
+  const names = [...groups.keys()].sort((a, b) => {
+    const ia = CATEGORY_ORDER.indexOf(a)
+    const ib = CATEGORY_ORDER.indexOf(b)
+    return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib)
+  })
+  return names.map(name => ({ name, platforms: groups.get(name) }))
+})
 
 // 切换平台可见性
-const handleToggleVisibility = (platformId, event) => {
-  // 阻止事件冒泡，避免触发拖拽
-  event.stopPropagation()
+const handleToggleVisibility = (platformId) => {
   settingsStore.togglePlatformVisibility(platformId)
 }
 </script>
@@ -136,37 +135,28 @@ const handleToggleVisibility = (platformId, event) => {
           </div>
         </section>
 
-        <!-- 平台顺序设置 -->
+        <!-- 平台显示管理（v4：顺序由侧栏钉住决定，此处只管显隐） -->
         <section class="settings-section">
-          <h3>平台顺序</h3>
+          <h3>平台显示</h3>
           <p class="section-desc">
-            拖拽调整平台显示顺序
+            隐藏不常用的平台让侧栏更清爽；排序请用左侧栏「右键钉住」，常用平台会固定在最前
           </p>
 
-          <div class="platform-list">
-            <div
-              v-for="(platform, index) in settingsStore.customPlatformOrder"
-              :key="platform.id"
-              :class="['platform-item', {
-                'dragging': settingsStore.draggedIndex === index,
-                'hidden': !settingsStore.isPlatformVisible(platform.id)
-              }]"
-              draggable="true"
-              @dragstart="handleDragStart(platform, index)"
-              @dragover.prevent
-              @drop="handleDrop(index)"
-              @dragend="handleDragEnd"
-            >
-              <div class="platform-item-handle">⋮⋮</div>
-              <PlatformIcon :icon="platform.icon" :size="20" />
-              <span class="platform-item-name">{{ platform.name }}</span>
+          <div v-for="group in platformGroups" :key="group.name" class="platform-group">
+            <div class="platform-group-label">{{ group.name }}</div>
+            <div class="platform-list">
               <button
-                class="visibility-toggle"
-                :class="{ hidden: !settingsStore.isPlatformVisible(platform.id) }"
-                @click="handleToggleVisibility(platform.id, $event)"
-                :title="settingsStore.isPlatformVisible(platform.id) ? '隐藏此平台' : '显示此平台'"
+                v-for="platform in group.platforms"
+                :key="platform.id"
+                :class="['platform-item', { 'hidden': !settingsStore.isPlatformVisible(platform.id) }]"
+                @click="handleToggleVisibility(platform.id)"
+                :title="settingsStore.isPlatformVisible(platform.id) ? '点击隐藏此平台' : '点击显示此平台'"
               >
-                {{ settingsStore.isPlatformVisible(platform.id) ? '👁️' : '👁️‍🗨️' }}
+                <PlatformIcon :icon="platform.icon" :size="18" />
+                <span class="platform-item-name">{{ platform.name }}</span>
+                <span class="visibility-mark" :class="{ hidden: !settingsStore.isPlatformVisible(platform.id) }">
+                  {{ settingsStore.isPlatformVisible(platform.id) ? '👁️' : '🚫' }}
+                </span>
               </button>
             </div>
           </div>
@@ -182,57 +172,53 @@ const handleToggleVisibility = (platformId, event) => {
                 <span class="shortcut-name">切换平台</span>
                 <span class="shortcut-detail">上一个/下一个平台</span>
               </div>
-              <div class="shortcut-keys">
-                <kbd>←</kbd>
-                <kbd>→</kbd>
-              </div>
+              <div class="shortcut-keys"><kbd>←</kbd><kbd>→</kbd></div>
             </div>
-
             <div class="shortcut-item">
               <div class="shortcut-desc">
                 <span class="shortcut-name">选择热搜</span>
-                <span class="shortcut-detail">上一条/下一条热搜</span>
+                <span class="shortcut-detail">上一条/下一条 · 翻页</span>
               </div>
-              <div class="shortcut-keys">
-                <kbd>↑</kbd>
-                <kbd>↓</kbd>
-              </div>
+              <div class="shortcut-keys"><kbd>↑</kbd><kbd>↓</kbd><kbd>PageUp</kbd><kbd>PageDown</kbd></div>
             </div>
-
+            <div class="shortcut-item">
+              <div class="shortcut-desc">
+                <span class="shortcut-name">快速跳转</span>
+                <span class="shortcut-detail">选中第 1-9 条热搜</span>
+              </div>
+              <div class="shortcut-keys"><kbd>1</kbd> - <kbd>9</kbd></div>
+            </div>
+            <div class="shortcut-item">
+              <div class="shortcut-desc">
+                <span class="shortcut-name">复制 / 收藏</span>
+                <span class="shortcut-detail">复制选中标题 / 收藏选中条目</span>
+              </div>
+              <div class="shortcut-keys"><kbd>c</kbd><kbd>f</kbd></div>
+            </div>
             <div class="shortcut-item">
               <div class="shortcut-desc">
                 <span class="shortcut-name">打开链接</span>
-                <span class="shortcut-detail">打开选中的热搜</span>
+                <span class="shortcut-detail">内置浏览器打开选中热搜</span>
               </div>
-              <div class="shortcut-keys">
-                <kbd>Enter</kbd>
-              </div>
+              <div class="shortcut-keys"><kbd>Enter</kbd></div>
             </div>
-
             <div class="shortcut-item">
               <div class="shortcut-desc">
-                <span class="shortcut-name">刷新数据</span>
-                <span class="shortcut-detail">刷新当前平台数据</span>
+                <span class="shortcut-name">退出</span>
+                <span class="shortcut-detail">关闭弹层 / 退出插件</span>
               </div>
-              <div class="shortcut-keys">
-                <kbd>F5</kbd>
-                <span class="shortcut-or">或</span>
-                <kbd>Ctrl</kbd> + <kbd>R</kbd>
-              </div>
+              <div class="shortcut-keys"><kbd>Esc</kbd></div>
             </div>
-
             <div class="shortcut-item">
               <div class="shortcut-desc">
-                <span class="shortcut-name">翻译内容</span>
-                <span class="shortcut-detail">翻译当前内容</span>
+                <span class="shortcut-name">刷新 / 翻译</span>
+                <span class="shortcut-detail">刷新当前平台（翻译仅艺术类平台）</span>
               </div>
-              <div class="shortcut-keys">
-                <kbd>Ctrl</kbd> + <kbd>T</kbd>
-              </div>
+              <div class="shortcut-keys"><kbd>F5</kbd><kbd>Ctrl</kbd>+<kbd>R</kbd> / <kbd>Ctrl</kbd>+<kbd>T</kbd></div>
             </div>
           </div>
 
-          <p class="section-hint">💡 提示：在输入框中输入时快捷键不会触发</p>
+          <p class="section-hint">💡 输入框聚焦时快捷键不会触发</p>
         </section>
 
         <!-- 其他操作 -->
@@ -246,97 +232,47 @@ const handleToggleVisibility = (platformId, event) => {
           </div>
         </section>
 
-        <!-- API 信息 & 版权 -->
+        <!-- API 信息（默认折叠） -->
         <section class="settings-section">
-          <h3>📡 数据来源 & API 信息</h3>
-
-          <div class="api-info-list">
-            <!-- 主要热搜 API -->
-            <div class="api-info-item">
-              <div class="api-info-header">
-                <span class="api-name">热搜聚合 API</span>
-                <span class="api-tag primary">主要</span>
+          <details class="api-details">
+            <summary>📡 数据来源 & 免责声明</summary>
+            <div class="api-info-list">
+              <div class="api-info-item">
+                <div class="api-info-header">
+                  <span class="api-name">热搜数据</span>
+                  <span class="api-tag primary">三级回退</span>
+                </div>
+                <div class="api-info-details">
+                  <p><strong>本地服务：</strong>插件内置 DailyHotApi（56 源，默认）</p>
+                  <p><strong>远程备用：</strong><code>uapis.cn</code> → <code>api-hot.imsyy.com</code></p>
+                  <p><strong>支持平台：</strong>58 个平台，覆盖资讯/科技/视频/游戏/金融等</p>
+                </div>
               </div>
-              <div class="api-info-details">
-                <p><strong>API 地址：</strong><code>https://uapis.cn/api/v1/misc/hotboard</code></p>
-                <p><strong>备用 API：</strong><code>https://api-hot.imsyy.com</code></p>
-                <p><strong>支持平台：</strong>微博、知乎、抖音、B站、百度、今日头条等 40+ 个平台</p>
-                <p><strong>数据说明：</strong>实时聚合各平台热搜数据，仅用于展示</p>
+              <div class="api-info-item">
+                <div class="api-info-header">
+                  <span class="api-name">专用 API</span>
+                  <span class="api-tag info">直连官方</span>
+                </div>
+                <div class="api-info-details">
+                  <p>• 艺术品：芝加哥艺术学院 / 大都会博物馆（仅公有领域）</p>
+                  <p>• 开发者：GitHub Trending（官方 API）/ Hacker News</p>
+                  <p>• 股票：腾讯实时行情（仅供参考，不构成投资建议）</p>
+                </div>
               </div>
-            </div>
-
-            <!-- 芝加哥艺术学院 API -->
-            <div class="api-info-item highlight">
-              <div class="api-info-header">
-                <span class="api-name">芝加哥艺术学院 API</span>
-                <span class="api-tag success">公有领域</span>
-              </div>
-              <div class="api-info-details">
-                <p><strong>API 地址：</strong><code>https://api.artic.edu/api/v1/artworks</code></p>
-                <p><strong>官网文档：</strong><a href="https://api.artic.edu/docs/" target="_blank">https://api.artic.edu/docs/</a></p>
-                <p><strong>版权说明：</strong>仅展示公有领域（Public Domain）艺术品，可免费使用</p>
-                <p><strong>筛选条件：</strong><code>is_public_domain: true</code></p>
-                <p class="api-note">ℹ️ 根据 API 官方文档建议，我们只使用标注为公有领域的艺术作品图片，避免版权问题</p>
+              <div class="api-disclaimer">
+                <p><strong>⚠️ 免责声明：</strong>本应用仅作为数据展示工具，所有数据版权归原平台所有；热搜数据实时聚合自各公开平台，可能存在延迟或差异。</p>
               </div>
             </div>
-
-            <!-- 开发者工具集 API -->
-            <div class="api-info-item">
-              <div class="api-info-header">
-                <span class="api-name">开发者工具集 API</span>
-                <span class="api-tag info">开发者</span>
-              </div>
-              <div class="api-info-details">
-                <p><strong>GitHub Trending：</strong><code>https://api.github.com/search/repositories</code></p>
-                <p>• 使用 GitHub 官方 Search API</p>
-                <p>• 获取最近 7 天最热门项目</p>
-                <p>• 按 Stars 数量降序排列</p>
-                <p><strong>Hacker News：</strong><code>https://hacker-news.firebaseio.com/v0/</code></p>
-                <p>• 使用 Hacker News 官方 Firebase API</p>
-                <p>• 获取热门科技资讯和讨论</p>
-                <p>• 显示文章文本、作者、评论数</p>
-                <p><strong>Product Hunt：</strong>产品发现导航</p>
-                <p>• 提供最新科技产品链接</p>
-                <p class="api-note">💡 支持一键翻译（使用 utools AI），翻译结果自动缓存</p>
-              </div>
-            </div>
-
-            <!-- 股票数据 API -->
-            <div class="api-info-item">
-              <div class="api-info-header">
-                <span class="api-name">股票数据 API</span>
-                <span class="api-tag warning">金融</span>
-              </div>
-              <div class="api-info-details">
-                <p><strong>API 地址：</strong><code>https://qt.gtimg.cn</code></p>
-                <p>• 使用腾讯股票实时行情 API</p>
-                <p>• 支持热门股票、上证指数、科技股</p>
-                <p>• 缓存时间：1分钟（确保实时性）</p>
-                <p class="api-note">⚠️ 股票数据仅供参考，不构成投资建议</p>
-              </div>
-            </div>
-
-            <!-- 免责声明 -->
-            <div class="api-disclaimer">
-              <p><strong>⚠️ 免责声明：</strong></p>
-              <ul>
-                <li>本应用仅作为数据展示工具，所有数据版权归原平台所有</li>
-                <li>热搜数据实时抓取自各公开平台，可能存在延迟或差异</li>
-                <li>芝加哥艺术学院艺术品均为公有领域作品，可自由使用</li>
-                <li>如有任何版权问题，请联系原平台或 API 提供商</li>
-              </ul>
-            </div>
-          </div>
+          </details>
         </section>
 
         <!-- 关于 -->
         <section class="settings-section">
           <h3>关于</h3>
           <div class="about-info">
-            <p><strong>摸鱼热搜</strong> v2.0.3</p>
-            <p>一个简洁高效的热搜聚合插件</p>
-            <p>支持 46+ 热搜平台，包括开发者工具和艺术品展示</p>
-            <p>支持 AI 智能翻译，翻译结果自动缓存</p>
+            <p><strong>摸鱼热搜</strong> v2.1.0</p>
+            <p>一个简洁高效的热搜聚合插件 · 58 平台 · 内置数据服务</p>
+            <p>支持 AI 智能翻译（Ctrl+T，艺术与开发者平台）</p>
           </div>
         </section>
       </div>
@@ -351,128 +287,122 @@ const handleToggleVisibility = (platformId, event) => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background-color: rgba(0, 0, 0, 0.55);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
-  backdrop-filter: blur(4px);
+  z-index: var(--z-modal);
 }
 
 .settings-modal {
-  background: #ffffff;
-  border-radius: 16px;
-  width: 90%;
-  max-width: 600px;
-  max-height: 85vh;
+  width: 600px;
+  max-width: 94vw;
+  max-height: 86vh;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
   display: flex;
   flex-direction: column;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
 }
 
 .settings-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px 24px;
-  border-bottom: 1px solid #e0e0e0;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid var(--color-border-light);
+  flex-shrink: 0;
 }
 
 .settings-header h2 {
-  margin: 0;
-  font-size: 20px;
+  font-size: var(--font-lg);
   font-weight: 600;
-  color: #333;
+  color: var(--color-text);
 }
 
 .close-btn {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   border: none;
-  background: #f5f5f5;
-  border-radius: 50%;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-muted);
+  color: var(--color-text-2);
+  font-size: var(--font-lg);
   cursor: pointer;
-  font-size: 18px;
-  color: #666;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
+  transition: background 0.2s;
 }
 
 .close-btn:hover {
-  background: #e8e8e8;
-  color: #333;
+  background: var(--color-surface-muted-hover);
+  color: var(--color-text);
 }
 
 .settings-content {
   flex: 1;
   overflow-y: auto;
-  padding: 24px;
+  padding: 20px;
 }
 
 /* 滚动条：统一走 main.css 全局令牌化样式 */
 
 .settings-section {
-  margin-bottom: 28px;
-}
-
-.settings-section:last-child {
-  margin-bottom: 0;
+  margin-bottom: 24px;
 }
 
 .settings-section h3 {
-  margin: 0 0 16px 0;
-  font-size: 16px;
+  font-size: var(--font-base);
   font-weight: 600;
-  color: #333;
+  color: var(--color-text);
+  margin-bottom: 12px;
 }
 
 .section-desc {
-  margin: 0 0 12px 0;
-  font-size: 13px;
-  color: #999;
+  font-size: var(--font-sm);
+  color: var(--color-text-muted);
+  margin-bottom: 12px;
+  line-height: 1.6;
+}
+
+.section-hint {
+  font-size: var(--font-sm);
+  color: var(--color-text-muted);
+  margin-top: 10px;
 }
 
 .setting-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 0;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.setting-item:last-child {
-  border-bottom: none;
+  padding: 10px 0;
 }
 
 .setting-label {
-  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .setting-name {
-  display: block;
-  font-size: 14px;
-  font-weight: 500;
-  color: #333;
-  margin-bottom: 4px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  font-size: var(--font-base);
+  color: var(--color-text);
 }
 
 .setting-desc {
-  display: block;
-  font-size: 12px;
-  color: #999;
+  font-size: var(--font-sm);
+  color: var(--color-text-muted);
 }
 
-/* 开关组件 */
+/* 开关 */
 .toggle-switch {
   position: relative;
-  width: 48px;
-  height: 26px;
+  width: 42px;
+  height: 24px;
   flex-shrink: 0;
+  cursor: pointer;
 }
 
 .toggle-switch input {
@@ -483,543 +413,274 @@ const handleToggleVisibility = (platformId, event) => {
 
 .toggle-slider {
   position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: #ccc;
-  transition: 0.3s;
-  border-radius: 26px;
+  inset: 0;
+  background: var(--color-surface-muted-hover);
+  border-radius: var(--radius-pill);
+  transition: background 0.2s;
 }
 
-.toggle-slider:before {
-  position: absolute;
+.toggle-slider::before {
   content: "";
-  height: 20px;
-  width: 20px;
+  position: absolute;
+  width: 18px;
+  height: 18px;
   left: 3px;
-  bottom: 3px;
-  background: white;
-  transition: 0.3s;
+  top: 3px;
+  background: #ffffff;
   border-radius: 50%;
+  transition: transform 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
 }
 
 .toggle-switch input:checked + .toggle-slider {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--color-primary);
 }
 
-.toggle-switch input:checked + .toggle-slider:before {
-  transform: translateX(22px);
+.toggle-switch input:checked + .toggle-slider::before {
+  transform: translateX(18px);
 }
 
-/* 主题选项 */
+/* 主题按钮 */
 .theme-options {
   display: flex;
   gap: 8px;
 }
 
 .theme-btn {
-  padding: 8px 16px;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  background: #f5f5f5;
-  color: #666;
+  padding: 6px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-2);
+  font-size: var(--font-sm);
   cursor: pointer;
-  font-size: 13px;
   transition: all 0.2s;
+  font-family: inherit;
 }
 
 .theme-btn:hover {
-  background: #e8e8e8;
+  border-color: var(--color-primary);
+  color: var(--color-primary);
 }
 
 .theme-btn.active {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--color-primary);
+  border-color: var(--color-primary);
   color: #ffffff;
-  border-color: transparent;
 }
 
-/* 平台列表 */
+/* 平台显示管理 */
+.platform-group {
+  margin-bottom: 10px;
+}
+
+.platform-group-label {
+  font-size: var(--font-xs);
+  color: var(--color-text-muted);
+  padding: 6px 2px 4px;
+  letter-spacing: 0.05em;
+}
+
 .platform-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(158px, 1fr));
+  gap: 6px;
 }
 
 .platform-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  background: #f8f9fa;
-  border: 1px solid #e0e0e0;
-  border-radius: 10px;
-  cursor: move;
-  transition: all 0.2s;
+  gap: 8px;
+  padding: 7px 10px;
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
 }
 
 .platform-item:hover {
-  background: #f0f1f2;
-  border-color: #667eea;
+  border-color: var(--color-primary);
 }
 
-.platform-item.dragging {
-  opacity: 0.5;
-  transform: scale(0.98);
-}
-
-.platform-item-handle {
-  color: #ccc;
-  font-size: 16px;
-  cursor: grab;
-  user-select: none;
+.platform-item.hidden {
+  opacity: 0.45;
 }
 
 .platform-item-name {
   flex: 1;
-  font-size: 14px;
-  font-weight: 500;
-  color: #333;
+  min-width: 0;
+  font-size: var(--font-sm);
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
 }
 
-/* 平台可见性切换按钮 */
-.visibility-toggle {
-  padding: 4px 8px;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  font-size: 16px;
-  opacity: 0.7;
-  transition: all 0.2s;
-  border-radius: 4px;
+.visibility-mark {
+  font-size: var(--font-sm);
+  flex-shrink: 0;
 }
 
-.visibility-toggle:hover {
-  opacity: 1;
-  background: rgba(0, 0, 0, 0.05);
-}
-
-.visibility-toggle.hidden {
-  opacity: 0.5;
-}
-
-/* 隐藏的平台项 */
-.platform-item.hidden {
-  opacity: 0.5;
-  background: #fafafa;
-}
-
-.platform-item.hidden .platform-item-name {
-  text-decoration: line-through;
-  color: #999;
-}
-
-/* 键盘快捷键列表 */
+/* 快捷键 */
 .keyboard-shortcuts-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
 .shortcut-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
-  background: #f8f9fa;
-  border-radius: 8px;
-  transition: background-color 0.2s;
-}
-
-.shortcut-item:hover {
-  background: #f0f1f3;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-muted);
 }
 
 .shortcut-desc {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
 }
 
 .shortcut-name {
-  font-size: 14px;
+  font-size: var(--font-sm);
+  color: var(--color-text);
   font-weight: 500;
-  color: #333;
 }
 
 .shortcut-detail {
-  font-size: 12px;
-  color: #999;
+  font-size: var(--font-xs);
+  color: var(--color-text-muted);
 }
 
 .shortcut-keys {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
+  font-size: var(--font-xs);
+  color: var(--color-text-muted);
 }
 
-.shortcut-keys kbd {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 28px;
-  height: 28px;
-  padding: 0 8px;
-  background: #ffffff;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
-  font-family: 'Consolas', 'Monaco', monospace;
-  font-size: 12px;
-  font-weight: 600;
-  color: #555;
+kbd {
+  padding: 2px 7px;
+  border-radius: 5px;
+  border: 1px solid var(--color-border);
+  border-bottom-width: 2px;
+  background: var(--color-surface);
+  color: var(--color-text-2);
+  font-size: var(--font-xs);
+  font-family: inherit;
 }
 
-.shortcut-or {
-  font-size: 11px;
-  color: #999;
-  margin: 0 2px;
-}
-
-.section-hint {
-  margin-top: 12px;
-  padding: 10px 14px;
-  background: #e7f3ff;
-  border-left: 3px solid #007bff;
-  border-radius: 6px;
-  font-size: 13px;
-  color: #0056b3;
-}
-
-/* 操作按钮 */
+/* 其他 */
 .action-btn {
-  width: 100%;
-  padding: 12px;
+  padding: 8px 18px;
   border: none;
-  border-radius: 8px;
-  font-size: 14px;
+  border-radius: var(--radius-sm);
+  background: var(--color-btn-primary);
+  color: #ffffff;
+  font-size: var(--font-sm);
   cursor: pointer;
-  transition: all 0.2s;
+  font-family: inherit;
+  transition: background 0.2s;
 }
 
-.reset-btn {
-  background: #f5f5f5;
-  color: #666;
-  border: 1px solid #e0e0e0;
+.action-btn:hover {
+  background: var(--color-btn-primary-hover);
 }
 
-.reset-btn:hover {
-  background: #ffe8e8;
-  color: #ff6b6b;
-  border-color: #ff6b6b;
+/* API 信息（折叠） */
+.api-details summary {
+  font-size: var(--font-base);
+  font-weight: 600;
+  color: var(--color-text);
+  cursor: pointer;
+  padding: 4px 0;
+  user-select: none;
 }
 
-/* 关于信息 */
-.about-info {
-  padding: 16px;
-  background: #f8f9fa;
-  border-radius: 10px;
+.api-details summary:hover {
+  color: var(--color-primary);
 }
 
-.about-info p {
-  margin: 0 0 8px 0;
-  font-size: 13px;
-  color: #666;
-}
-
-.about-info p:last-child {
-  margin-bottom: 0;
-}
-
-.about-info strong {
-  color: #333;
-  font-size: 15px;
-}
-
-/* 暗色模式 */
-:global(.dark-mode) .settings-modal {
-  background: #2c2c2c;
-}
-
-:global(.dark-mode) .settings-header {
-  border-color: #444;
-}
-
-:global(.dark-mode) .settings-header h2 {
-  color: #e0e0e0;
-}
-
-:global(.dark-mode) .settings-section h3 {
-  color: #e0e0e0;
-}
-
-:global(.dark-mode) .setting-name {
-  color: #e0e0e0;
-}
-
-:global(.dark-mode) .close-btn {
-  background: #3a3a3a;
-  color: #a0a0a0;
-}
-
-:global(.dark-mode) .close-btn:hover {
-  background: #4a4a4a;
-}
-
-:global(.dark-mode) .setting-item {
-  border-color: #3a3a3a;
-}
-
-:global(.dark-mode) .platform-item,
-:global(.dark-mode) .about-info {
-  background: #3a3a3a;
-  border-color: #444;
-}
-
-:global(.dark-mode) .platform-item-name {
-  color: #e0e0e0;
-}
-
-:global(.dark-mode) .visibility-toggle:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-:global(.dark-mode) .platform-item.hidden {
-  opacity: 0.5;
-  background: #2a2a2a;
-}
-
-:global(.dark-mode) .platform-item.hidden .platform-item-name {
-  color: #666;
-}
-
-:global(.dark-mode) .shortcut-item {
-  background: #2a2a2a;
-}
-
-:global(.dark-mode) .shortcut-item:hover {
-  background: #3a3a3a;
-}
-
-:global(.dark-mode) .shortcut-name {
-  color: #e0e0e0;
-}
-
-:global(.dark-mode) .shortcut-detail {
-  color: #999;
-}
-
-:global(.dark-mode) .shortcut-keys kbd {
-  background: #3a3a3a;
-  border-color: #555;
-  color: #e0e0e0;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-}
-
-:global(.dark-mode) .shortcut-or {
-  color: #777;
-}
-
-:global(.dark-mode) .section-hint {
-  background: #1e3a5f;
-  border-left-color: #4dabf7;
-  color: #4dabf7;
-}
-
-:global(.dark-mode) .about-info p {
-  color: #a0a0a0;
-}
-
-:global(.dark-mode) .about-info strong {
-  color: #e0e0e0;
-}
-
-:global(.dark-mode) .theme-btn,
-:global(.dark-mode) .reset-btn {
-  background: #3a3a3a;
-  border-color: #555;
-  color: #e0e0e0;
-}
-
-:global(.dark-mode) .theme-btn:hover {
-  background: #4a4a4a;
-}
-
-:global(.dark-mode) .toggle-slider {
-  background: #555;
-}
-
-/* API 信息样式 */
 .api-info-list {
+  margin-top: 12px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 10px;
 }
 
 .api-info-item {
-  padding: 16px;
-  background-color: #f9f9f9;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  transition: all 0.2s;
-}
-
-.api-info-item:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.api-info-item.highlight {
-  background: #f0f8ff;
-  border-color: #007bff;
-  border-left-width: 4px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-muted);
 }
 
 .api-info-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: 6px;
 }
 
 .api-name {
-  font-size: 15px;
+  font-size: var(--font-sm);
   font-weight: 600;
-  color: #333;
+  color: var(--color-text);
 }
 
 .api-tag {
-  padding: 4px 12px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 500;
+  font-size: var(--font-xs);
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--color-primary);
+  color: #fff;
 }
 
-.api-tag.primary {
-  background-color: #007bff;
-  color: #ffffff;
-}
-
-.api-tag.success {
-  background-color: #28a745;
-  color: #ffffff;
-}
-
-.api-info-details {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.api-tag.info {
+  background: var(--color-info);
 }
 
 .api-info-details p {
-  margin: 0;
-  font-size: 13px;
-  color: #555;
-  line-height: 1.6;
+  font-size: var(--font-sm);
+  color: var(--color-text-3);
+  line-height: 1.7;
 }
 
 .api-info-details code {
-  padding: 2px 6px;
-  background-color: #f0f0f0;
+  padding: 1px 5px;
   border-radius: 4px;
-  font-family: 'Consolas', 'Monaco', monospace;
-  font-size: 12px;
-  color: #d63384;
+  background: var(--color-surface-muted-hover);
+  font-size: var(--font-xs);
 }
 
 .api-info-details a {
-  color: #007bff;
-  text-decoration: none;
-}
-
-.api-info-details a:hover {
-  text-decoration: underline;
-}
-
-.api-note {
-  padding: 8px 12px;
-  background-color: #fff3cd;
-  border-left: 3px solid #ffc107;
-  border-radius: 4px;
-  font-size: 12px !important;
-  color: #856404 !important;
+  color: var(--color-primary);
 }
 
 .api-disclaimer {
-  padding: 16px;
-  background-color: #fff5f5;
-  border: 1px solid #fed7d7;
-  border-radius: 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-muted);
+  font-size: var(--font-sm);
+  color: var(--color-text-muted);
+  line-height: 1.7;
 }
 
-.api-disclaimer p {
-  margin: 0 0 12px 0;
-  font-size: 14px;
-  color: #c53030;
-  font-weight: 600;
+/* 关于 */
+.about-info {
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-muted);
 }
 
-.api-disclaimer ul {
-  margin: 0;
-  padding-left: 20px;
-  list-style-type: disc;
-}
-
-.api-disclaimer li {
-  margin-bottom: 8px;
-  font-size: 13px;
-  color: #555;
-  line-height: 1.6;
-}
-
-.api-disclaimer li:last-child {
-  margin-bottom: 0;
-}
-
-/* 暗色模式 - API 信息 */
-:global(.dark-mode) .api-info-item {
-  background-color: #2a2a2a;
-  border-color: #444;
-}
-
-:global(.dark-mode) .api-info-item.highlight {
-  background: #1a3a5a;
-  border-color: #007bff;
-}
-
-:global(.dark-mode) .api-name {
-  color: #e0e0e0;
-}
-
-:global(.dark-mode) .api-info-details p {
-  color: #b0b0b0;
-}
-
-:global(.dark-mode) .api-info-details code {
-  background-color: #1a1a1a;
-  color: #ff6b9d;
-}
-
-:global(.dark-mode) .api-info-details a {
-  color: #4dabf7;
-}
-
-:global(.dark-mode) .api-note {
-  background-color: #3a3a1a;
-  border-left-color: #ffc107;
-  color: #ffd54f !important;
-}
-
-:global(.dark-mode) .api-disclaimer {
-  background-color: #3a1a1a;
-  border-color: #5c2b2b;
-}
-
-:global(.dark-mode) .api-disclaimer p {
-  color: #fc8181;
-}
-
-:global(.dark-mode) .api-disclaimer li {
-  color: #b0b0b0;
+.about-info p {
+  font-size: var(--font-sm);
+  color: var(--color-text-3);
+  line-height: 1.8;
 }
 </style>
