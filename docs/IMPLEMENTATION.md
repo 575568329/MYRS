@@ -128,7 +128,7 @@ html.dark-mode {
 | `src/stores/settingsStore.js` | 新增 `pinnedPlatforms: string[]`（dbStorage，键 `STORAGE_KEYS.PINNED_PLATFORMS`，config.js 补键名）、`collapsedGroups`；`togglePin/isPinned`；`customPlatformOrder/hiddenPlatforms` 扩到 58 平台（迁移规则：旧列表保序，新平台默认可见追加尾部） |
 | `src/HotSearch/index.vue` | `.platform-section` 整区替换为 PlatformSidebar；主区按当前视图（home/platformId）切换 AggregateHome 与既有列表；列表区保留（行内操作在 P0.3 加）；删除悬浮按钮组 `.floating-buttons` |
 | `src/services/hotSearchApi.js` | `PLATFORMS` 58 项各加 `alias: []` 静态别名（P1 关键词直达共用） |
-| `src/config/icons.js` | 侧栏图标（layout-dashboard/pin/clock-3/chevron 等 lucide 替代现有 ri- 混用，统一图标库） |
+| `src/config/icons.js` | 新组件（侧栏/聚合/错误态）的 UI 图标统一用 `lucide-vue-next`（layout-dashboard/pin/clock-3/chevron 等）；平台图标维持 vue-remix-icons 不动（避免全量替换回归） |
 
 ### DoD
 
@@ -211,7 +211,7 @@ export async function openUrl(url, { background = false } = {}) {
 | 项 | 要点 | 预估 |
 |---|---|---|
 | 关键词直达 | plugin.json cmds 加 text feature（`热搜 {query}`）；App.vue `onPluginEnter` 的 payload 解析链传给 index.vue（`enterAction` prop 已存在未用） | 0.5 天 |
-| 收藏流页 | `FavoritesView.vue`：★计数胶囊进入；跨平台条目列表（平台徽标+标题+时间），点击走 openUrl，支持批量删除、按平台筛选 | 1 天 |
+| 收藏流页 | `FavoritesView.vue`：从侧栏"★我的收藏"进入（§11.1 顶部组）；跨平台条目列表（平台徽标+标题+时间），点击走 openUrl，支持批量删除、按平台筛选 | 1 天 |
 | 设置页重排 | 按 §5.8 新 IA：浏览（打开方式/无痕模式预设/尺寸 3 项）/导航栏定制/我的收藏/外观/快捷键/折叠的来源声明；**打开方式首启变更提示**（一次性 banner：默认已切换为内置浏览器+一键切回）；同时更新过时的"数据来源"文案（本地 DailyHotApi 56 源三级回退、58 平台） | 1 天 |
 | 去 confirm 化 | 翻译流程改行内提示条（首启说明+会话内不再询问），结果渲染进 desc，失败 toast | 0.5 天 |
 | 防窥三件套 | 老板键（全局快捷键隐藏插件+所有 ubrowser：`getIdleUBrowsers()` 逐个 hide；`utools.hideMainWindow()`）；办公室模式（标题 CSS `filter: blur(4px)`，hover/选中清除，设置开关）；新上榜标记（cacheManager 镜像 diff 出新增条目打"新"角标） | 1 天 |
