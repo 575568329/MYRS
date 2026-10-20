@@ -9,27 +9,28 @@
 ### 0.1 实施顺序与依赖
 
 ```
-P0.0 样式令牌层 ──┬──> P0.1 子输入框两态 ──> P0.3 ubrowser+行内操作
-                  └──> P0.2 平台条改造   ──┘
+P0.0 样式令牌层 ──┬──> P0.1 秒开缓存+骨架屏 ──> P0.3 ubrowser+行内操作+键盘流
+                  └──> P0.2 平台条+全部网格 ──┘
 P0 全部完成 ──> P1（收藏流/直达/设置页/防窥）──> P2（重构/面板）
 ```
 
 P0.0 是其余全部的前置（新 UI 必须走令牌体系）；P0.1 与 P0.2 可交错但建议串行（都改主界面）。
 
+> **v3 修订**：原子输入框方案（useSubInput / PlatformMatcher / IME 三重门 / 注册重挂）已整体移除，见 UX-REDESIGN §9.5。全案最大技术风险（子输入框 keydown 转发真机行为）随之消灭。
+
 ### 0.2 全局规则
 
 - **分支与提交**：全部在 `feat/ux-redesign`；每阶段独立 commit（信息前缀 `P0.0`/`P0.1`…），保证可单独 revert。
 - **每阶段回归三件套**：亮色+暗色截图对比、58 平台抽查（≥10 个含 4 个新平台）、`vite build` 通过 + uTools 开发者模式真机加载。
-- **真机验证节点**：P0.1 完成后必须在真机 uTools 验证 `setSubInput`（浏览器无法验证注册重挂/事件转发行为）。
+- **真机验证节点**：P0.3 完成后必须在真机 uTools 验证 ubrowser 打开/复用与键盘流（浏览器无法验证）。
 - **死代码处理**：`usePlatform.js`（无引用）、`hotSearchStore` 现有 fetchHotData 副本在 P0 阶段不动、不引用；P2 统一清理。
 
 ### 0.3 新增埋点事件（`src/services/analytics/eventTypes.js`）
 
 | 事件 | 触发点 | 参数 |
 |---|---|---|
-| `subinput_filter` | 两态进入过滤 | platform, query_len |
-| `subinput_at_jump` | @ 跳平台成功 | from, to, match_index |
-| `platform_switch` | 切平台 | from, to, source: pill/pin/mru/grid/at/keyboard |
+| `platform_switch` | 切平台 | from, to, source: pill/pin/mru/grid/keyboard |
+| `grid_search` | 全部网格内搜索 | query_len, result_count |
 | `open_url` | 打开条目 | platform, mode: ubrowser/system, reused: bool |
 | `favorite_toggle` | 星标收藏/取消 | platform, on: bool |
 | `copy_action` | 复制标题/链接 | platform, kind: title/link |
@@ -93,64 +94,26 @@ html.dark-mode {
 
 ---
 
-## P0.1 子输入框两态（1.5-2 天）
+## P0.1 秒开体验（0.5-1 天）
 
-### 新文件
-
-**`src/composables/useSubInput.js`**（约 250-300 行，核心状态机）
-
-```js
-// 导出接口
-export function useSubInput({ platforms, onJumpPlatform, onFilter }) {
-  // ── 状态 ──
-  focusMode    // 'list' | 'subinput' | 'overlay'  —— 单一事实来源
-  filterQuery  // 当前过滤词（'' = 未过滤）
-  atQuery      // '@' 后的平台匹配词
-  matches      // @ 模式下的平台候选 [{id,name,alias,category}]
-  selectedIdx  // @ 候选列表选中下标
-}
-```
-
-关键实现点（均为审阅确认的坑，逐条落实）：
-
-1. **注册健壮性**：进入插件后轮询调用 `utools.setSubInput(onChange, placeholder, false)` 直到返回非 false（间隔 300ms，上限 10 次）；监听 uTools 主窗口重新显示（`document` visibilitychange + `utools.onPluginEnter`）重挂回调。
-2. **两态纯前缀判定**（不做简称自动触发、无 # 命令态）：
-   ```js
-   function parse(query) {
-     if (query.startsWith('@')) return { mode: 'platform', q: query.slice(1).toLowerCase() }
-     return { mode: 'filter', q: query }
-   }
-   ```
-3. **@ 匹配**：`PLATFORMS` 的 `alias` 字段（见下）做 `name.includes(q) || alias.some(a => a.startsWith(q))`，最多 8 条，`selectedIdx` 环形移动。
-4. **IME 三重门**（window keydown 分发器，见 P0.3 的 handleKeyPress 改造，此处先建分发骨架）：`event.isComposing` 直接 return；`focusMode !== 'list'` 时仅放行 Enter/Esc/↑↓/Tab；弹层打开时 keydown 归弹层消费。
-5. **子输入框按键转发**：uTools 无子输入框 Enter/方向键事件 API，靠 `window.addEventListener('keydown')` 接收转发按键（社区通行做法，真机验证节点确认）。
-6. **浏览器降级（开发模式）**：无 `window.utools` 时在顶部渲染内置输入框（`SubInputFallback.vue`，仅 dev 构建），同一 composable 驱动，保证浏览器里可开发调试。
-
-**`src/components/PlatformMatcher.vue`**：@ 匹配层弹层。`position: fixed; top: 0; z-index: var(--z-popover)`，锚定插件窗口顶部（子输入框正下方）；键盘驱动（↑↓ 移动、Enter 跳转、Esc 关闭），条目 = 平台图标 + 名称 + alias 灰字 + 分类标签。
-
-**`src/components/SubInputFallback.vue`**：开发降级输入框。
+> v3 修订：原子输入框方案已整体移除（UX-REDESIGN §9.5），本阶段只保留"进入即见"的缓存体验。
 
 ### 改动文件
 
 | 文件 | 改动 |
 |---|---|
-| `src/services/hotSearchApi.js` | `PLATFORMS` 58 项各加 `alias: []` 字段（示例：weibo→`['wb','weibo']`、bilibili→`['bz','bili','bilibili']`、zhihu→`['zh','zhihu']`、36kr→`['kr','36kr']`…全表见提交，纯静态 0 依赖） |
-| `src/HotSearch/index.vue` | 引入 useSubInput；`filteredHotList` 计算属性按 `filterQuery` 过滤 title/desc 并生成高亮段；模板加 `<mark>` 高亮与 PlatformMatcher；进入插件时 `loadPlatformsCachedFirst()`（见下） |
-| `src/utils/cacheManager.js` | 榜单 stale-while-revalidate：`set` 时同步写内存镜像 `lastGood:{platform, data, ts}`；`getHotData` 调用前组件先取镜像立即渲染，请求成功后替换（首屏 ≤300ms 的兑现点） |
+| `src/utils/cacheManager.js` | 榜单 stale-while-revalidate：`set` 时同步写内存镜像 `lastGood: {platform, data, ts}`；新增 `peek(platform)` 只读接口（不触发过期判断） |
+| `src/HotSearch/index.vue` | 切平台流程改为：先 `peek` 镜像立即渲染 + 骨架屏占位，请求成功后替换并刷新时间戳；断网/失败时保留镜像并显示"数据可能滞后 N 分钟"角标 |
 
 ### DoD
 
-- [x] `@wb↵` 4 键直达微博（真机 uTools + 浏览器降级两环境）
-- [x] 输入任意词过滤当前榜单，`<mark>` 高亮命中，响应 ≤50ms（50 条列表）
-- [x] 中文输入法打"微博"全程不触发任何快捷键/跳转（isComposing 门控生效）
-- [x] 子输入框有内容时按 `1/c/f` 是打字不是快捷键
-- [x] 清空后 Esc 一次回列表态、再 Esc 退出插件
-- [x] 骨架屏 + 缓存先渲染：断网进入插件仍显示上次榜单
-- [x] 埋点：subinput_filter / subinput_at_jump 上报
+- [x] 断网进入插件仍显示上次榜单（含"滞后 N 分钟"提示），无白屏
+- [x] 缓存命中路径首屏渲染 ≤300ms
+- [x] 切平台缓存命中即时显示，后台静默刷新
 
 ---
 
-## P0.2 平台条改造（1-1.5 天）
+## P0.2 平台条改造 + 全部网格（1-1.5 天）
 
 ### 结构（§9 R3 修订版）
 
@@ -165,15 +128,15 @@ export function useSubInput({ platforms, onJumpPlatform, onFilter }) {
 | `src/stores/settingsStore.js` | 新增 `pinnedPlatforms: string[]`（dbStorage 持久化，键 `STORAGE_KEYS.PINNED_PLATFORMS`，config.js 补键名）；`togglePin/isPinned` |
 | `src/stores/settingsStore.js` | `customPlatformOrder/hiddenPlatforms` 初始化从"极简 20"扩到全部 58 平台；**迁移规则**：已存储的旧列表保留顺序，未出现的新平台默认可见、追加尾部 |
 | `src/HotSearch/index.vue` | `.platform-tabs`（L1282-1308）容器前置两组胶囊 + 尾部"全部"按钮；pill 右键/长按 = 钉住（`contextmenu` + 移动端 `touchstart` 500ms）；最近列表读 `hotSearchStore.recentPlatforms`（已有持久化，仅接 UI） |
-| `src/components/AllPlatformsGrid.vue`（新） | 弹层网格：按 `PLATFORMS[].category` 分组、`--z-popover`、**无搜索框**（点击"全部"等价 `@`+聚焦，见 R3）；隐藏的平台灰显可从这开启 |
+| `src/components/AllPlatformsGrid.vue`（新） | 弹层网格：按 `PLATFORMS[].category` 分组、`--z-popover`、**含本地搜索框**（纯 HTML input，实时过滤平台名/别名，零 uTools API 依赖——§9.5 修订恢复）；隐藏的平台灰显可从这开启 |
 | `src/components/ErrorState.vue`（新） | 源失效统一降级 UI：错误图标 + "该数据源暂时不可用" + 重试按钮 + 换源提示（本地→远程自动重试已由数据层完成，此处为最终失败态） |
 
 ### DoD
 
-- [x] 58/58 平台两路径可达：@ 搜索（P0.1）与"全部"网格（本阶段）
+- [x] 58/58 平台可达：钉住/滚动条/最近 + "全部"网格（含本地搜索）
 - [x] 钉住微博后它出现在平台条最前，重启插件保持
 - [x] 停掉本地服务 + 断网远程的平台上，列表显示 ErrorState 而非空白
-- [x] 埋点：platform_switch（带 source 维度）上线，可对比 pill/at/grid 使用占比
+- [x] 埋点：platform_switch（带 source 维度）+ grid_search 上线，可对比 pin/mru/pill/grid 使用占比
 
 ---
 
@@ -213,7 +176,7 @@ export async function openUrl(url, { background = false } = {}) {
 | 文件 | 改动 |
 |---|---|
 | `src/HotSearch/index.vue` | `openUrl`（L463-480）替换为 utils/openUrl；`.hot-item` 模板加行内操作区（hover/选中显示）：★星标、📋复制标题、🔗复制链接，全部 `.icon-btn` 原语；整行 click 行为不变 |
-| `src/HotSearch/index.vue` | **handleKeyPress 重构为 focusMode 分发器**（L889-975 平铺 if-else 改造，预估 60-100 行改动）：`list` 态放行 ↑↓←→/Enter/F5/Ctrl+T/c/f/1-9/PageUp/PageDown/Esc；`subinput` 态仅 Enter/Esc/↑↓；`overlay` 态归弹层 |
+| `src/HotSearch/index.vue` | **handleKeyPress 改造**（L889-975）：保留现有 INPUT/TEXTAREA 守卫，新增 overlay 态守卫（全部网格/设置/收藏流打开时单键快捷键失效，Enter/Esc 归弹层）+ `event.isComposing` 过滤（防御设置页等 HTML 输入框的 IME 组合态）；新增 1-9/PageUp/PageDown/Esc 分层退出 |
 | `src/HotSearch/index.vue` | 移植收藏模型（见下）+ `toggleFavorite` 接星标；键盘选中与 hover 联动（mouseenter 同步 `selectedHotIndex`）；`platformLastIndex: Map` 记忆各平台浏览位置（内存级） |
 | `src/stores/hotSearchStore.js` | **收藏数据模型升级**：`favorites: Set<string>` → `Array<{platform, title, url, savedAt}>`；`loadFavorites()` 做旧数据迁移（`platform_title` 字符串拆解回填，无法解析的保留为 `title-only` 条目）；新增 `isFavorited(platform,title)` |
 | `src/services/hotSearchApi.js` | 列表归一化时保证 `url` 必填（本地源缺失时回填 `mobileUrl`），收藏模型依赖 |
@@ -236,8 +199,8 @@ export async function openUrl(url, { background = false } = {}) {
 
 - [x] 点击热搜在 ubrowser 打开：任务栏无图标；连点 3 条复用同一窗口；关闭 ubrowser 不影响插件
 - [x] c 复制标题→toast"已复制"→粘贴板验证；f 收藏星标实时变色，重启插件仍在
-- [x] 1-9 跳条、Esc 两层退出、PageDown 翻页，全部在真机可用
-- [x] 子输入框输入态下按上述键全部为打字（P0.1 门控回归）
+- [x] 1-9 跳条、Esc 两层退出（关弹层→退出插件）、PageDown 翻页，全部在真机可用
+- [x] 网格/设置打开时按 c/f/1-9 不触发快捷键（overlay 守卫生效）；中文输入法组合态不误触
 - [x] 埋点：open_url（mode/reused）、favorite_toggle、copy_action
 
 ---
@@ -261,7 +224,7 @@ export async function openUrl(url, { background = false } = {}) {
 
 ## 附：风险检查点
 
-1. **P0.1 真机节点**：setSubInput 注册重挂与 keydown 转发在真机的行为差异是全案最大不确定性，若转发不可行，降级方案 = @匹配层的确认按钮（鼠标点击），键盘流缩水但功能不丢。
+1. ~~P0.1 子输入框 keydown 转发风险~~ 已随 §9.5 移除子输入框而整体消灭；ubrowser 真机验证（打开/复用/静音）移至 P0.3 节点。
 2. **ubrowser 静音**：API 未见 mute 选项，真机查证；不支持则设置页加提示文案。
 3. **收藏迁移**：旧 `Set<string>` 数据解析失败的条目保留不丢，收藏流里显示为"早期收藏"分组。
 4. **每阶段可独立回滚**：阶段间无数据库 schema 耦合（收藏模型变更只在 P0.3 一处）。
