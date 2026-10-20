@@ -15,6 +15,7 @@ import { RefreshCw, Star, Copy, Link, Flame } from 'lucide-vue-next'
 import { openUrl } from '../utils/openUrl.js'
 import { saveMirror, peekMirror, mirrorAgeText } from '../utils/dataMirror.js'
 import { useFavorites } from '../utils/favorites.js'
+import { getStorage } from '../utils/storage.js'
 
 // 使用 settingsStore
 const settingsStore = useSettingsStore()
@@ -918,9 +919,8 @@ const handleSettingChange = (event) => {
 // 系统主题变化的处理
 let darkModeQuery = null
 const handleSystemThemeChange = (e) => {
-  const savedThemeMode = window.utools && window.utools.dbStorage
-    ? window.utools.dbStorage.getItem(STORAGE_KEYS.THEME_MODE)
-    : UI.THEME_MODE
+  const storage = getStorage()
+  const savedThemeMode = storage ? storage.getItem(STORAGE_KEYS.THEME_MODE) : null
 
   if (savedThemeMode === 'auto' || UI.THEME_MODE === 'auto') {
     const html = document.documentElement
@@ -1158,11 +1158,12 @@ onMounted(() => {
   settingsStore.loadSettings()
   loadFavorites()
 
-  // 恢复上次平台 + 主题
-  if (window.utools && window.utools.dbStorage) {
+  // 恢复上次平台 + 主题（统一存储层：utools 优先，浏览器降级 localStorage）
+  const storage = getStorage()
+  if (storage) {
     try {
-      const savedPlatform = window.utools.dbStorage.getItem(STORAGE_KEYS.SELECTED_PLATFORM)
-      const savedThemeMode = window.utools.dbStorage.getItem(STORAGE_KEYS.THEME_MODE)
+      const savedPlatform = storage.getItem(STORAGE_KEYS.SELECTED_PLATFORM)
+      const savedThemeMode = storage.getItem(STORAGE_KEYS.THEME_MODE)
 
       if (savedPlatform && PLATFORMS.some(p => p.id === savedPlatform)) {
         selectedPlatform.value = savedPlatform
@@ -1221,12 +1222,12 @@ const handleScroll = (event) => {
 
 // 监听平台变化，保存到本地存储
 watch(selectedPlatform, (newPlatform) => {
-  if (window.utools && window.utools.dbStorage) {
-    try {
-      window.utools.dbStorage.setItem(STORAGE_KEYS.SELECTED_PLATFORM, newPlatform)
-    } catch (e) {
-      debug.log('⚠️ 保存平台失败:', e)
-    }
+  const storage = getStorage()
+  if (!storage) return
+  try {
+    storage.setItem(STORAGE_KEYS.SELECTED_PLATFORM, newPlatform)
+  } catch (e) {
+    debug.log('⚠️ 保存平台失败:', e)
   }
 })
 </script>

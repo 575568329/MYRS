@@ -51,9 +51,9 @@
         </button>
       </template>
 
-      <!-- 分类折叠组（平台永远留在分类原位，不因浏览/钉住而消失） -->
+      <!-- 分类折叠组（默认收起，平台永远留在分类原位） -->
       <template v-for="group in categoryGroups" :key="group.name">
-        <button class="side-group-label toggle" @click="settingsStore.toggleGroupCollapse(group.name)">
+        <button class="side-group-label toggle" @click="settingsStore.toggleGroupExpand(group.name)">
           <component :is="group.collapsed ? ChevronRight : ChevronDown" class="side-ico" :size="12" />
           {{ group.name }}
           <span class="side-count mrs-tnum">{{ group.platforms.length }}</span>
@@ -164,7 +164,7 @@ const categoryGroups = computed(() => {
   return names.map(name => ({
     name,
     platforms: groups.get(name),
-    collapsed: settingsStore.collapsedGroups.has(name)
+    collapsed: !settingsStore.expandedGroups.has(name)
   }))
 })
 

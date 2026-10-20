@@ -6,6 +6,7 @@ import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 import { UI, STORAGE_KEYS, DISPLAY_MODE } from '../config.js'
 import { PLATFORMS } from '../services/hotSearchApi.js'
+import { getStorage } from '../utils/storage.js'
 
 export const useSettingsStore = defineStore('settings', () => {
   // ========== 状态 ==========
@@ -25,8 +26,8 @@ export const useSettingsStore = defineStore('settings', () => {
   // 钉住的平台ID列表（P0.2 侧栏钉住组）
   const pinnedPlatforms = ref([])
 
-  // 侧栏分类折叠状态（P0.2）
-  const collapsedGroups = ref(new Set())
+  // 侧栏分类展开状态（默认全部收起，仅记录用户主动展开的组）
+  const expandedGroups = ref(new Set())
 
   // 系统主题监听器
   let darkModeQuery = null
@@ -55,6 +56,17 @@ export const useSettingsStore = defineStore('settings', () => {
 
   // ========== Actions ==========
 
+  // 统一持久化（utools dbStorage 优先，浏览器降级 localStorage）
+  function persist(key, value) {
+    const s = getStorage()
+    if (!s) return
+    try {
+      s.setItem(key, value)
+    } catch (e) {
+      console.warn('⚠️ 保存设置失败:', key, e)
+    }
+  }
+
   /**
    * 从本地存储加载设置
    */
@@ -64,13 +76,14 @@ export const useSettingsStore = defineStore('settings', () => {
       PLATFORMS.find(p => p.id === id)
     ).filter(Boolean)
 
-    if (window.utools && window.utools.dbStorage) {
+    const storage = getStorage()
+    if (storage) {
       try {
-        const savedShowHotValue = window.utools.dbStorage.getItem(STORAGE_KEYS.SHOW_HOT_VALUE)
-        const savedShowDescription = window.utools.dbStorage.getItem(STORAGE_KEYS.SHOW_DESCRIPTION)
-        const savedThemeMode = window.utools.dbStorage.getItem(STORAGE_KEYS.THEME_MODE)
-        const savedPlatformOrder = window.utools.dbStorage.getItem(STORAGE_KEYS.CUSTOM_PLATFORM_ORDER)
-        const savedHiddenPlatforms = window.utools.dbStorage.getItem(STORAGE_KEYS.HIDDEN_PLATFORMS)
+        const savedShowHotValue = storage.getItem(STORAGE_KEYS.SHOW_HOT_VALUE)
+        const savedShowDescription = storage.getItem(STORAGE_KEYS.SHOW_DESCRIPTION)
+        const savedThemeMode = storage.getItem(STORAGE_KEYS.THEME_MODE)
+        const savedPlatformOrder = storage.getItem(STORAGE_KEYS.CUSTOM_PLATFORM_ORDER)
+        const savedHiddenPlatforms = storage.getItem(STORAGE_KEYS.HIDDEN_PLATFORMS)
 
         if (savedShowHotValue !== null) {
           showHotValue.value = savedShowHotValue === 'true'
@@ -93,7 +106,7 @@ export const useSettingsStore = defineStore('settings', () => {
                 customPlatformOrder.value = mergedOrder.map(id =>
                   PLATFORMS.find(p => p.id === id)
                 ).filter(Boolean)
-                window.utools.dbStorage.setItem(
+                storage.setItem(
                   STORAGE_KEYS.CUSTOM_PLATFORM_ORDER,
                   JSON.stringify(mergedOrder)
                 )
@@ -120,7 +133,7 @@ export const useSettingsStore = defineStore('settings', () => {
           }
         }
         // 钉住平台（P0.2）
-        const savedPinned = window.utools.dbStorage.getItem(STORAGE_KEYS.PINNED_PLATFORMS)
+        const savedPinned = storage.getItem(STORAGE_KEYS.PINNED_PLATFORMS)
         if (savedPinned) {
           try {
             const parsedPinned = JSON.parse(savedPinned)
@@ -133,16 +146,16 @@ export const useSettingsStore = defineStore('settings', () => {
             console.log('⚠️ 解析钉住平台失败')
           }
         }
-        // 分类折叠状态（P0.2）
-        const savedCollapsed = window.utools.dbStorage.getItem(STORAGE_KEYS.COLLAPSED_GROUPS)
-        if (savedCollapsed) {
+        // 分类展开状态（默认全部收起，仅恢复用户主动展开过的组）
+        const savedExpanded = storage.getItem(STORAGE_KEYS.EXPANDED_GROUPS)
+        if (savedExpanded) {
           try {
-            const parsedCollapsed = JSON.parse(savedCollapsed)
-            if (Array.isArray(parsedCollapsed)) {
-              collapsedGroups.value = new Set(parsedCollapsed)
+            const parsedExpanded = JSON.parse(savedExpanded)
+            if (Array.isArray(parsedExpanded)) {
+              expandedGroups.value = new Set(parsedExpanded)
             }
           } catch (e) {
-            console.log('⚠️ 解析折叠状态失败')
+            console.log('⚠️ 解析展开状态失败')
           }
         }
       } catch (e) {
@@ -174,21 +187,12 @@ export const useSettingsStore = defineStore('settings', () => {
    * 保存设置到本地存储
    */
   function saveSettings() {
-    if (window.utools && window.utools.dbStorage) {
-      try {
-        window.utools.dbStorage.setItem(STORAGE_KEYS.SHOW_HOT_VALUE, showHotValue.value.toString())
-        window.utools.dbStorage.setItem(STORAGE_KEYS.SHOW_DESCRIPTION, showDescription.value.toString())
-        window.utools.dbStorage.setItem(STORAGE_KEYS.THEME_MODE, themeMode.value)
-        window.utools.dbStorage.setItem(
-          STORAGE_KEYS.HIDDEN_PLATFORMS,
-          JSON.stringify(Array.from(hiddenPlatforms.value))
-        )
-
-        console.log('✅ 设置已保存')
-      } catch (e) {
-        console.warn('⚠️ 保存设置失败:', e)
-      }
-    }
+    persist(STORAGE_KEYS.SHOW_HOT_VALUE, showHotValue.value.toString())
+    persist(STORAGE_KEYS.SHOW_DESCRIPTION, showDescription.value.toString())
+    persist(STORAGE_KEYS.THEME_MODE, themeMode.value)
+    persist(STORAGE_KEYS.HIDDEN_PLATFORMS, JSON.stringify(Array.from(hiddenPlatforms.value)))
+    persist(STORAGE_KEYS.PINNED_PLATFORMS, JSON.stringify(pinnedPlatforms.value))
+    persist(STORAGE_KEYS.EXPANDED_GROUPS, JSON.stringify(Array.from(expandedGroups.value)))
   }
 
   /**
@@ -269,20 +273,7 @@ export const useSettingsStore = defineStore('settings', () => {
     newOrder.splice(index, 0, removed)
 
     customPlatformOrder.value = newOrder
-
-    // 保存到本地存储
-    if (window.utools && window.utools.dbStorage) {
-      try {
-        const orderIds = newOrder.map(p => p.id)
-        window.utools.dbStorage.setItem(
-          STORAGE_KEYS.CUSTOM_PLATFORM_ORDER,
-          JSON.stringify(orderIds)
-        )
-        console.log('✅ 平台顺序已更新:', orderIds)
-      } catch (e) {
-        console.warn('⚠️ 保存平台顺序失败:', e)
-      }
-    }
+    persist(STORAGE_KEYS.CUSTOM_PLATFORM_ORDER, JSON.stringify(newOrder.map(p => p.id)))
 
     draggedItem.value = null
     draggedIndex.value = null
@@ -313,7 +304,7 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   /**
-   * 钉住/取消钉住平台（P0.2 侧栏）
+   * 钉住/取消钉住平台（P0.2 侧栏，立即持久化）
    */
   function togglePin(platformId) {
     const idx = pinnedPlatforms.value.indexOf(platformId)
@@ -322,16 +313,7 @@ export const useSettingsStore = defineStore('settings', () => {
     } else {
       pinnedPlatforms.value.unshift(platformId)
     }
-    if (window.utools && window.utools.dbStorage) {
-      try {
-        window.utools.dbStorage.setItem(
-          STORAGE_KEYS.PINNED_PLATFORMS,
-          JSON.stringify(pinnedPlatforms.value)
-        )
-      } catch (e) {
-        console.warn('⚠️ 保存钉住平台失败')
-      }
-    }
+    persist(STORAGE_KEYS.PINNED_PLATFORMS, JSON.stringify(pinnedPlatforms.value))
   }
 
   function isPinned(platformId) {
@@ -339,24 +321,15 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   /**
-   * 切换分类折叠（P0.2 侧栏）
+   * 切换分类展开（P0.2 侧栏：默认收起，展开状态持久化）
    */
-  function toggleGroupCollapse(category) {
-    if (collapsedGroups.value.has(category)) {
-      collapsedGroups.value.delete(category)
+  function toggleGroupExpand(category) {
+    if (expandedGroups.value.has(category)) {
+      expandedGroups.value.delete(category)
     } else {
-      collapsedGroups.value.add(category)
+      expandedGroups.value.add(category)
     }
-    if (window.utools && window.utools.dbStorage) {
-      try {
-        window.utools.dbStorage.setItem(
-          STORAGE_KEYS.COLLAPSED_GROUPS,
-          JSON.stringify(Array.from(collapsedGroups.value))
-        )
-      } catch (e) {
-        /* 忽略 */
-      }
-    }
+    persist(STORAGE_KEYS.EXPANDED_GROUPS, JSON.stringify(Array.from(expandedGroups.value)))
   }
 
   /**
@@ -444,7 +417,7 @@ export const useSettingsStore = defineStore('settings', () => {
     draggedIndex,
     hiddenPlatforms,
     pinnedPlatforms,
-    collapsedGroups,
+    expandedGroups,
 
     // Actions
     loadSettings,
@@ -461,7 +434,7 @@ export const useSettingsStore = defineStore('settings', () => {
     isPlatformVisible,
     togglePin,
     isPinned,
-    toggleGroupCollapse,
+    toggleGroupExpand,
     cleanup
   }
 })
