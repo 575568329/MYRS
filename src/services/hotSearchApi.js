@@ -222,6 +222,8 @@ function normalizeDailyHotData(data, platformId) {
   if (!data || !Array.isArray(data.data)) {
     throw new Error('API 返回数据格式不正确')
   }
+  // 平台中文名：作者等于平台名时（如果壳恒为"果壳"）无信息量，不并入描述
+  const platformName = (PLATFORMS.find(p => p.id === platformId) || {}).name
   return data.data.map((item, index) => {
     // 标题清洗：部分源（如 uapis 酷安）的 title 混入 HTML 话题标签
     const title = stripHtml(item.title || '')
@@ -231,11 +233,13 @@ function normalizeDailyHotData(data, platformId) {
     if (platformId === 'douban-movie' && title) {
       url = `https://search.douban.com/movie/subject_search?search_text=${encodeURIComponent(title)}`
     }
+    // 作者有区分度才并入（B站UP主/36氪作者等）；等于平台名的丢弃
+    const author = item.author && item.author !== platformName ? item.author : ''
     return {
       index: index + 1,
       title: title,
-      // 作者（B站UP主/36氪作者等）并入描述前缀，与简介一起展示；HTML 标签清洗
-      desc: stripHtml([item.author, item.desc].filter(Boolean).join(' · ')),
+      // 作者并入描述前缀，与简介一起展示；HTML 标签清洗
+      desc: stripHtml([author, item.desc].filter(Boolean).join(' · ')),
       img: item.cover || '',
       url: url,
       mobileUrl: item.mobileUrl || url,
