@@ -52,6 +52,10 @@ export const EventType = {
   SETTINGS_CHANGE: 'settings_change',
   /** 主题切换 */
   THEME_SWITCH: 'theme_switch',
+  /** 老板键（隐藏/恢复摸鱼小窗，FISH-WINDOW-2.0） */
+  BOSS_KEY: 'boss_key',
+  /** 小窗位置记忆生效 */
+  POS_RESTORED: 'pos_restored',
 
   // ========== 应用生命周期 ==========
   /** 应用启动 */
@@ -97,6 +101,8 @@ const EventPriorityMap = {
   [EventType.SETTINGS_OPEN]: EventPriority.LOW,
   [EventType.SETTINGS_CHANGE]: EventPriority.LOW,
   [EventType.THEME_SWITCH]: EventPriority.LOW,
+  [EventType.BOSS_KEY]: EventPriority.MEDIUM,
+  [EventType.POS_RESTORED]: EventPriority.LOW,
   [EventType.APP_START]: EventPriority.HIGH,
   [EventType.APP_FOREGROUND]: EventPriority.HIGH,
   [EventType.APP_BACKGROUND]: EventPriority.MEDIUM,

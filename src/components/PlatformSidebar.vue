@@ -95,6 +95,14 @@
     <!-- 底部操作 -->
     <div class="sidebar-foot">
       <button
+        class="foot-btn boss"
+        title="老板键 Ctrl+` · 一键隐藏所有摸鱼窗口，再按一次恢复"
+        @click="$emit('boss-key')"
+      >
+        <Shield class="side-ico" :size="13" />
+        <span>老板键</span>
+      </button>
+      <button
         v-if="showTranslate"
         class="foot-btn"
         :class="{ active: translating }"
@@ -127,7 +135,7 @@ import { PLATFORMS } from '../services/hotSearchApi.js'
 import { useSettingsStore } from '../stores/settingsStore.js'
 import {
   LayoutDashboard, Star, Pin, ChevronDown, ChevronRight,
-  Languages, RefreshCw, Settings2, Heart, Flame
+  Languages, RefreshCw, Settings2, Heart, Flame, Shield
 } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -142,7 +150,7 @@ const props = defineProps({
   loading: { type: Boolean, default: false }
 })
 
-defineEmits(['select', 'pin-toggle', 'translate', 'refresh', 'settings', 'donate'])
+defineEmits(['select', 'pin-toggle', 'translate', 'refresh', 'boss-key', 'settings', 'donate'])
 
 const settingsStore = useSettingsStore()
 
@@ -400,6 +408,11 @@ function dotColor(category) {
 
 .foot-btn .heart {
   color: #ef5b5b;
+}
+
+/* 老板键：摸鱼专属强调色，hover 微亮 */
+.foot-btn.boss .side-ico {
+  color: var(--color-brand-text);
 }
 
 .spinning {

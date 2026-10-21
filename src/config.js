@@ -128,10 +128,12 @@ export const HOT_LEVELS = [
 
 // 摸鱼小窗（内置浏览器）默认配置（P1：设置页可调，openUrl.js 与 settingsStore 共用）
 export const FISH_WINDOW_DEFAULTS = {
-  openIn: 'ubrowser',   // 'ubrowser' 内置小窗 | 'system' 系统浏览器
-  size: 'standard',     // 尺寸档位，见 FISH_WINDOW_SIZES
-  opacity: 1,           // 0.5 - 1，仅 Windows/macOS 生效
-  alwaysOnTop: false    // 窗口置顶
+  openIn: 'ubrowser',      // 'ubrowser' 内置小窗 | 'system' 系统浏览器
+  size: 'standard',        // 尺寸档位，见 FISH_WINDOW_SIZES
+  opacity: 1,              // 0.5 - 1，仅 Windows/macOS 生效
+  alwaysOnTop: false,      // 窗口置顶
+  autoMute: true,          // 打开后自动静音视频/音频（FISH-WINDOW-2.0 M1）
+  rememberPosition: true   // 记住窗口位置与大小（FISH-WINDOW-2.0 M1）
 }
 
 // 摸鱼小窗尺寸档位
@@ -165,7 +167,9 @@ export const STORAGE_KEYS = {
   // 数据镜像索引（P0.1 秒开）
   MIRROR_INDEX: 'dataMirrorIndex',
   // 摸鱼小窗配置（P1：尺寸/透明度/置顶/打开方式）
-  FISH_WINDOW_CONFIG: 'fishWindowConfig'
+  FISH_WINDOW_CONFIG: 'fishWindowConfig',
+  // 摸鱼小窗上次位置（FISH-WINDOW-2.0 M1 位置记忆）
+  FISH_WINDOW_POS: 'fishWindowPos'
 }
 
 // 导出默认配置对象

@@ -7,6 +7,7 @@ import { ref, watch } from 'vue'
 import { UI, STORAGE_KEYS, DISPLAY_MODE, FISH_WINDOW_DEFAULTS, FISH_WINDOW_SIZES } from '../config.js'
 import { PLATFORMS } from '../services/hotSearchApi.js'
 import { getStorage } from '../utils/storage.js'
+import { trackEvent } from '../services/analytics/index.js'
 
 export const useSettingsStore = defineStore('settings', () => {
   // ========== 状态 ==========
@@ -172,6 +173,12 @@ export const useSettingsStore = defineStore('settings', () => {
               if (typeof parsedFish.alwaysOnTop === 'boolean') {
                 fishWindow.value.alwaysOnTop = parsedFish.alwaysOnTop
               }
+              if (typeof parsedFish.autoMute === 'boolean') {
+                fishWindow.value.autoMute = parsedFish.autoMute
+              }
+              if (typeof parsedFish.rememberPosition === 'boolean') {
+                fishWindow.value.rememberPosition = parsedFish.rememberPosition
+              }
             }
           } catch (e) {
             console.log('⚠️ 解析摸鱼小窗配置失败')
@@ -334,15 +341,23 @@ export const useSettingsStore = defineStore('settings', () => {
 
   /**
    * 钉住/取消钉住平台（P0.2 侧栏，立即持久化）
+   * 钉住直接决定聚合首页形态，纳入埋点
    */
   function togglePin(platformId) {
     const idx = pinnedPlatforms.value.indexOf(platformId)
+    let action = 'pin'
     if (idx > -1) {
       pinnedPlatforms.value.splice(idx, 1)
+      action = 'unpin'
     } else {
       pinnedPlatforms.value.unshift(platformId)
     }
     persist(STORAGE_KEYS.PINNED_PLATFORMS, JSON.stringify(pinnedPlatforms.value))
+    try {
+      trackEvent('pin_toggle', { platform: platformId, action })
+    } catch (e) {
+      /* 埋点失败不影响功能 */
+    }
   }
 
   function isPinned(platformId) {

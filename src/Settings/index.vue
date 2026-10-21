@@ -2,7 +2,8 @@
 import { onMounted, onUnmounted, computed, ref } from 'vue'
 import { useSettingsStore } from '../stores/settingsStore.js'
 import { PLATFORMS } from '../services/hotSearchApi.js'
-import { FISH_WINDOW_SIZES } from '../config.js'
+import { FISH_WINDOW_SIZES, STORAGE_KEYS } from '../config.js'
+import { getStorage } from '../utils/storage.js'
 import PlatformIcon from '../components/PlatformIcon.vue'
 import { ChevronDown, ChevronRight } from 'lucide-vue-next'
 
@@ -81,6 +82,10 @@ const fishWindow = computed(() => settingsStore.fishWindow)
 
 const setFish = (key, value) => {
   settingsStore.setFishWindow({ [key]: value })
+  // 切尺寸档位 = 抛弃旧位置记忆，按新档位生效
+  if (key === 'size') {
+    try { getStorage()?.removeItem(STORAGE_KEYS.FISH_WINDOW_POS) } catch (e) { /* 忽略 */ }
+  }
 }
 
 // 滑块拖动只更新内存（滑块值实时回显），松手 change 时才落盘
@@ -98,6 +103,14 @@ const opacityTrack = computed(() => {
     background: `linear-gradient(to right, var(--color-primary) ${percent}%, var(--color-surface-muted-hover) ${percent}%)`
   }
 })
+
+// mini 预览卡：按档位等比缩放（视觉示意，非精确像素）
+const FISH_PREVIEW_SIZES = {
+  compact: { w: 172, h: 124 },
+  standard: { w: 196, h: 140 },
+  wide: { w: 228, h: 147 }
+}
+const previewSize = computed(() => FISH_PREVIEW_SIZES[fishWindow.value.size] || FISH_PREVIEW_SIZES.standard)
 </script>
 
 <template>
@@ -217,6 +230,26 @@ const opacityTrack = computed(() => {
           </div>
 
           <template v-if="fishWindow.openIn === 'ubrowser'">
+            <!-- mini 预览卡：透明度/尺寸/置顶实时联动（所见即所得） -->
+            <div class="fish-preview-stage">
+              <div
+                class="fish-preview-win"
+                :style="{ width: previewSize.w + 'px', height: previewSize.h + 'px', opacity: fishWindow.opacity }"
+              >
+                <div class="fp-bar">
+                  <span class="fp-dots"><i></i><i></i><i></i></span>
+                  <span class="fp-title">🐟 {{ (FISH_WINDOW_SIZES[fishWindow.size] || {}).label || '标准' }}摸鱼小窗</span>
+                  <span v-if="fishWindow.alwaysOnTop" class="fp-pin">置顶</span>
+                </div>
+                <div class="fp-body">
+                  <span class="fp-row" style="width: 88%"></span>
+                  <span class="fp-row" style="width: 62%"></span>
+                  <span class="fp-row" style="width: 74%"></span>
+                </div>
+              </div>
+              <span class="fish-preview-tip">实时预览 · 拖动透明度滑块、切换尺寸查看效果</span>
+            </div>
+
             <div class="setting-item">
               <div class="setting-label">
                 <span class="setting-name">窗口尺寸</span>
@@ -265,6 +298,36 @@ const opacityTrack = computed(() => {
                   type="checkbox"
                   :checked="fishWindow.alwaysOnTop"
                   @change="setFish('alwaysOnTop', $event.target.checked)"
+                />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-label">
+                <span class="setting-name">打开自动静音</span>
+                <span class="setting-desc">小窗打开后自动静音视频/音频，防止摸鱼出声</span>
+              </div>
+              <label class="toggle-switch">
+                <input
+                  type="checkbox"
+                  :checked="fishWindow.autoMute"
+                  @change="setFish('autoMute', $event.target.checked)"
+                />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-label">
+                <span class="setting-name">记住窗口位置</span>
+                <span class="setting-desc">记住上次位置和手动调整的大小；切换尺寸档位后重新生效</span>
+              </div>
+              <label class="toggle-switch">
+                <input
+                  type="checkbox"
+                  :checked="fishWindow.rememberPosition"
+                  @change="setFish('rememberPosition', $event.target.checked)"
                 />
                 <span class="toggle-slider"></span>
               </label>
@@ -347,6 +410,13 @@ const opacityTrack = computed(() => {
                 <span class="shortcut-detail">内置浏览器打开选中热搜</span>
               </div>
               <div class="shortcut-keys"><kbd>Enter</kbd></div>
+            </div>
+            <div class="shortcut-item">
+              <div class="shortcut-desc">
+                <span class="shortcut-name">老板键</span>
+                <span class="shortcut-detail">隐藏/恢复所有摸鱼小窗与主窗口（任何界面可用，也可在 uTools 中绑定全局快捷键）</span>
+              </div>
+              <div class="shortcut-keys"><kbd>Ctrl</kbd>+<kbd>`</kbd></div>
             </div>
             <div class="shortcut-item">
               <div class="shortcut-desc">
@@ -659,6 +729,94 @@ const opacityTrack = computed(() => {
   border: 2px solid #ffffff;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
   cursor: pointer;
+}
+
+/* mini 预览卡：仿真桌面网格垫底，小窗透明度/尺寸/置顶实时联动 */
+.fish-preview-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 10px 10px;
+  margin-bottom: 8px;
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--color-border);
+  background:
+    repeating-linear-gradient(0deg, transparent 0 11px, var(--color-border) 11px 12px),
+    repeating-linear-gradient(90deg, transparent 0 11px, var(--color-border) 11px 12px),
+    var(--color-surface-muted);
+  overflow: hidden;
+}
+
+.fish-preview-win {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-btn);
+  display: flex;
+  flex-direction: column;
+  transition: width 0.2s, height 0.2s, opacity 0.15s;
+  overflow: hidden;
+}
+
+.fp-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--color-border-light);
+  background: var(--color-surface-muted);
+  font-size: var(--font-xs);
+  color: var(--color-text-2);
+  flex: none;
+}
+
+.fp-dots {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.fp-dots i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-border);
+}
+
+.fp-title {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fp-pin {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  background: var(--color-primary);
+  color: #ffffff;
+}
+
+.fp-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 10px;
+  justify-content: center;
+}
+
+.fp-row {
+  height: 7px;
+  border-radius: 4px;
+  background: var(--color-surface-muted-hover);
+}
+
+.fish-preview-tip {
+  font-size: var(--font-xs);
+  color: var(--color-text-muted);
 }
 
 /* 平台显示管理（分组可展开/收起，默认收起） */

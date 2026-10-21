@@ -3,6 +3,7 @@ import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
 import { getHotData, PLATFORMS } from '../services/hotSearchApi.js'
 import { STORAGE_KEYS, UI, AUTO_REFRESH, HOT_LEVELS, API } from '../config.js'
 import { trackEvent, EventType } from '../services/analytics/index.js'
+import { enterView, flushView } from '../services/analytics/viewTracker.js'
 import { useSettingsStore } from '../stores/settingsStore.js'
 import Settings from '../Settings/index.vue'
 import ArtworkListItem from '../components/ArtworkListItem.vue'
@@ -14,6 +15,7 @@ import FavoritesView from '../components/FavoritesView.vue'
 import ErrorState from '../components/ErrorState.vue'
 import { RefreshCw, Star, Copy, Link, Flame, ArrowUpDown } from 'lucide-vue-next'
 import { openUrl } from '../utils/openUrl.js'
+import { toggleBossKey } from '../utils/bossKey.js'
 import { saveMirror, peekMirror, mirrorAgeText } from '../utils/dataMirror.js'
 import { useFavorites } from '../utils/favorites.js'
 import { getStorage } from '../utils/storage.js'
@@ -50,6 +52,12 @@ const props = defineProps({
 const selectedPlatform = ref('baidu')
 // 当前视图：'home'（聚合首页，默认）| 'favorites'（P1）| 平台ID（单平台列表）
 const currentView = ref('home')
+// 平台停留埋点（pv）：视图切换即结算上一个平台；插件退出由 App.vue 的 finalizeViewTracking 收尾
+watch(currentView, (v) => enterView(v))
+// 老板键全局入口：uTools 全局快捷键（plugin.json code="boss"）进入即触发 toggle
+watch(() => props.enterAction, (action) => {
+  if (action && action.code === 'boss') handleBossKey('global')
+})
 const hotList = ref([])
 const loading = ref(false)
 const error = ref(null)
@@ -249,6 +257,9 @@ const fetchHotData = async (platformId, loadMore = false) => {
   // 获取平台特定的超时时间
   const platformTimeout = API.PLATFORM_TIMEOUT[platformId] || API.REQUEST_TIMEOUT
 
+  // 数据源质量埋点（pl）的计时起点
+  const fetchStart = Date.now()
+
   loadingTimeout.value = setTimeout(() => {
     if (loading.value || loadingMore.value) {
       debug.warn(`⏰ 请求超时（${platformTimeout}ms），强制关闭加载状态`)
@@ -267,6 +278,15 @@ const fetchHotData = async (platformId, loadMore = false) => {
     }
 
     const result = await getHotData(platformId, requestParams)
+
+    // 数据源质量埋点（pl）：成功（src 标识三级回退用了哪级 / direct / cache）
+    if (!(result && result.error)) {
+      trackEvent(EventType.PLATFORM_LOAD_SUCCESS, {
+        platform: platformId,
+        ms: Date.now() - fetchStart,
+        src: (result && result.source) || 'direct'
+      })
+    }
 
     // 清除超时定时器
     if (loadingTimeout.value) {
@@ -336,6 +356,13 @@ const fetchHotData = async (platformId, loadMore = false) => {
 
   } catch (err) {
     console.error('❌ 获取热搜失败:', err)
+
+    // 数据源质量埋点（pl）：失败
+    trackEvent(EventType.PLATFORM_LOAD_ERROR, {
+      platform: platformId,
+      ms: Date.now() - fetchStart,
+      src: 'unknown'
+    })
 
     // 清除超时定时器
     if (loadingTimeout.value) {
@@ -485,6 +512,12 @@ const openItem = (item) => {
     debug.log('⚠️ 无效链接:', url)
     return
   }
+  // 热搜点击埋点（键盘 Enter 也走这里，自动覆盖）
+  trackEvent(EventType.ITEM_CLICK, {
+    platform: selectedPlatform.value,
+    item_title: item.title,
+    item_position: item.index ?? -1
+  })
   openUrl(url, { platform: selectedPlatform.value })
 }
 
@@ -492,6 +525,11 @@ const openItem = (item) => {
 const openFromCard = ({ platform, item }) => {
   const url = (item && (item.url || item.mobileUrl)) || ''
   if (!url || url === '#') return
+  trackEvent(EventType.ITEM_CLICK, {
+    platform,
+    item_title: (item && item.title) || '',
+    item_position: (item && item.index) ?? -1
+  })
   openUrl(url, { platform })
 }
 
@@ -509,6 +547,23 @@ function showToast(msg) {
   toastMsg.value = msg
   if (toastTimer) clearTimeout(toastTimer)
   toastTimer = setTimeout(() => { toastMsg.value = '' }, 2000)
+}
+
+// 老板键（FISH-WINDOW-2.0 M1）：隐藏/恢复所有摸鱼小窗与主窗口
+// trigger: 'hotkey'（Ctrl+`）| 'global'（uTools 全局快捷键入口）| 'button'（侧栏按钮）
+async function handleBossKey(trigger) {
+  const res = await toggleBossKey()
+  if (res.action === 'show') {
+    showToast('欢迎回来，继续摸鱼 🐟')
+  } else if (res.action === 'none') {
+    showToast('浏览器环境无小窗，仅 uTools 内可用')
+  }
+  // hide / main-only：主窗口已隐藏，Toast 不可见，不打扰
+  try {
+    trackEvent(EventType.BOSS_KEY, { trigger, action: res.action, count: res.count })
+  } catch (e) {
+    /* 埋点失败不影响功能 */
+  }
 }
 
 // 复制文本（utools 优先，浏览器降级 clipboard API）
@@ -959,6 +1014,13 @@ const handleKeyPress = (event) => {
   // IME 组合态（中文输入法候选期）不触发任何快捷键
   if (event.isComposing) return
 
+  // 老板键：任何状态（含弹层、输入框聚焦）都要响应（FISH-WINDOW-2.0 M1）
+  if (event.ctrlKey && !event.shiftKey && !event.altKey && (event.key === '`' || event.code === 'Backquote')) {
+    event.preventDefault()
+    handleBossKey('hotkey')
+    return
+  }
+
   // 输入框聚焦时不触发
   if (event.target.tagName === 'INPUT' ||
       event.target.tagName === 'TEXTAREA' ||
@@ -1118,6 +1180,8 @@ onUnmounted(() => {
   if (loadingTimeout.value) {
     clearTimeout(loadingTimeout.value)
   }
+  // 结算未上报的平台停留（pv）
+  flushView()
 })
 
 // 获取排名样式类（Top3 渐变高亮）
@@ -1270,6 +1334,7 @@ watch(selectedPlatform, (newPlatform) => {
       @pin-toggle="settingsStore.togglePin"
       @translate="toggleTranslate"
       @refresh="refresh"
+      @boss-key="handleBossKey('button')"
       @settings="openSettings"
       @donate="openDonate"
     />
