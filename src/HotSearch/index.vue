@@ -1351,7 +1351,7 @@ watch(selectedPlatform, (newPlatform) => {
           <span class="main-title">我的热榜</span>
           <span class="main-sub">{{ todayText }} · 钉住平台聚合</span>
           <button
-            class="head-btn"
+            class="head-btn push-right"
             :class="{ 'on-brand': aggregateSorting }"
             :title="aggregateSorting ? '完成排序' : '调整卡片顺序'"
             @click="aggregateSorting = !aggregateSorting"
@@ -1378,7 +1378,7 @@ watch(selectedPlatform, (newPlatform) => {
           <span v-if="staleInfo" class="stale-badge" title="网络异常，正在展示缓存数据">
             缓存 {{ mirrorAgeText(staleInfo.ts) }}
           </span>
-          <button class="head-btn" :disabled="loading" :title="loading ? '加载中...' : '刷新数据'" @click="refresh">
+          <button class="head-btn push-right" :disabled="loading" :title="loading ? '加载中...' : '刷新数据'" @click="refresh">
             <RefreshCw :size="14" :class="{ spinning: loading }" />
           </button>
         </template>
@@ -1582,6 +1582,11 @@ watch(selectedPlatform, (newPlatform) => {
   flex-shrink: 0;
 }
 
+/* 头部按钮组推到最右（聚合首页：排序+刷新紧挨成组，不挤在标题中间） */
+.main-head .head-btn.push-right {
+  margin-left: auto;
+}
+
 .main-title {
   font-size: var(--font-xl);
   font-weight: 600;
@@ -1594,7 +1599,6 @@ watch(selectedPlatform, (newPlatform) => {
 }
 
 .head-btn {
-  margin-left: auto;
   width: 28px;
   height: 28px;
   border: none;
