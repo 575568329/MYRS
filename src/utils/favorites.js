@@ -100,5 +100,18 @@ export function useFavorites() {
     return true
   }
 
-  return { favorites, load, isFavorited, toggleFavorite }
+  /** 按下标移除（收藏流列表用） */
+  function removeAt(index) {
+    if (index < 0 || index >= favorites.value.length) return
+    favorites.value.splice(index, 1)
+    persist()
+  }
+
+  /** 清空收藏 */
+  function clearAll() {
+    favorites.value = []
+    persist()
+  }
+
+  return { favorites, load, isFavorited, toggleFavorite, removeAt, clearAll }
 }

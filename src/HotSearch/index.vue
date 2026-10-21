@@ -10,6 +10,7 @@ import ArtworkCard from '../components/ArtworkCard.vue'
 import AnalyticsDebugPanel from '../components/AnalyticsDebugPanel.vue'
 import PlatformSidebar from '../components/PlatformSidebar.vue'
 import AggregateHome from '../components/AggregateHome.vue'
+import FavoritesView from '../components/FavoritesView.vue'
 import ErrorState from '../components/ErrorState.vue'
 import { RefreshCw, Star, Copy, Link, Flame, ArrowUpDown } from 'lucide-vue-next'
 import { openUrl } from '../utils/openUrl.js'
@@ -441,8 +442,9 @@ const switchView = (view, origin, cat) => {
   }
 
   if (view === 'favorites') {
-    // P1 版本开放的收藏流，当前先提示
-    showToast('收藏流将在下个版本开放，可先在条目上点 ★ 收藏')
+    currentView.value = 'favorites'
+    pinnedActive.value = null
+    categoryActive.value = null
     return
   }
 
@@ -491,6 +493,15 @@ const openFromCard = ({ platform, item }) => {
   const url = (item && (item.url || item.mobileUrl)) || ''
   if (!url || url === '#') return
   openUrl(url, { platform })
+}
+
+// 收藏条目打开（favorites 数据模型：{ platform, title, url }）
+const openFavItem = (fav) => {
+  if (!fav || !fav.url) {
+    showToast('该收藏没有可打开的链接')
+    return
+  }
+  openUrl(fav.url, { platform: fav.platform })
 }
 
 // Toast（P0.3，替代弹窗反馈）
@@ -1281,6 +1292,10 @@ watch(selectedPlatform, (newPlatform) => {
             <RefreshCw :size="14" :class="{ spinning: aggregateLoading }" />
           </button>
         </template>
+        <template v-else-if="currentView === 'favorites'">
+          <span class="main-title">我的收藏</span>
+          <span class="main-sub mrs-tnum" v-if="favoriteCount > 0">{{ favoriteCount }} 条</span>
+        </template>
         <template v-else-if="currentPlatformObj">
           <span class="main-title">{{ currentPlatformObj.name }}</span>
           <span
@@ -1312,6 +1327,12 @@ watch(selectedPlatform, (newPlatform) => {
           :sorting="aggregateSorting"
           @open-platform="switchView"
           @open-item="openFromCard"
+        />
+
+        <!-- 我的收藏（跨平台收藏流） -->
+        <FavoritesView
+          v-else-if="currentView === 'favorites'"
+          @open-item="openFavItem"
         />
 
         <!-- 单平台列表视图 -->

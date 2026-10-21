@@ -19,7 +19,7 @@
         class="side-item quick"
         :class="{ on: currentView === 'favorites' }"
         @click="$emit('select', 'favorites')"
-        title="P1 版本开放"
+        title="跨平台收藏汇总"
       >
         <Star class="side-ico" :size="14" />
         <span>我的收藏</span>
