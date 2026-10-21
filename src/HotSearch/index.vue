@@ -1475,7 +1475,7 @@ watch(selectedPlatform, (newPlatform) => {
                   {{ index + 1 }}
                 </div>
                 <div class="hot-content">
-                  <div class="hot-title">{{ item.title }}</div>
+                  <div class="hot-title" :title="item.title">{{ item.title }}</div>
                   <div v-if="item.desc && settingsStore.showDescription" class="hot-desc">{{ item.desc }}</div>
                 </div>
                 <div class="item-acts" @click.stop>

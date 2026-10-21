@@ -59,6 +59,7 @@
             v-for="(item, i) in card.items"
             :key="card.id + '-' + i"
             class="agg-row"
+            :title="item.title"
             @click="$emit('open-item', { platform: card.id, item })"
           >
             <span class="agg-rank mrs-tnum" :class="'top-' + Math.min(i + 1, 4)">{{ i + 1 }}</span>

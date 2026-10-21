@@ -17,7 +17,7 @@
       >
         <span class="fav-dot" :style="{ background: dotColor(fav.platform) }"></span>
         <div class="fav-main">
-          <div class="fav-title">{{ fav.title }}</div>
+          <div class="fav-title" :title="fav.title">{{ fav.title }}</div>
           <div class="fav-meta">
             <span class="fav-platform">{{ platformName(fav.platform) }}</span>
             <span class="fav-time">{{ timeAgo(fav.savedAt) }}</span>
