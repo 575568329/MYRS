@@ -178,11 +178,37 @@ const LOCAL_API_ROUTE_ALIAS = {
 }
 
 /**
- * 清洗富文本描述：去掉 HTML 标签、压缩空白（部分源如爱范儿返回带 <p> 的原文）
+ * 描述清洗管线：处理各源返回的富文本脏数据
+ * - HTML 标签（爱范儿/AcFun：<p>、<a> 等）
+ * - HTML 实体（吾爱破解/水木社区/爱范儿：&gt; &quot; &amp; 等）
+ * - BBCode（吾爱破解：[md][/md][hr][mw_shl_code=...] 等）
+ * - Markdown 语法（吾爱破解：#### 标题、> 引用、**加粗**、[文本](链接)、--- 分隔线）
+ * 不用 v-html 渲染：外部内容有 XSS 风险，且这些源码本就不是可渲染的 HTML
  */
 function stripHtml(s) {
   if (typeof s !== 'string') return s || ''
-  return s.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim()
+  return s
+    // 1. HTML 标签
+    .replace(/<[^>]+>/g, ' ')
+    // 2. HTML 实体解码
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&gt;/g, '>').replace(/&lt;/g, '<')
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&')
+    // 3. Markdown 链接保文本（先于 BBCode，避免链接文字被误删）
+    .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, '$1')
+    // 4. BBCode 标签（ASCII 字母开头的方括号标记）
+    .replace(/\[\/?[a-zA-Z][^\]]*\]/g, ' ')
+    // 5. Markdown 标题符（##+ 开头的标题，单个 # 保留给话题标签）
+    .replace(/#{2,6}\s*/g, '')
+    // 6. Markdown 引用符（解码后的 "> "）
+    .replace(/(^|\s)>\s?/g, '$1')
+    // 7. 分隔线
+    .replace(/(^|\s)-{3,}(\s|$)/g, ' ')
+    // 8. 加粗/斜体标记
+    .replace(/\*{1,2}([^*\n]{1,120}?)\*{1,2}/g, '$1')
+    // 9. 空白折叠
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
 /**
@@ -232,7 +258,7 @@ function normalizeUapisData(data, platformId) {
       return {
         index: item.index,
         title: item.title,
-        desc: item.extra?.desc || '',
+        desc: stripHtml(item.extra?.desc || ''),
         img: item.extra?.img || '',
         url: url,
         hot: item.hot_value || ''
@@ -242,13 +268,14 @@ function normalizeUapisData(data, platformId) {
   // 旧格式: { code: 200, data: [...], message: "success" }
   if (data && data.code === 200 && Array.isArray(data.data)) {
     return data.data.map(item => {
+      const cleaned = { ...item, desc: stripHtml(item.desc || '') }
       if (platformId === 'douban-movie' && item.title) {
         return {
-          ...item,
+          ...cleaned,
           url: `https://search.douban.com/movie/subject_search?search_text=${encodeURIComponent(item.title)}`
         }
       }
-      return item
+      return cleaned
     })
   }
   throw new Error('API 返回数据格式不正确')
