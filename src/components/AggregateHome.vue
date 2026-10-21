@@ -7,7 +7,8 @@
       :class="{
         sorting,
         dragging: sorting && dragId === card.id,
-        'drag-over': sorting && overId === card.id && dragId !== card.id
+        'drag-over': sorting && overId === card.id && dragId !== card.id,
+        'pop-active': popoverId === card.id
       }"
       :draggable="sorting"
       @dragstart="onDragStart(card.id)"
@@ -15,6 +16,8 @@
       @dragover.prevent="sorting && (overId = card.id)"
       @dragleave.prevent="sorting && overId === card.id && (overId = null)"
       @drop.prevent="onDrop(card.id)"
+      @mouseenter="onCardEnter(card)"
+      @mouseleave="onCardLeave"
     >
       <div class="agg-head">
         <span class="agg-dot" :style="{ background: card.color }"></span>
@@ -43,8 +46,9 @@
           @retry="loadCard(card.id)"
         />
         <template v-else>
+          <!-- 常显前 5 条，完整榜单走悬停浮层 -->
           <div
-            v-for="(item, i) in card.items"
+            v-for="(item, i) in card.items.slice(0, CARD_VISIBLE)"
             :key="card.id + '-' + i"
             class="agg-row"
             @click="$emit('open-item', { platform: card.id, item })"
@@ -54,6 +58,37 @@
             <span v-if="item.hot && showHotValue" class="agg-hot mrs-tnum">
               <Flame :size="10" />{{ shortHot(item.hot) }}
             </span>
+          </div>
+
+          <!-- 悬停完整榜单浮层：有未展示条目时才出现，内部滚动 -->
+          <div
+            v-if="popoverId === card.id && canPop(card)"
+            class="agg-popover"
+            @mouseenter="onPopEnter"
+            @mouseleave="onCardLeave"
+          >
+            <div class="agg-pop-head">
+              <span class="agg-dot" :style="{ background: card.color }"></span>
+              <span class="agg-pop-name">{{ card.name }} · 完整榜单</span>
+              <span class="agg-pop-count mrs-tnum">{{ card.items.length }} 条</span>
+              <button class="agg-pop-more" @click="emit('open-platform', card.id)">
+                全部<ChevronRight :size="11" />
+              </button>
+            </div>
+            <div class="agg-pop-list">
+              <div
+                v-for="(item, i) in card.items"
+                :key="card.id + '-pop-' + i"
+                class="agg-row"
+                @click="onPopItemClick(card, item)"
+              >
+                <span class="agg-rank mrs-tnum" :class="'top-' + Math.min(i + 1, 4)">{{ i + 1 }}</span>
+                <span class="agg-title">{{ item.title }}</span>
+                <span v-if="item.hot && showHotValue" class="agg-hot mrs-tnum">
+                  <Flame :size="10" />{{ shortHot(item.hot) }}
+                </span>
+              </div>
+            </div>
           </div>
         </template>
       </template>
@@ -69,11 +104,12 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 import { getHotData, PLATFORMS } from '../services/hotSearchApi.js'
 import ErrorState from './ErrorState.vue'
 import { ChevronRight, Flame, Pin, GripVertical } from 'lucide-vue-next'
 import { useSettingsStore } from '../stores/settingsStore.js'
+import { trackEvent, EventType } from '../services/analytics/index.js'
 
 const settingsStore = useSettingsStore()
 
@@ -83,7 +119,56 @@ const props = defineProps({
   sorting: { type: Boolean, default: false }
 })
 
-defineEmits(['open-platform', 'open-item'])
+const emit = defineEmits(['open-platform', 'open-item'])
+
+// 卡片常显条数（完整榜单走悬停浮层）
+const CARD_VISIBLE = 5
+
+// ========== 悬停完整榜单浮层 ==========
+const popoverId = ref(null)
+let popOpenTimer = null
+let popLeaveTimer = null
+
+// 只有确实有未展示条目才弹（否则不打扰）
+function canPop(card) {
+  return !props.sorting &&
+    card.status === 'ok' &&
+    Array.isArray(card.items) &&
+    card.items.length > CARD_VISIBLE
+}
+
+function onCardEnter(card) {
+  clearTimeout(popLeaveTimer)
+  if (popoverId.value === card.id) {
+    clearTimeout(popOpenTimer)
+    return
+  }
+  clearTimeout(popOpenTimer)
+  if (!canPop(card)) return
+  // 停留 300ms 再弹：扫过卡片不误触
+  popOpenTimer = setTimeout(() => { popoverId.value = card.id }, 300)
+}
+
+function onCardLeave() {
+  clearTimeout(popOpenTimer)
+  clearTimeout(popLeaveTimer)
+  // 200ms 缓冲：给鼠标移入浮层留时间
+  popLeaveTimer = setTimeout(() => { popoverId.value = null }, 200)
+}
+
+function onPopEnter() {
+  clearTimeout(popLeaveTimer)
+}
+
+function onPopItemClick(card, item) {
+  popoverId.value = null
+  emit('open-item', { platform: card.id, item })
+}
+
+onUnmounted(() => {
+  clearTimeout(popOpenTimer)
+  clearTimeout(popLeaveTimer)
+})
 
 // 拖拽排序状态
 const dragId = ref(null)
@@ -145,14 +230,28 @@ function shortHot(v) {
 async function loadCard(platformId) {
   const entry = cardMap.value[platformId] || {}
   cardMap.value[platformId] = { ...entry, status: 'loading', error: '' }
+  const fetchStart = Date.now()
   try {
-    const result = await getHotData(platformId, { page: 1, pageSize: 5 })
+    const result = await getHotData(platformId, { page: 1, pageSize: 50 })
+    // 数据源质量埋点（pl）：聚合首页是默认视图、并发拉取钉住平台，是 pl 的主流量来源
+    if (!(result && result.error)) {
+      trackEvent(EventType.PLATFORM_LOAD_SUCCESS, {
+        platform: platformId,
+        ms: Date.now() - fetchStart,
+        src: (result && result.source) || 'direct'
+      })
+    }
     cardMap.value[platformId] = {
       items: (result && result.data) || [],
       status: 'ok',
       error: ''
     }
   } catch (e) {
+    trackEvent(EventType.PLATFORM_LOAD_ERROR, {
+      platform: platformId,
+      ms: Date.now() - fetchStart,
+      src: 'unknown'
+    })
     cardMap.value[platformId] = {
       items: [],
       status: 'error',
@@ -173,6 +272,9 @@ function loadAll() {
 
 watch(() => props.pinnedIds.join(','), () => loadAll(), { immediate: true })
 
+// 进入排序模式时收起浮层
+watch(() => props.sorting, (v) => { if (v) popoverId.value = null })
+
 defineExpose({ reload: loadAll })
 </script>
 
@@ -189,12 +291,22 @@ defineExpose({ reload: loadAll })
 }
 
 .agg-card {
+  position: relative; /* 悬停浮层的定位锚点 */
   min-width: 0; /* grid 子项默认 min-width:auto 会撑破列宽 */
   border-radius: var(--radius-lg);
   border: 1px solid var(--color-border-light);
   background: var(--color-surface);
   padding: 10px 12px 6px;
   transition: transform 0.15s, box-shadow 0.15s;
+}
+
+/* 浮层展开时：提升层级盖过相邻卡片，停止位移避免浮层抖动 */
+.agg-card.pop-active {
+  z-index: 20;
+}
+
+.agg-card.pop-active:hover {
+  transform: none;
 }
 
 /* 排序模式：只显示标题（紧凑单列），拖拽调序 */
@@ -382,6 +494,73 @@ defineExpose({ reload: loadAll })
 
 .agg-sk-title {
   height: 12px;
+}
+
+/* 悬停完整榜单浮层：覆盖卡片向下展开，内部滚动 */
+.agg-popover {
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  right: -1px;
+  z-index: 30;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.agg-pop-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 12px 7px;
+  border-bottom: 1px solid var(--color-border-light);
+  flex: none;
+}
+
+.agg-pop-name {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--font-base);
+  font-weight: 600;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.agg-pop-count {
+  flex: none;
+  font-size: var(--font-xs);
+  color: var(--color-text-muted);
+}
+
+.agg-pop-more {
+  flex: none;
+  border: none;
+  background: none;
+  font-size: var(--font-xs);
+  color: var(--color-hot);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.agg-pop-more:hover {
+  background: var(--color-surface-muted-hover);
+}
+
+.agg-pop-list {
+  max-height: 380px;
+  overflow-y: auto;
+  padding: 6px 8px;
 }
 
 .agg-empty {
