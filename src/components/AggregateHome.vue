@@ -387,7 +387,36 @@ defineExpose({ reload: loadAll })
   max-height: 150px;
   overflow-y: auto;
   overscroll-behavior: contain; /* 滚到头不带动整页 */
+  /* 滚动条默认隐藏（新 Chromium/Firefox），悬停才现身 */
+  scrollbar-width: none;
+  scrollbar-color: transparent transparent;
+}
+
+.agg-body:hover {
   scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+
+/* 旧 Chromium 兜底：webkit 滚动条默认透明，悬停浮现细样式 */
+.agg-body::-webkit-scrollbar {
+  width: 5px;
+}
+
+.agg-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.agg-body::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 3px;
+}
+
+.agg-body:hover::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+}
+
+.agg-body:hover::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
 }
 
 .agg-body.expanded {
