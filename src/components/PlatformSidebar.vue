@@ -26,12 +26,20 @@
         <span v-if="favoriteCount > 0" class="side-count mrs-tnum">{{ favoriteCount }}</span>
       </button>
 
-      <!-- 钉住组（选中态独立于分类组：点这里只亮这里） -->
-      <div v-if="pinnedPlatforms.length > 0" class="side-group-label">
-        <Pin class="side-ico" :size="12" />我的钉住
-      </div>
-      <template v-for="p in pinnedPlatforms" :key="'pin-' + p.id">
+      <!-- 钉住组（可收起/展开，选中态独立于分类组：点这里只亮这里） -->
+      <button
+        v-if="pinnedPlatforms.length > 0"
+        class="side-group-label toggle"
+        @click="pinnedExpanded = !pinnedExpanded"
+      >
+        <component :is="pinnedExpanded ? ChevronDown : ChevronRight" class="side-ico" :size="12" />
+        我的钉住
+        <span class="side-count mrs-tnum">{{ pinnedPlatforms.length }}</span>
+      </button>
+      <template v-if="pinnedExpanded">
         <button
+          v-for="p in pinnedPlatforms"
+          :key="'pin-' + p.id"
           class="side-item"
           :class="{ on: pinnedActive === p.id }"
           @click="$emit('select', p.id, 'pinned')"
@@ -114,7 +122,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { PLATFORMS } from '../services/hotSearchApi.js'
 import { useSettingsStore } from '../stores/settingsStore.js'
 import {
@@ -137,6 +145,9 @@ const props = defineProps({
 defineEmits(['select', 'pin-toggle', 'translate', 'refresh', 'settings', 'donate'])
 
 const settingsStore = useSettingsStore()
+
+// 钉住组展开状态（会话态，默认展开）
+const pinnedExpanded = ref(true)
 
 // 分类显示顺序：常用在前，未列出的追加在后
 const CATEGORY_ORDER = ['资讯', '科技', '视频', '社交', '娱乐', '游戏', '生活', '阅读', '艺术', '金融', '综合']
