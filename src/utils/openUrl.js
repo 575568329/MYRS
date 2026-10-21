@@ -134,15 +134,13 @@ export async function openUrl(url, { platform = '', background = false } = {}) {
       reuseId = Array.isArray(idle) && idle.length > 0 ? idle[0].id : null
     }
 
+    // 完整体验链：净化 + 静音（仅新导航构建一次）
     let task = window.utools.ubrowser.goto(url)
-    // 站点净化（M2）：命中规则即注入沉浸阅读样式
     const rule = cfg.cleanMode ? matchSiteRule(url) : null
     if (rule && rule.css) {
       task = task.css(rule.css)
       try { trackEvent(EventType.RULES_APPLIED, { domain: rule.domain }) } catch (e) { /* 埋点不阻塞 */ }
     }
-    // 自动静音（M1-②）：仅静音本次加载，用户在小窗内的后续操作不受影响；
-    // 有媒体被静音时注入右下角恢复气泡——静音状态可见、可一键还原
     if (cfg.autoMute) {
       task = task.wait(2000).evaluate(() => {
         const media = document.querySelectorAll('video,audio')
@@ -169,9 +167,25 @@ export async function openUrl(url, { platform = '', background = false } = {}) {
         }, 8000)
       })
     }
-    const result = reuseId
-      ? await task.run(reuseId, opts)
-      : await task.run(opts)
+
+    let result = null
+    try {
+      // 一级：完整参数（可能复用窗口）；失败不抛出，进入兼容模式
+      result = reuseId ? await task.run(reuseId, opts) : await task.run(opts)
+    } catch (e1) {
+      console.warn('[摸鱼小窗] 完整参数打开失败，尝试兼容模式:', e1)
+      try {
+        // 二级：新窗口 + 最小参数（不依赖 opacity/位置/静音链等较新特性，覆盖旧版 uTools 或失效复用 id）
+        result = await window.utools.ubrowser.goto(url).run({
+          width: size.width,
+          height: size.height,
+          show: !background
+        })
+      } catch (e2) {
+        console.warn('[摸鱼小窗] 兼容模式也失败:', e2)
+        throw e2
+      }
+    }
 
     // run 返回实例数组，记录最后窗口 id 供下次复用/老板键收集
     if (Array.isArray(result) && result.length > 0 && result[result.length - 1] && result[result.length - 1].id) {
@@ -180,13 +194,26 @@ export async function openUrl(url, { platform = '', background = false } = {}) {
     }
     track(platform, 'ubrowser', Boolean(reuseId))
   } catch (e) {
-    // ubrowser 失败兜底：退回系统浏览器，保证链接永远能打开
+    // 三级兜底：系统浏览器，保证链接永远能打开；上浮原因让用户知道为什么
+    console.error('[摸鱼小窗] 打开失败，降级系统浏览器:', e)
+    notifyFallback()
     try {
       window.utools.shellOpenExternal(url)
       track(platform, 'system', false)
     } catch (e2) {
       console.error('打开链接失败:', e2)
     }
+  }
+}
+
+/**
+ * 小窗失败降级提示（主窗口 Toast，用户能看到"为什么用了系统浏览器"）
+ */
+function notifyFallback() {
+  try {
+    window.dispatchEvent(new CustomEvent('fish-window-fallback'))
+  } catch (e) {
+    /* 提示失败不影响功能 */
   }
 }
 

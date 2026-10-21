@@ -1239,6 +1239,11 @@ const applyTheme = (mode) => {
 onMounted(() => {
   debug.log('🔥 热搜组件已挂载')
 
+  // 小窗打开失败降级提示（openUrl 三级降级的最终一级会派发此事件）
+  window.addEventListener('fish-window-fallback', () => {
+    showToast('小窗打开失败，已用系统浏览器打开（详见控制台）')
+  })
+
   // 加载设置（包括钉住平台、隐藏平台、主题等）
   settingsStore.loadSettings()
   loadFavorites()

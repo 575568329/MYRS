@@ -16,6 +16,8 @@
 </template>
 
 <script setup>
+import { openUrl } from '../utils/openUrl.js'
+
 const props = defineProps({
   artwork: {
     type: Object,
@@ -49,7 +51,7 @@ const props = defineProps({
 
 const emit = defineEmits(['click'])
 
-// 打开链接（图片或详情页）
+// 打开链接（图片或详情页，统一走摸鱼小窗入口）
 const openImage = () => {
   // 优先使用 img，如果没有则使用 url 或 mobileUrl
   const link = props.artwork.img || props.artwork.url || props.artwork.mobileUrl
@@ -60,11 +62,7 @@ const openImage = () => {
     return
   }
 
-  if (window.utools) {
-    window.utools.shellOpenExternal(link)
-  } else {
-    window.open(link, '_blank')
-  }
+  openUrl(link, { platform: 'artic' })
 }
 
 // 处理列表项点击
