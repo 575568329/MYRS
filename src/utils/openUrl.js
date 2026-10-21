@@ -141,10 +141,32 @@ export async function openUrl(url, { platform = '', background = false } = {}) {
       task = task.css(rule.css)
       try { trackEvent(EventType.RULES_APPLIED, { domain: rule.domain }) } catch (e) { /* 埋点不阻塞 */ }
     }
-    // 自动静音（M1-②）：仅静音本次加载，用户在小窗内的后续操作不受影响
+    // 自动静音（M1-②）：仅静音本次加载，用户在小窗内的后续操作不受影响；
+    // 有媒体被静音时注入右下角恢复气泡——静音状态可见、可一键还原
     if (cfg.autoMute) {
       task = task.wait(2000).evaluate(() => {
-        document.querySelectorAll('video,audio').forEach(m => { m.muted = true })
+        const media = document.querySelectorAll('video,audio')
+        if (media.length === 0) return
+        media.forEach(m => { m.muted = true })
+        const bubble = document.createElement('div')
+        bubble.textContent = '🔇 已自动静音 · 点击恢复声音'
+        Object.assign(bubble.style, {
+          position: 'fixed', right: '16px', bottom: '16px', zIndex: '2147483647',
+          background: 'rgba(28,28,30,0.92)', color: '#ffffff',
+          padding: '8px 14px', borderRadius: '8px',
+          font: '13px/1.4 system-ui, -apple-system, sans-serif',
+          cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
+          transition: 'opacity 0.4s', userSelect: 'none'
+        })
+        bubble.addEventListener('click', () => {
+          document.querySelectorAll('video,audio').forEach(m => { m.muted = false })
+          bubble.remove()
+        })
+        document.body.appendChild(bubble)
+        setTimeout(() => {
+          bubble.style.opacity = '0'
+          setTimeout(() => bubble.remove(), 500)
+        }, 8000)
       })
     }
     const result = reuseId
