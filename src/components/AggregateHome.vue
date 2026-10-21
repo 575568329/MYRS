@@ -68,6 +68,15 @@
             </span>
           </div>
         </div>
+
+        <!-- 展开态底部收起：读完长列表不必滚回顶部 -->
+        <button
+          v-if="!sorting && card.status === 'ok' && expandedIds.has(card.id)"
+          class="agg-collapse"
+          @click="toggleExpand(card.id)"
+        >
+          <ChevronUp :size="13" />收起
+        </button>
       </template>
     </div>
 
@@ -423,6 +432,31 @@ defineExpose({ reload: loadAll })
 .agg-body.expanded {
   max-height: none;
   overflow: visible;
+}
+
+/* 展开态底部收起按钮：通栏轻样式，hover 品牌色 */
+.agg-collapse {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  margin-top: 4px;
+  padding: 6px 0 4px;
+  border: none;
+  border-top: 1px dashed var(--color-border-light);
+  background: none;
+  font-size: var(--font-xs);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-family: inherit;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  transition: color 0.15s, background 0.15s;
+}
+
+.agg-collapse:hover {
+  color: var(--color-brand-text);
+  background: var(--color-surface-muted);
 }
 
 .agg-row {
