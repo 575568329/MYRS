@@ -124,7 +124,6 @@ export const PLATFORMS = [
   { id: 'smzdm', name: '什么值得买', icon: 'ri-shopping-bag-3-line', category: '生活', alias: ["smzdm","zdm"] },
   { id: 'history', name: '历史上的今天', icon: 'ri-calendar-line', category: '综合', alias: ["ls","lishi"] },
   { id: 'hellogithub', name: 'HelloGitHub', icon: 'ri-github-line', category: '科技', alias: ["hg","hellogithub"] },
-  { id: 'jianshu', name: '简书', icon: 'ri-quill-pen-line', category: '综合', alias: ["js","jianshu"] },
   { id: 'artic', name: '芝加哥艺术学院', icon: 'ri-building-2-line', category: '艺术', alias: ["artic","meishu"] },
 ]
 
