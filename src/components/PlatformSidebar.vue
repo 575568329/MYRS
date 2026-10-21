@@ -92,16 +92,19 @@
       </template>
     </nav>
 
+    <!-- 老板键：独立全宽紧急按钮（不与底栏挤占宽度，大热区好按） -->
+    <button
+      class="boss-key-btn"
+      title="老板键 · 一键隐藏所有摸鱼窗口，再按一次恢复"
+      @click="$emit('boss-key')"
+    >
+      <Shield class="side-ico" :size="14" />
+      <span>老板键</span>
+      <kbd>Ctrl + `</kbd>
+    </button>
+
     <!-- 底部操作 -->
     <div class="sidebar-foot">
-      <button
-        class="foot-btn boss"
-        title="老板键 Ctrl+` · 一键隐藏所有摸鱼窗口，再按一次恢复"
-        @click="$emit('boss-key')"
-      >
-        <Shield class="side-ico" :size="13" />
-        <span>老板键</span>
-      </button>
       <button
         v-if="showTranslate"
         class="foot-btn"
@@ -410,9 +413,42 @@ function dotColor(category) {
   color: #ef5b5b;
 }
 
-/* 老板键：摸鱼专属强调色，hover 微亮 */
-.foot-btn.boss .side-ico {
+/* 老板键：侧栏底部独立全宽按钮，右侧标注快捷键 */
+.boss-key-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 8px;
+  padding: 0 12px;
+  height: 32px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-muted);
+  color: var(--color-text-2);
+  font-size: var(--font-sm);
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s, color 0.15s;
+}
+
+.boss-key-btn:hover {
+  background: var(--color-brand-selected-bg);
   color: var(--color-brand-text);
+}
+
+.boss-key-btn .side-ico {
+  color: var(--color-brand-text);
+}
+
+.boss-key-btn kbd {
+  margin-left: auto;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-family: inherit;
 }
 
 .spinning {
