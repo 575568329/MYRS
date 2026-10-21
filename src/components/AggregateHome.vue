@@ -1,10 +1,29 @@
 <template>
   <div class="agg-grid">
-    <div v-for="card in cards" :key="card.id" class="agg-card">
+    <div v-for="(card, order) in cards" :key="card.id" class="agg-card" :class="{ sorting }">
       <div class="agg-head">
         <span class="agg-dot" :style="{ background: card.color }"></span>
         <span class="agg-name">{{ card.name }}</span>
-        <button class="agg-more" @click="$emit('open-platform', card.id)">
+        <span v-if="sorting" class="agg-order mrs-tnum">{{ order + 1 }}</span>
+        <button
+          v-if="sorting"
+          class="agg-move"
+          :disabled="order === 0"
+          title="上移"
+          @click.stop="move(card.id, -1)"
+        >
+          <ChevronUp :size="13" />
+        </button>
+        <button
+          v-if="sorting"
+          class="agg-move"
+          :disabled="order === cards.length - 1"
+          title="下移"
+          @click.stop="move(card.id, 1)"
+        >
+          <ChevronDown :size="13" />
+        </button>
+        <button v-else class="agg-more" @click="$emit('open-platform', card.id)">
           全部<ChevronRight :size="11" />
         </button>
       </div>
@@ -31,7 +50,7 @@
           v-for="(item, i) in card.items"
           :key="card.id + '-' + i"
           class="agg-row"
-          @click="$emit('open-item', { platform: card.id, item })"
+          @click="!sorting && $emit('open-item', { platform: card.id, item })"
         >
           <span class="agg-rank mrs-tnum" :class="'top-' + Math.min(i + 1, 4)">{{ i + 1 }}</span>
           <span class="agg-title">{{ item.title }}</span>
@@ -55,14 +74,23 @@
 import { ref, computed, watch } from 'vue'
 import { getHotData, PLATFORMS } from '../services/hotSearchApi.js'
 import ErrorState from './ErrorState.vue'
-import { ChevronRight, Flame, Pin } from 'lucide-vue-next'
+import { ChevronRight, ChevronUp, ChevronDown, Flame, Pin } from 'lucide-vue-next'
+import { useSettingsStore } from '../stores/settingsStore.js'
+
+const settingsStore = useSettingsStore()
 
 const props = defineProps({
   pinnedIds: { type: Array, default: () => [] },
-  showHotValue: { type: Boolean, default: true }
+  showHotValue: { type: Boolean, default: true },
+  sorting: { type: Boolean, default: false }
 })
 
 defineEmits(['open-platform', 'open-item'])
+
+// 排序：上移/下移（store 持久化，卡片顺序实时跟随 pinnedIds）
+function move(platformId, delta) {
+  settingsStore.movePinned(platformId, delta)
+}
 
 // 卡片数据：id -> { name, color, items, status, error }
 const cardMap = ref({})
@@ -138,19 +166,63 @@ defineExpose({ reload: loadAll })
 .agg-grid {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden; /* 禁止横向拖动 */
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); /* minmax(0) 防内容撑宽产生横滚 */
   gap: 10px;
   padding: 4px 14px 14px;
   align-content: start;
 }
 
 .agg-card {
+  min-width: 0; /* grid 子项默认 min-width:auto 会撑破列宽 */
   border-radius: var(--radius-lg);
   border: 1px solid var(--color-border-light);
   background: var(--color-surface);
   padding: 10px 12px 6px;
   transition: transform 0.15s, box-shadow 0.15s;
+}
+
+/* 排序模式：卡片高亮边框，禁跳转 */
+.agg-card.sorting {
+  border-color: var(--color-brand-text);
+}
+
+.agg-card.sorting:hover {
+  transform: none;
+}
+
+.agg-order {
+  margin-left: auto;
+  font-size: var(--font-xs);
+  color: var(--color-brand-text);
+  font-weight: 600;
+}
+
+.agg-move {
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex: none;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+
+.agg-move:hover:not(:disabled) {
+  border-color: var(--color-brand-text);
+  color: var(--color-brand-text);
+}
+
+.agg-move:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 .agg-card:hover {
@@ -246,6 +318,7 @@ defineExpose({ reload: loadAll })
   overflow: hidden;
   text-overflow: ellipsis;
   color: var(--color-text);
+  word-break: break-all; /* 长连续串（URL等）不撑破列宽 */
 }
 
 .agg-hot {

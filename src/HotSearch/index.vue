@@ -11,7 +11,7 @@ import AnalyticsDebugPanel from '../components/AnalyticsDebugPanel.vue'
 import PlatformSidebar from '../components/PlatformSidebar.vue'
 import AggregateHome from '../components/AggregateHome.vue'
 import ErrorState from '../components/ErrorState.vue'
-import { RefreshCw, Star, Copy, Link, Flame } from 'lucide-vue-next'
+import { RefreshCw, Star, Copy, Link, Flame, ArrowUpDown } from 'lucide-vue-next'
 import { openUrl } from '../utils/openUrl.js'
 import { saveMirror, peekMirror, mirrorAgeText } from '../utils/dataMirror.js'
 import { useFavorites } from '../utils/favorites.js'
@@ -69,6 +69,8 @@ let toastTimer = null
 // 聚合视图
 const aggregateRef = ref(null)
 const aggregateLoading = ref(false)
+// 聚合卡片排序模式（↑↓ 调整钉住顺序）
+const aggregateSorting = ref(false)
 
 // 当前视图是否处于加载中（驱动顶部进度条）
 const isLoadingView = computed(() => {
@@ -1267,6 +1269,14 @@ watch(selectedPlatform, (newPlatform) => {
         <template v-if="currentView === 'home'">
           <span class="main-title">我的热榜</span>
           <span class="main-sub">{{ todayText }} · 钉住平台聚合</span>
+          <button
+            class="head-btn"
+            :class="{ 'on-brand': aggregateSorting }"
+            :title="aggregateSorting ? '完成排序' : '调整卡片顺序'"
+            @click="aggregateSorting = !aggregateSorting"
+          >
+            <ArrowUpDown :size="14" />
+          </button>
           <button class="head-btn" title="刷新聚合数据" @click="refreshAggregate">
             <RefreshCw :size="14" :class="{ spinning: aggregateLoading }" />
           </button>
@@ -1299,6 +1309,7 @@ watch(selectedPlatform, (newPlatform) => {
           ref="aggregateRef"
           :pinned-ids="settingsStore.pinnedPlatforms"
           :show-hot-value="settingsStore.showHotValue"
+          :sorting="aggregateSorting"
           @open-platform="switchView"
           @open-item="openFromCard"
         />
@@ -1517,6 +1528,12 @@ watch(selectedPlatform, (newPlatform) => {
 
 .head-btn .spinning {
   animation: spin 0.8s linear infinite;
+}
+
+/* 排序按钮激活态（品牌色） */
+.head-btn.on-brand {
+  color: var(--color-brand-text);
+  background: var(--color-brand-selected-bg);
 }
 
 /* 加载进度条（主区头部下方，2px 品牌渐变滑动） */

@@ -2,7 +2,7 @@
  * 设置状态管理 Store
  * 管理用户UI偏好设置
  */
-import { defineStore } from 'pinia'
+import { defineStore, acceptHMRUpdate } from 'pinia'
 import { ref, watch } from 'vue'
 import { UI, STORAGE_KEYS, DISPLAY_MODE } from '../config.js'
 import { PLATFORMS } from '../services/hotSearchApi.js'
@@ -322,6 +322,22 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   /**
+   * 调整钉住平台顺序（聚合首页排序用）
+   * @param {string} platformId
+   * @param {number} delta -1 上移 / 1 下移
+   */
+  function movePinned(platformId, delta) {
+    const idx = pinnedPlatforms.value.indexOf(platformId)
+    const target = idx + delta
+    if (idx === -1 || target < 0 || target >= pinnedPlatforms.value.length) return
+    const list = [...pinnedPlatforms.value]
+    const [moved] = list.splice(idx, 1)
+    list.splice(target, 0, moved)
+    pinnedPlatforms.value = list
+    persist(STORAGE_KEYS.PINNED_PLATFORMS, JSON.stringify(list))
+  }
+
+  /**
    * 切换分类展开（P0.2 侧栏：默认收起，展开状态持久化）
    */
   function toggleGroupExpand(category) {
@@ -436,7 +452,13 @@ export const useSettingsStore = defineStore('settings', () => {
     isPlatformVisible,
     togglePin,
     isPinned,
+    movePinned,
     toggleGroupExpand,
     cleanup
   }
 })
+
+// Pinia 官方 HMR：热更时保留 state 并替换 actions，避免"组件新 store 旧"的调用缺口
+if (import.meta.hot) {
+  import.meta.hot.accept(acceptHMRUpdate('settings', useSettingsStore))
+}
