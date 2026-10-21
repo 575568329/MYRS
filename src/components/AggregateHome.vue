@@ -1,63 +1,61 @@
 <template>
-  <div class="agg-grid">
-    <div v-for="(card, order) in cards" :key="card.id" class="agg-card" :class="{ sorting }">
+  <div class="agg-grid" :class="{ 'agg-grid-sorting': sorting }">
+    <div
+      v-for="(card, order) in cards"
+      :key="card.id"
+      class="agg-card"
+      :class="{
+        sorting,
+        dragging: sorting && dragId === card.id,
+        'drag-over': sorting && overId === card.id && dragId !== card.id
+      }"
+      :draggable="sorting"
+      @dragstart="onDragStart(card.id)"
+      @dragend="onDragEnd"
+      @dragover.prevent="sorting && (overId = card.id)"
+      @dragleave.prevent="sorting && overId === card.id && (overId = null)"
+      @drop.prevent="onDrop(card.id)"
+    >
       <div class="agg-head">
         <span class="agg-dot" :style="{ background: card.color }"></span>
         <span class="agg-name">{{ card.name }}</span>
-        <span v-if="sorting" class="agg-order mrs-tnum">{{ order + 1 }}</span>
-        <button
-          v-if="sorting"
-          class="agg-move"
-          :disabled="order === 0"
-          title="上移"
-          @click.stop="move(card.id, -1)"
-        >
-          <ChevronUp :size="13" />
-        </button>
-        <button
-          v-if="sorting"
-          class="agg-move"
-          :disabled="order === cards.length - 1"
-          title="下移"
-          @click.stop="move(card.id, 1)"
-        >
-          <ChevronDown :size="13" />
-        </button>
+        <template v-if="sorting">
+          <span class="agg-order mrs-tnum">{{ order + 1 }}</span>
+          <GripVertical class="agg-grip" :size="14" />
+        </template>
         <button v-else class="agg-more" @click="$emit('open-platform', card.id)">
           全部<ChevronRight :size="11" />
         </button>
       </div>
 
-      <!-- 骨架 -->
-      <template v-if="card.status === 'loading'">
-        <div v-for="n in 5" :key="'sk' + n" class="agg-row">
-          <span class="skeleton agg-sk-rank"></span>
-          <span class="skeleton agg-sk-title" :style="{ width: (72 - n * 6) + '%' }"></span>
-        </div>
-      </template>
-
-      <!-- 失败（单卡降级不拖垮整页） -->
-      <ErrorState
-        v-else-if="card.status === 'error'"
-        :message="card.error"
-        compact
-        @retry="loadCard(card.id)"
-      />
-
-      <!-- 数据 -->
-      <template v-else>
-        <div
-          v-for="(item, i) in card.items"
-          :key="card.id + '-' + i"
-          class="agg-row"
-          @click="!sorting && $emit('open-item', { platform: card.id, item })"
-        >
-          <span class="agg-rank mrs-tnum" :class="'top-' + Math.min(i + 1, 4)">{{ i + 1 }}</span>
-          <span class="agg-title">{{ item.title }}</span>
-          <span v-if="item.hot && showHotValue" class="agg-hot mrs-tnum">
-            <Flame :size="10" />{{ shortHot(item.hot) }}
-          </span>
-        </div>
+      <!-- 排序模式：只显示标题，不渲染条目 -->
+      <template v-if="!sorting">
+        <template v-if="card.status === 'loading'">
+          <div v-for="n in 5" :key="'sk' + n" class="agg-row">
+            <span class="skeleton agg-sk-rank"></span>
+            <span class="skeleton agg-sk-title" :style="{ width: (72 - n * 6) + '%' }"></span>
+          </div>
+        </template>
+        <ErrorState
+          v-else-if="card.status === 'error'"
+          :message="card.error"
+          compact
+          @retry="loadCard(card.id)"
+        />
+        <template v-else>
+          <div
+            v-for="(item, i) in card.items"
+            :key="card.id + '-' + i"
+            class="agg-row"
+            @click="$emit('open-item', { platform: card.id, item })"
+          >
+            <span class="agg-rank mrs-tnum" :class="'top-' + Math.min(i + 1, 4)">{{ i + 1 }}</span>
+            <span class="agg-title">{{ item.title }}</span>
+            <span v-if="item.hot && showHotValue" class="agg-hot mrs-tnum">
+              <Flame :size="10" />{{ shortHot(item.hot) }}
+            </span>
+          </div>
+        </template>
       </template>
     </div>
 
@@ -74,7 +72,7 @@
 import { ref, computed, watch } from 'vue'
 import { getHotData, PLATFORMS } from '../services/hotSearchApi.js'
 import ErrorState from './ErrorState.vue'
-import { ChevronRight, ChevronUp, ChevronDown, Flame, Pin } from 'lucide-vue-next'
+import { ChevronRight, Flame, Pin, GripVertical } from 'lucide-vue-next'
 import { useSettingsStore } from '../stores/settingsStore.js'
 
 const settingsStore = useSettingsStore()
@@ -87,9 +85,25 @@ const props = defineProps({
 
 defineEmits(['open-platform', 'open-item'])
 
-// 排序：上移/下移（store 持久化，卡片顺序实时跟随 pinnedIds）
-function move(platformId, delta) {
-  settingsStore.movePinned(platformId, delta)
+// 拖拽排序状态
+const dragId = ref(null)
+const overId = ref(null)
+
+function onDragStart(id) {
+  if (!props.sorting) return
+  dragId.value = id
+}
+
+function onDragEnd() {
+  dragId.value = null
+  overId.value = null
+}
+
+function onDrop(targetId) {
+  if (!props.sorting || !dragId.value) return
+  settingsStore.movePinnedTo(dragId.value, targetId)
+  dragId.value = null
+  overId.value = null
 }
 
 // 卡片数据：id -> { name, color, items, status, error }
@@ -183,13 +197,41 @@ defineExpose({ reload: loadAll })
   transition: transform 0.15s, box-shadow 0.15s;
 }
 
-/* 排序模式：卡片高亮边框，禁跳转 */
+/* 排序模式：只显示标题（紧凑单列），拖拽调序 */
+.agg-grid-sorting {
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 8px;
+}
+
 .agg-card.sorting {
-  border-color: var(--color-brand-text);
+  border-color: var(--color-border);
+  cursor: grab;
+  padding: 12px 14px;
+  user-select: none;
+}
+
+.agg-card.sorting:active {
+  cursor: grabbing;
 }
 
 .agg-card.sorting:hover {
   transform: none;
+}
+
+.agg-card.dragging {
+  opacity: 0.45;
+  border-style: dashed;
+}
+
+.agg-card.drag-over {
+  border-color: var(--color-brand-text);
+  box-shadow: 0 0 0 2px var(--color-brand-selected-bg);
+}
+
+.agg-grip {
+  color: var(--color-text-muted);
+  margin-left: 2px;
+  flex: none;
 }
 
 .agg-order {
@@ -197,32 +239,6 @@ defineExpose({ reload: loadAll })
   font-size: var(--font-xs);
   color: var(--color-brand-text);
   font-weight: 600;
-}
-
-.agg-move {
-  width: 24px;
-  height: 24px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-  color: var(--color-text-2);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  flex: none;
-  font-family: inherit;
-  transition: all 0.15s;
-}
-
-.agg-move:hover:not(:disabled) {
-  border-color: var(--color-brand-text);
-  color: var(--color-brand-text);
-}
-
-.agg-move:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
 }
 
 .agg-card:hover {

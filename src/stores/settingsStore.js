@@ -338,6 +338,21 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   /**
+   * 拖拽排序：把 draggedId 移动到 targetId 的位置
+   */
+  function movePinnedTo(draggedId, targetId) {
+    if (draggedId === targetId) return
+    const list = [...pinnedPlatforms.value]
+    const from = list.indexOf(draggedId)
+    const to = list.indexOf(targetId)
+    if (from === -1 || to === -1) return
+    list.splice(from, 1)
+    list.splice(to, 0, draggedId)
+    pinnedPlatforms.value = list
+    persist(STORAGE_KEYS.PINNED_PLATFORMS, JSON.stringify(list))
+  }
+
+  /**
    * 切换分类展开（P0.2 侧栏：默认收起，展开状态持久化）
    */
   function toggleGroupExpand(category) {
@@ -453,6 +468,7 @@ export const useSettingsStore = defineStore('settings', () => {
     togglePin,
     isPinned,
     movePinned,
+    movePinnedTo,
     toggleGroupExpand,
     cleanup
   }
