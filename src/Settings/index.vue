@@ -102,6 +102,21 @@ const handleToggleVisibility = (platformId) => {
               <span class="toggle-slider"></span>
             </label>
           </div>
+
+          <div class="setting-item">
+            <div class="setting-label">
+              <span class="setting-name">显示缩略图</span>
+              <span class="setting-desc">展示视频封面、文章配图、电影海报等（无图平台不受影响）</span>
+            </div>
+            <label class="toggle-switch">
+              <input
+                type="checkbox"
+                :checked="settingsStore.showThumbnails"
+                @change="settingsStore.toggleShowThumbnails"
+              />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
         </section>
 
         <!-- 主题设置 -->

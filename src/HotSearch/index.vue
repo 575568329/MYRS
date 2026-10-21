@@ -1395,6 +1395,10 @@ watch(selectedPlatform, (newPlatform) => {
                 <div v-if="item.hot && settingsStore.showHotValue" class="hot-value">
                   <Flame :size="12" class="hot-flame" />{{ formatHotValue(item.hot) }}
                 </div>
+                <!-- 缩略图（B站封面/知乎配图/电影海报等，no-referrer 绕过图床防盗链，失败自动隐藏） -->
+                <div v-if="item.img && settingsStore.showThumbnails" class="hot-thumb" :title="item.title">
+                  <img :src="item.img" loading="lazy" alt="" referrerpolicy="no-referrer" @error="item.img = ''" />
+                </div>
               </div>
             </template>
 
@@ -1851,6 +1855,25 @@ watch(selectedPlatform, (newPlatform) => {
 
 .hot-flame {
   color: var(--color-hot);
+}
+
+/* 条目缩略图（右侧，视频封面/配图/海报） */
+.hot-thumb {
+  width: 76px;
+  height: 42px;
+  flex: none;
+  margin-left: 12px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--color-surface-muted);
+  align-self: center;
+}
+
+.hot-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 /* 行内操作（P0.3：hover/选中浮现，不与热度值重叠） */

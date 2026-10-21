@@ -178,6 +178,14 @@ const LOCAL_API_ROUTE_ALIAS = {
 }
 
 /**
+ * 清洗富文本描述：去掉 HTML 标签、压缩空白（部分源如爱范儿返回带 <p> 的原文）
+ */
+function stripHtml(s) {
+  if (typeof s !== 'string') return s || ''
+  return s.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
+/**
  * 归一化 DailyHotApi 格式：{ code: 200, data: [{ id, title, desc, hot, url, mobileUrl, cover? }] }
  * 适用于本地服务与 api-hot.imsyy.com 公共实例（同源项目）
  * @param {Object} data - API 返回的原始数据
@@ -198,7 +206,8 @@ function normalizeDailyHotData(data, platformId) {
     return {
       index: index + 1,
       title: item.title,
-      desc: item.desc || '',
+      // 作者（B站UP主/36氪作者等）并入描述前缀，与简介一起展示；HTML 标签清洗
+      desc: stripHtml([item.author, item.desc].filter(Boolean).join(' · ')),
       img: item.cover || '',
       url: url,
       mobileUrl: item.mobileUrl || url,

@@ -95,6 +95,8 @@ export const UI = {
   SHOW_HOT_VALUE: true,
   // 是否显示热搜简介
   SHOW_DESCRIPTION: true,
+  // 是否显示条目缩略图（B站封面/知乎配图/电影海报等）
+  SHOW_THUMBNAILS: true,
   // 热度显示模式：'number' (数字) 或 'level' (火焰等级)
   HOT_DISPLAY_MODE: 'level',
   // 滚动指示器动画时长(秒)
@@ -135,6 +137,7 @@ export const STORAGE_KEYS = {
   // UI 设置
   SHOW_HOT_VALUE: 'showHotValue',
   SHOW_DESCRIPTION: 'showDescription',
+  SHOW_THUMBNAILS: 'showThumbnails',
   THEME_MODE: 'themeMode',
   // 自定义平台顺序
   CUSTOM_PLATFORM_ORDER: 'customPlatformOrder',

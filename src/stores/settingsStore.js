@@ -12,6 +12,7 @@ export const useSettingsStore = defineStore('settings', () => {
   // ========== 状态 ==========
   const showHotValue = ref(UI.SHOW_HOT_VALUE)
   const showDescription = ref(UI.SHOW_DESCRIPTION)
+  const showThumbnails = ref(UI.SHOW_THUMBNAILS)
   const themeMode = ref(UI.THEME_MODE)
   const showSettings = ref(false)
 
@@ -81,6 +82,7 @@ export const useSettingsStore = defineStore('settings', () => {
       try {
         const savedShowHotValue = storage.getItem(STORAGE_KEYS.SHOW_HOT_VALUE)
         const savedShowDescription = storage.getItem(STORAGE_KEYS.SHOW_DESCRIPTION)
+        const savedShowThumbnails = storage.getItem(STORAGE_KEYS.SHOW_THUMBNAILS)
         const savedThemeMode = storage.getItem(STORAGE_KEYS.THEME_MODE)
         const savedPlatformOrder = storage.getItem(STORAGE_KEYS.CUSTOM_PLATFORM_ORDER)
         const savedHiddenPlatforms = storage.getItem(STORAGE_KEYS.HIDDEN_PLATFORMS)
@@ -90,6 +92,9 @@ export const useSettingsStore = defineStore('settings', () => {
         }
         if (savedShowDescription !== null) {
           showDescription.value = savedShowDescription === 'true'
+        }
+        if (savedShowThumbnails !== null) {
+          showThumbnails.value = savedShowThumbnails === 'true'
         }
         if (savedThemeMode) {
           themeMode.value = savedThemeMode
@@ -177,6 +182,7 @@ export const useSettingsStore = defineStore('settings', () => {
   function saveSettings() {
     persist(STORAGE_KEYS.SHOW_HOT_VALUE, showHotValue.value.toString())
     persist(STORAGE_KEYS.SHOW_DESCRIPTION, showDescription.value.toString())
+    persist(STORAGE_KEYS.SHOW_THUMBNAILS, showThumbnails.value.toString())
     persist(STORAGE_KEYS.THEME_MODE, themeMode.value)
     persist(STORAGE_KEYS.HIDDEN_PLATFORMS, JSON.stringify(Array.from(hiddenPlatforms.value)))
     persist(STORAGE_KEYS.PINNED_PLATFORMS, JSON.stringify(pinnedPlatforms.value))
@@ -195,6 +201,14 @@ export const useSettingsStore = defineStore('settings', () => {
    */
   function toggleShowDescription() {
     showDescription.value = !showDescription.value
+    saveSettings()
+  }
+
+  /**
+   * 切换缩略图显示
+   */
+  function toggleShowThumbnails() {
+    showThumbnails.value = !showThumbnails.value
     saveSettings()
   }
 
@@ -396,6 +410,7 @@ export const useSettingsStore = defineStore('settings', () => {
     // 状态
     showHotValue,
     showDescription,
+    showThumbnails,
     themeMode,
     showSettings,
     customPlatformOrder,
@@ -410,6 +425,7 @@ export const useSettingsStore = defineStore('settings', () => {
     saveSettings,
     toggleShowHotValue,
     toggleShowDescription,
+    toggleShowThumbnails,
     setThemeMode,
     openSettings,
     closeSettings,
