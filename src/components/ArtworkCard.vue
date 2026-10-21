@@ -5,6 +5,7 @@
         :src="artwork.img"
         :alt="artwork.title"
         class="artwork-image"
+        referrerpolicy="no-referrer"
         @error="handleImageError"
         :loading="lazy ? 'lazy' : 'eager'"
       />
