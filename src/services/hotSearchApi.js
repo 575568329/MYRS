@@ -223,15 +223,17 @@ function normalizeDailyHotData(data, platformId) {
     throw new Error('API 返回数据格式不正确')
   }
   return data.data.map((item, index) => {
+    // 标题清洗：部分源（如 uapis 酷安）的 title 混入 HTML 话题标签
+    const title = stripHtml(item.title || '')
     // url 兜底：主链接缺失时回退移动版链接
     let url = item.url || item.mobileUrl || ''
     // 豆瓣电影平台使用豆瓣搜索链接
-    if (platformId === 'douban-movie' && item.title) {
-      url = `https://search.douban.com/movie/subject_search?search_text=${encodeURIComponent(item.title)}`
+    if (platformId === 'douban-movie' && title) {
+      url = `https://search.douban.com/movie/subject_search?search_text=${encodeURIComponent(title)}`
     }
     return {
       index: index + 1,
-      title: item.title,
+      title: title,
       // 作者（B站UP主/36氪作者等）并入描述前缀，与简介一起展示；HTML 标签清洗
       desc: stripHtml([item.author, item.desc].filter(Boolean).join(' · ')),
       img: item.cover || '',
@@ -252,12 +254,14 @@ function normalizeUapisData(data, platformId) {
   // 新格式: { type: "...", list: [...], update_time: "..." }
   if (data && Array.isArray(data.list)) {
     return data.list.map(item => {
+      // 标题清洗：uapis 部分源（如酷安）title 混入 HTML 话题标签
+      const title = stripHtml(item.title || '')
       const url = (platformId === 'douban-movie')
-        ? `https://search.douban.com/movie/subject_search?search_text=${encodeURIComponent(item.title)}`
+        ? `https://search.douban.com/movie/subject_search?search_text=${encodeURIComponent(title)}`
         : (item.url || '')
       return {
         index: item.index,
-        title: item.title,
+        title: title,
         desc: stripHtml(item.extra?.desc || ''),
         img: item.extra?.img || '',
         url: url,
