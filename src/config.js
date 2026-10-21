@@ -133,7 +133,8 @@ export const FISH_WINDOW_DEFAULTS = {
   opacity: 1,              // 0.5 - 1，仅 Windows/macOS 生效
   alwaysOnTop: false,      // 窗口置顶
   autoMute: true,          // 打开后自动静音视频/音频（FISH-WINDOW-2.0 M1）
-  rememberPosition: true   // 记住窗口位置与大小（FISH-WINDOW-2.0 M1）
+  rememberPosition: true,  // 记住窗口位置与大小（FISH-WINDOW-2.0 M1）
+  cleanMode: true          // 站点净化：小窗打开文章类站点时注入沉浸阅读样式（FISH-WINDOW-2.0 M2）
 }
 
 // 摸鱼小窗尺寸档位

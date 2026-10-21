@@ -6,6 +6,7 @@
  */
 import { FISH_WINDOW_DEFAULTS, FISH_WINDOW_SIZES, STORAGE_KEYS } from '../config.js'
 import { getStorage } from './storage.js'
+import { matchSiteRule } from './siteRules.js'
 import { trackEvent, EventType } from '../services/analytics/index.js'
 
 let lastUbrowserId = null
@@ -33,6 +34,7 @@ export function loadFishConfig() {
         if (typeof saved.alwaysOnTop === 'boolean') cfg.alwaysOnTop = saved.alwaysOnTop
         if (typeof saved.autoMute === 'boolean') cfg.autoMute = saved.autoMute
         if (typeof saved.rememberPosition === 'boolean') cfg.rememberPosition = saved.rememberPosition
+        if (typeof saved.cleanMode === 'boolean') cfg.cleanMode = saved.cleanMode
       }
     }
   } catch (e) {
@@ -133,6 +135,12 @@ export async function openUrl(url, { platform = '', background = false } = {}) {
     }
 
     let task = window.utools.ubrowser.goto(url)
+    // 站点净化（M2）：命中规则即注入沉浸阅读样式
+    const rule = cfg.cleanMode ? matchSiteRule(url) : null
+    if (rule && rule.css) {
+      task = task.css(rule.css)
+      try { trackEvent(EventType.RULES_APPLIED, { domain: rule.domain }) } catch (e) { /* 埋点不阻塞 */ }
+    }
     // 自动静音（M1-②）：仅静音本次加载，用户在小窗内的后续操作不受影响
     if (cfg.autoMute) {
       task = task.wait(2000).evaluate(() => {

@@ -56,6 +56,8 @@ export const EventType = {
   BOSS_KEY: 'boss_key',
   /** 小窗位置记忆生效 */
   POS_RESTORED: 'pos_restored',
+  /** 站点净化规则命中（FISH-WINDOW-2.0 M2） */
+  RULES_APPLIED: 'rules_applied',
 
   // ========== 应用生命周期 ==========
   /** 应用启动 */
@@ -103,6 +105,7 @@ const EventPriorityMap = {
   [EventType.THEME_SWITCH]: EventPriority.LOW,
   [EventType.BOSS_KEY]: EventPriority.MEDIUM,
   [EventType.POS_RESTORED]: EventPriority.LOW,
+  [EventType.RULES_APPLIED]: EventPriority.LOW,
   [EventType.APP_START]: EventPriority.HIGH,
   [EventType.APP_FOREGROUND]: EventPriority.HIGH,
   [EventType.APP_BACKGROUND]: EventPriority.MEDIUM,

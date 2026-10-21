@@ -4,6 +4,7 @@ import { useSettingsStore } from '../stores/settingsStore.js'
 import { PLATFORMS } from '../services/hotSearchApi.js'
 import { FISH_WINDOW_SIZES, STORAGE_KEYS } from '../config.js'
 import { getStorage } from '../utils/storage.js'
+import { SITE_RULES } from '../utils/siteRules.js'
 import PlatformIcon from '../components/PlatformIcon.vue'
 import { ChevronDown, ChevronRight } from 'lucide-vue-next'
 
@@ -332,6 +333,37 @@ const previewSize = computed(() => FISH_PREVIEW_SIZES[fishWindow.value.size] || 
                 <span class="toggle-slider"></span>
               </label>
             </div>
+
+            <!-- 站点净化（M2）：小窗内注入沉浸阅读样式 -->
+            <div class="setting-item">
+              <div class="setting-label">
+                <span class="setting-name">站点净化</span>
+                <span class="setting-desc">打开文章类站点时自动隐藏侧栏推荐、加宽正文，沉浸阅读</span>
+              </div>
+              <label class="toggle-switch">
+                <input
+                  type="checkbox"
+                  :checked="fishWindow.cleanMode"
+                  @change="setFish('cleanMode', $event.target.checked)"
+                />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <details v-if="fishWindow.cleanMode" class="site-rules-details">
+              <summary>已适配站点（{{ SITE_RULES.length }}）</summary>
+              <div class="site-rules-list">
+                <div v-for="rule in SITE_RULES" :key="rule.domain" class="site-rule-item">
+                  <span class="site-rule-name">{{ rule.name }}</span>
+                  <span class="site-rule-note">{{ rule.note }}</span>
+                  <span
+                    :class="['site-rule-badge', rule.verified ? 'ok' : 'todo']"
+                    :title="rule.verified ? '选择器已实测命中' : '规则待真机复核，失效自动回到原样'"
+                  >{{ rule.verified ? '已验证' : '适配中' }}</span>
+                </div>
+              </div>
+              <p class="site-rules-hint">站点改版后规则可能失效，届时自动回到原始页面，不影响使用</p>
+            </details>
           </template>
         </section>
 
@@ -815,6 +847,79 @@ const previewSize = computed(() => FISH_PREVIEW_SIZES[fishWindow.value.size] || 
 }
 
 .fish-preview-tip {
+  font-size: var(--font-xs);
+  color: var(--color-text-muted);
+}
+
+/* 站点净化清单（M2） */
+.site-rules-details {
+  margin-top: 4px;
+}
+
+.site-rules-details summary {
+  font-size: var(--font-sm);
+  color: var(--color-text-2);
+  cursor: pointer;
+  padding: 6px 0;
+  user-select: none;
+}
+
+.site-rules-details summary:hover {
+  color: var(--color-primary);
+}
+
+.site-rules-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.site-rule-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-muted);
+  font-size: var(--font-sm);
+}
+
+.site-rule-name {
+  font-weight: 500;
+  color: var(--color-text);
+  flex: none;
+}
+
+.site-rule-note {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--font-xs);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.site-rule-badge {
+  flex: none;
+  font-size: var(--font-xs);
+  padding: 1px 8px;
+  border-radius: var(--radius-pill);
+}
+
+.site-rule-badge.ok {
+  background: var(--color-success, #00b578);
+  color: #ffffff;
+}
+
+.site-rule-badge.todo {
+  background: var(--color-surface-muted-hover);
+  color: var(--color-text-muted);
+}
+
+.site-rules-hint {
+  margin-top: 8px;
   font-size: var(--font-xs);
   color: var(--color-text-muted);
 }

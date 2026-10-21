@@ -179,6 +179,9 @@ export const useSettingsStore = defineStore('settings', () => {
               if (typeof parsedFish.rememberPosition === 'boolean') {
                 fishWindow.value.rememberPosition = parsedFish.rememberPosition
               }
+              if (typeof parsedFish.cleanMode === 'boolean') {
+                fishWindow.value.cleanMode = parsedFish.cleanMode
+              }
             }
           } catch (e) {
             console.log('⚠️ 解析摸鱼小窗配置失败')
