@@ -236,6 +236,7 @@ defineExpose({ reload: loadAll })
   gap: 10px;
   padding: 4px 14px 14px;
   align-content: start;
+  align-items: start; /* 卡片高度各自独立：展开一张不会把同行另一张拉伸成等高空白 */
 }
 
 .agg-card {
