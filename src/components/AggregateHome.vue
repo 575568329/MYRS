@@ -223,9 +223,36 @@ defineExpose({ reload: loadAll })
   border-style: dashed;
 }
 
+/* 插入指示线：悬停卡片顶边显示品牌渐变横线（插入到该卡之前），
+   替代整卡高亮——整卡高亮会被误读为"替换这张卡" */
 .agg-card.drag-over {
-  border-color: var(--color-brand-text);
-  box-shadow: 0 0 0 2px var(--color-brand-selected-bg);
+  position: relative;
+}
+
+.agg-card.drag-over::before {
+  content: "";
+  position: absolute;
+  top: -6px; /* 居中于 8px 网格间隙 */
+  left: 0;
+  right: 0;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--gradient-brand);
+  box-shadow: 0 0 8px rgba(255, 90, 31, 0.55);
+  z-index: 2;
+}
+
+/* 插入线两端小圆点，强化"落点"感 */
+.agg-card.drag-over::after {
+  content: "";
+  position: absolute;
+  top: -8px;
+  left: -3px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-brand-text);
+  z-index: 3;
 }
 
 .agg-grip {
