@@ -338,7 +338,9 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   /**
-   * 拖拽排序：把 draggedId 移动到 targetId 的位置
+   * 拖拽排序：把 draggedId 插入到 targetId 的位置（插入逻辑，非互换）
+   * 向下拖：落在目标原位置（目标及之后顺延）
+   * 向上拖：落在目标前一个位置
    */
   function movePinnedTo(draggedId, targetId) {
     if (draggedId === targetId) return
@@ -347,7 +349,9 @@ export const useSettingsStore = defineStore('settings', () => {
     const to = list.indexOf(targetId)
     if (from === -1 || to === -1) return
     list.splice(from, 1)
-    list.splice(to, 0, draggedId)
+    // 拖拽方向不同，移除后目标索引偏移不同：向下拖时目标已左移一位
+    const insertAt = from < to ? to - 1 : to
+    list.splice(insertAt, 0, draggedId)
     pinnedPlatforms.value = list
     persist(STORAGE_KEYS.PINNED_PLATFORMS, JSON.stringify(list))
   }
