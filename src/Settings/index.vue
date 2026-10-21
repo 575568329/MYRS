@@ -3,6 +3,7 @@ import { onMounted, onUnmounted, computed, ref } from 'vue'
 import { useSettingsStore } from '../stores/settingsStore.js'
 import { PLATFORMS } from '../services/hotSearchApi.js'
 import PlatformIcon from '../components/PlatformIcon.vue'
+import { ChevronDown, ChevronRight } from 'lucide-vue-next'
 
 const props = defineProps({
   show: {
@@ -57,6 +58,21 @@ const platformGroups = computed(() => {
 // 切换平台可见性
 const handleToggleVisibility = (platformId) => {
   settingsStore.togglePlatformVisibility(platformId)
+}
+
+// 分组展开状态（会话态，默认全部收起，与侧栏交互一致）
+const expandedGroups = ref(new Set())
+const toggleGroup = (name) => {
+  if (expandedGroups.value.has(name)) {
+    expandedGroups.value.delete(name)
+  } else {
+    expandedGroups.value.add(name)
+  }
+}
+
+// 分组内已隐藏平台数（收起时也能看到该分类有隐藏项）
+const hiddenCountInGroup = (platforms) => {
+  return platforms.filter(p => !settingsStore.isPlatformVisible(p.id)).length
 }
 </script>
 
@@ -150,16 +166,25 @@ const handleToggleVisibility = (platformId) => {
           </div>
         </section>
 
-        <!-- 平台显示管理（v4：顺序由侧栏钉住决定，此处只管显隐） -->
+        <!-- 平台显示管理（v4：顺序由侧栏钉住决定，此处只管显隐；分组默认收起） -->
         <section class="settings-section">
           <h3>平台显示</h3>
           <p class="section-desc">
-            隐藏不常用的平台让侧栏更清爽；排序请用左侧栏「右键钉住」，常用平台会固定在最前
+            隐藏不常用的平台让侧栏更清爽；排序请用左侧栏的钉住按钮，常用平台会固定在最前
           </p>
 
           <div v-for="group in platformGroups" :key="group.name" class="platform-group">
-            <div class="platform-group-label">{{ group.name }}</div>
-            <div class="platform-list">
+            <button class="platform-group-label toggle" @click="toggleGroup(group.name)">
+              <component :is="expandedGroups.has(group.name) ? ChevronDown : ChevronRight" :size="12" />
+              {{ group.name }}
+              <span class="platform-group-count">{{ group.platforms.length }}</span>
+              <span
+                v-if="hiddenCountInGroup(group.platforms) > 0"
+                class="platform-group-hidden"
+                :title="'该分类有 ' + hiddenCountInGroup(group.platforms) + ' 个已隐藏平台'"
+              >已隐 {{ hiddenCountInGroup(group.platforms) }}</span>
+            </button>
+            <div v-if="expandedGroups.has(group.name)" class="platform-list">
               <button
                 v-for="platform in group.platforms"
                 :key="platform.id"
@@ -484,16 +509,43 @@ const handleToggleVisibility = (platformId) => {
   color: #ffffff;
 }
 
-/* 平台显示管理 */
+/* 平台显示管理（分组可展开/收起，默认收起） */
 .platform-group {
-  margin-bottom: 10px;
+  margin-bottom: 6px;
 }
 
 .platform-group-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 7px 6px;
+  border: none;
+  background: none;
   font-size: var(--font-xs);
   color: var(--color-text-muted);
-  padding: 6px 2px 4px;
   letter-spacing: 0.05em;
+  cursor: pointer;
+  font-family: inherit;
+  border-radius: var(--radius-sm);
+}
+
+.platform-group-label:hover {
+  background: var(--color-surface-muted);
+  color: var(--color-text-2);
+}
+
+.platform-group-count {
+  font-size: var(--font-xs);
+  color: var(--color-text-muted);
+  letter-spacing: 0;
+}
+
+.platform-group-hidden {
+  margin-left: auto;
+  font-size: var(--font-xs);
+  color: var(--color-hot);
+  letter-spacing: 0;
 }
 
 .platform-list {
