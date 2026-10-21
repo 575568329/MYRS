@@ -2,6 +2,7 @@
 import { onMounted, onUnmounted, computed, ref } from 'vue'
 import { useSettingsStore } from '../stores/settingsStore.js'
 import { PLATFORMS } from '../services/hotSearchApi.js'
+import { FISH_WINDOW_SIZES } from '../config.js'
 import PlatformIcon from '../components/PlatformIcon.vue'
 import { ChevronDown, ChevronRight } from 'lucide-vue-next'
 
@@ -74,6 +75,29 @@ const toggleGroup = (name) => {
 const hiddenCountInGroup = (platforms) => {
   return platforms.filter(p => !settingsStore.isPlatformVisible(p.id)).length
 }
+
+// ========== 摸鱼小窗（P1：内置浏览器窗口参数） ==========
+const fishWindow = computed(() => settingsStore.fishWindow)
+
+const setFish = (key, value) => {
+  settingsStore.setFishWindow({ [key]: value })
+}
+
+// 滑块拖动只更新内存（滑块值实时回显），松手 change 时才落盘
+const onOpacityInput = (e) => {
+  settingsStore.setFishWindow({ opacity: Number(e.target.value) }, false)
+}
+const onOpacityCommit = (e) => {
+  settingsStore.setFishWindow({ opacity: Number(e.target.value) })
+}
+
+// 已滑过部分用主色填充（0.5-1 映射到 0-100%）
+const opacityTrack = computed(() => {
+  const percent = Math.round(((fishWindow.value.opacity - 0.5) / 0.5) * 100)
+  return {
+    background: `linear-gradient(to right, var(--color-primary) ${percent}%, var(--color-surface-muted-hover) ${percent}%)`
+  }
+})
 </script>
 
 <template>
@@ -164,6 +188,88 @@ const hiddenCountInGroup = (platforms) => {
               </button>
             </div>
           </div>
+        </section>
+
+        <!-- 摸鱼小窗（P1：内置浏览器窗口参数） -->
+        <section class="settings-section">
+          <h3>🪟 摸鱼小窗</h3>
+          <p class="section-desc">热搜链接在内置浏览器小窗打开，不占用任务栏、不留浏览器历史</p>
+
+          <div class="setting-item">
+            <div class="setting-label">
+              <span class="setting-name">打开方式</span>
+              <span class="setting-desc">内置小窗摸鱼无痕，或交给系统浏览器</span>
+            </div>
+            <div class="theme-options">
+              <button
+                :class="['theme-btn', { active: fishWindow.openIn === 'ubrowser' }]"
+                @click="setFish('openIn', 'ubrowser')"
+              >
+                🪟 内置小窗
+              </button>
+              <button
+                :class="['theme-btn', { active: fishWindow.openIn === 'system' }]"
+                @click="setFish('openIn', 'system')"
+              >
+                🌐 系统浏览器
+              </button>
+            </div>
+          </div>
+
+          <template v-if="fishWindow.openIn === 'ubrowser'">
+            <div class="setting-item">
+              <div class="setting-label">
+                <span class="setting-name">窗口尺寸</span>
+                <span class="setting-desc">下次打开链接时生效</span>
+              </div>
+              <div class="theme-options">
+                <button
+                  v-for="(preset, key) in FISH_WINDOW_SIZES"
+                  :key="key"
+                  :class="['theme-btn', { active: fishWindow.size === key }]"
+                  @click="setFish('size', key)"
+                >
+                  {{ preset.label }}
+                </button>
+              </div>
+            </div>
+
+            <div class="setting-item setting-item-block">
+              <div class="setting-label">
+                <span class="setting-name">
+                  窗口透明度
+                  <span class="range-value mrs-tnum">{{ Math.round(fishWindow.opacity * 100) }}%</span>
+                </span>
+                <span class="setting-desc">数值越低越透，边看视频边干活（下次打开生效）</span>
+              </div>
+              <input
+                type="range"
+                class="setting-range"
+                min="0.5"
+                max="1"
+                step="0.05"
+                :value="fishWindow.opacity"
+                :style="opacityTrack"
+                @input="onOpacityInput"
+                @change="onOpacityCommit"
+              />
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-label">
+                <span class="setting-name">窗口置顶</span>
+                <span class="setting-desc">小窗始终显示在其他窗口上方</span>
+              </div>
+              <label class="toggle-switch">
+                <input
+                  type="checkbox"
+                  :checked="fishWindow.alwaysOnTop"
+                  @change="setFish('alwaysOnTop', $event.target.checked)"
+                />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </template>
         </section>
 
         <!-- 平台显示管理（v4：顺序由侧栏钉住决定，此处只管显隐；分组默认收起） -->
@@ -507,6 +613,52 @@ const hiddenCountInGroup = (platforms) => {
   background: var(--color-primary);
   border-color: var(--color-primary);
   color: #ffffff;
+}
+
+/* 摸鱼小窗：透明度滑块（整行堆叠，滑轨已滑过部分用主色填充） */
+.setting-item-block {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.range-value {
+  margin-left: 6px;
+  font-size: var(--font-sm);
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.setting-range {
+  width: 100%;
+  height: 4px;
+  appearance: none;
+  -webkit-appearance: none;
+  border-radius: var(--radius-pill);
+  outline: none;
+  cursor: pointer;
+}
+
+.setting-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  border: 2px solid #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+}
+
+.setting-range::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  border: 2px solid #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
 }
 
 /* 平台显示管理（分组可展开/收起，默认收起） */

@@ -4,7 +4,7 @@
  */
 import { defineStore, acceptHMRUpdate } from 'pinia'
 import { ref, watch } from 'vue'
-import { UI, STORAGE_KEYS, DISPLAY_MODE } from '../config.js'
+import { UI, STORAGE_KEYS, DISPLAY_MODE, FISH_WINDOW_DEFAULTS, FISH_WINDOW_SIZES } from '../config.js'
 import { PLATFORMS } from '../services/hotSearchApi.js'
 import { getStorage } from '../utils/storage.js'
 
@@ -29,6 +29,9 @@ export const useSettingsStore = defineStore('settings', () => {
 
   // 侧栏分类展开状态（默认全部收起，仅记录用户主动展开的组）
   const expandedGroups = ref(new Set())
+
+  // 摸鱼小窗配置（P1：内置浏览器窗口参数，openUrl.js 每次打开链接时读取）
+  const fishWindow = ref({ ...FISH_WINDOW_DEFAULTS })
 
   // 系统主题监听器
   let darkModeQuery = null
@@ -151,6 +154,29 @@ export const useSettingsStore = defineStore('settings', () => {
             console.log('⚠️ 解析钉住平台失败')
           }
         }
+        // 摸鱼小窗配置（P1，逐字段校验，坏数据回退默认）
+        const savedFishWindow = storage.getItem(STORAGE_KEYS.FISH_WINDOW_CONFIG)
+        if (savedFishWindow) {
+          try {
+            const parsedFish = JSON.parse(savedFishWindow)
+            if (parsedFish && typeof parsedFish === 'object') {
+              if (parsedFish.openIn === 'ubrowser' || parsedFish.openIn === 'system') {
+                fishWindow.value.openIn = parsedFish.openIn
+              }
+              if (FISH_WINDOW_SIZES[parsedFish.size]) {
+                fishWindow.value.size = parsedFish.size
+              }
+              if (typeof parsedFish.opacity === 'number') {
+                fishWindow.value.opacity = Math.min(1, Math.max(0.5, parsedFish.opacity))
+              }
+              if (typeof parsedFish.alwaysOnTop === 'boolean') {
+                fishWindow.value.alwaysOnTop = parsedFish.alwaysOnTop
+              }
+            }
+          } catch (e) {
+            console.log('⚠️ 解析摸鱼小窗配置失败')
+          }
+        }
       } catch (e) {
         console.log('⚠️ 读取设置失败:', e)
       }
@@ -186,6 +212,7 @@ export const useSettingsStore = defineStore('settings', () => {
     persist(STORAGE_KEYS.THEME_MODE, themeMode.value)
     persist(STORAGE_KEYS.HIDDEN_PLATFORMS, JSON.stringify(Array.from(hiddenPlatforms.value)))
     persist(STORAGE_KEYS.PINNED_PLATFORMS, JSON.stringify(pinnedPlatforms.value))
+    persist(STORAGE_KEYS.FISH_WINDOW_CONFIG, JSON.stringify(fishWindow.value))
   }
 
   /**
@@ -247,6 +274,7 @@ export const useSettingsStore = defineStore('settings', () => {
       PLATFORMS.find(p => p.id === id)
     ).filter(Boolean)
     hiddenPlatforms.value.clear()
+    fishWindow.value = { ...FISH_WINDOW_DEFAULTS }
 
     applyTheme(themeMode.value)
     saveSettings()
@@ -368,6 +396,18 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   /**
+   * 更新摸鱼小窗配置（P1）
+   * @param {Object} patch - 要合并的字段
+   * @param {boolean} persistNow - 透明度滑块拖动中传 false，松手（change）后再落盘
+   */
+  function setFishWindow(patch, persistNow = true) {
+    fishWindow.value = { ...fishWindow.value, ...patch }
+    if (persistNow) {
+      persist(STORAGE_KEYS.FISH_WINDOW_CONFIG, JSON.stringify(fishWindow.value))
+    }
+  }
+
+  /**
    * 清理监听器
    */
   function cleanup() {
@@ -454,6 +494,7 @@ export const useSettingsStore = defineStore('settings', () => {
     hiddenPlatforms,
     pinnedPlatforms,
     expandedGroups,
+    fishWindow,
 
     // Actions
     loadSettings,
@@ -474,6 +515,7 @@ export const useSettingsStore = defineStore('settings', () => {
     movePinned,
     movePinnedTo,
     toggleGroupExpand,
+    setFishWindow,
     cleanup
   }
 })

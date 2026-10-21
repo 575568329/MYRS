@@ -126,6 +126,21 @@ export const HOT_LEVELS = [
   { threshold: 0, level: 1, icon: '🔥', label: '冷' }
 ]
 
+// 摸鱼小窗（内置浏览器）默认配置（P1：设置页可调，openUrl.js 与 settingsStore 共用）
+export const FISH_WINDOW_DEFAULTS = {
+  openIn: 'ubrowser',   // 'ubrowser' 内置小窗 | 'system' 系统浏览器
+  size: 'standard',     // 尺寸档位，见 FISH_WINDOW_SIZES
+  opacity: 1,           // 0.5 - 1，仅 Windows/macOS 生效
+  alwaysOnTop: false    // 窗口置顶
+}
+
+// 摸鱼小窗尺寸档位
+export const FISH_WINDOW_SIZES = {
+  compact: { width: 720, height: 520, label: '紧凑' },
+  standard: { width: 900, height: 640, label: '标准' },
+  wide: { width: 1120, height: 720, label: '宽屏' }
+}
+
 // 本地存储键名配置
 export const STORAGE_KEYS = {
   SELECTED_PLATFORM: 'selectedPlatform',
@@ -148,7 +163,9 @@ export const STORAGE_KEYS = {
   // 收藏条目 v2（对象数组，P0.3）
   FAVORITES_V2: 'favoriteItemsV2',
   // 数据镜像索引（P0.1 秒开）
-  MIRROR_INDEX: 'dataMirrorIndex'
+  MIRROR_INDEX: 'dataMirrorIndex',
+  // 摸鱼小窗配置（P1：尺寸/透明度/置顶/打开方式）
+  FISH_WINDOW_CONFIG: 'fishWindowConfig'
 }
 
 // 导出默认配置对象
