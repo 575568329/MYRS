@@ -90,16 +90,16 @@ const handleClick = () => {
 <style scoped>
 .artwork-card {
   position: relative;
-  background: #ffffff;
-  border-radius: 12px;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-sm);
   transition: all 0.3s ease;
   cursor: pointer;
 }
 
 .artwork-card:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-btn-hover);
   transform: translateY(-2px);
 }
 
@@ -174,7 +174,7 @@ const handleClick = () => {
 .artwork-title {
   font-size: 15px;
   font-weight: 600;
-  color: #333333;
+  color: var(--color-text);
   line-height: 1.4;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -186,7 +186,7 @@ const handleClick = () => {
 
 .artwork-desc {
   font-size: 13px;
-  color: #666666;
+  color: var(--color-text-3);
   line-height: 1.5;
   display: -webkit-box;
   -webkit-line-clamp: 3;
@@ -246,21 +246,4 @@ const handleClick = () => {
   line-height: 1.5;
 }
 
-/* 暗色模式 */
-:global(.dark-mode) .artwork-card {
-  background: #2c2c2c;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-}
-
-:global(.dark-mode) .artwork-card:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-}
-
-:global(.dark-mode) .artwork-title {
-  color: #e0e0e0;
-}
-
-:global(.dark-mode) .artwork-desc {
-  color: #a0a0a0;
-}
 </style>

@@ -74,42 +74,44 @@ const handleClick = () => {
 </script>
 
 <style scoped>
+/* 全量令牌化：跟随明暗主题自动切换（原 :global(.dark-mode) 写法在 scoped 中无效，
+   导致暗色下白底——与旧设置页同病，此处根治） */
 .artwork-list-item {
-  background: #ffffff;
-  border-radius: 8px;
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
   overflow: hidden;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
-  transition: all 0.3s ease;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.2s ease;
   cursor: pointer;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .artwork-list-item:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--shadow-btn-hover);
 }
 
 /* 主要信息区域 */
 .artwork-main {
   display: flex;
   align-items: center;
-  padding: 16px;
-  gap: 16px;
+  padding: 14px 16px;
+  gap: 14px;
 }
 
-/* 排名标记 */
+/* 排名标记（品牌渐变，与热搜 Top 徽章同源） */
 .artwork-rank {
   flex-shrink: 0;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  background: var(--gradient-brand);
   color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: bold;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  font-variant-numeric: tabular-nums;
 }
 
 /* 内容区域 */
@@ -119,9 +121,9 @@ const handleClick = () => {
 }
 
 .artwork-title {
-  font-size: 16px;
+  font-size: var(--font-lg);
   font-weight: 600;
-  color: #333333;
+  color: var(--color-text);
   line-height: 1.4;
   margin-bottom: 4px;
   display: -webkit-box;
@@ -132,8 +134,8 @@ const handleClick = () => {
 }
 
 .artwork-desc {
-  font-size: 13px;
-  color: #666666;
+  font-size: var(--font-md);
+  color: var(--color-text-3);
   line-height: 1.5;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -142,79 +144,30 @@ const handleClick = () => {
   text-overflow: ellipsis;
 }
 
-/* 国家标签 */
-.artwork-country {
-  display: inline-block;
-  margin-top: 6px;
-  padding: 2px 10px;
-  font-size: 12px;
-  color: #667eea;
-  background: linear-gradient(135deg, #f0f2ff, #e8ebff);
-  border-radius: 12px;
-  border: 1px solid #dde1ff;
-  font-weight: 500;
-}
-
 /* 查看图片按钮 */
 .show-image-btn {
   flex-shrink: 0;
-  padding: 8px 16px;
-  border: 1px solid #e0e0e0;
-  border-radius: 6px;
-  background: #ffffff;
-  color: #666666;
-  font-size: 13px;
+  padding: 6px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-2);
+  font-size: var(--font-md);
+  font-family: inherit;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
 }
 
 .show-image-btn:hover {
-  border-color: #667eea;
-  color: #667eea;
-  background: #f8f9ff;
+  border-color: var(--color-brand-text);
+  color: var(--color-brand-text);
+  background: var(--color-surface-hover);
 }
 
 .btn-icon {
-  font-size: 12px;
-}
-
-/* 暗色模式 */
-:global(.dark-mode) .artwork-list-item {
-  background: #2c2c2c;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
-}
-
-:global(.dark-mode) .artwork-list-item:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-}
-
-:global(.dark-mode) .artwork-title {
-  color: #e0e0e0;
-}
-
-:global(.dark-mode) .artwork-desc {
-  color: #a0a0a0;
-}
-
-:global(.dark-mode) .show-image-btn {
-  background: #3c3c3c;
-  border-color: #4a4a4a;
-  color: #a0a0a0;
-}
-
-:global(.dark-mode) .show-image-btn:hover {
-  border-color: #667eea;
-  color: #667eea;
-  background: #2c2c2c;
-}
-
-/* 暗色模式 - 国家标签 */
-:global(.dark-mode) .artwork-country {
-  color: #8b9dff;
-  background: linear-gradient(135deg, #1e2230, #252a3d);
-  border-color: #3d4460;
+  font-size: var(--font-sm);
 }
 </style>
