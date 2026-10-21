@@ -63,20 +63,30 @@ const handleImageError = (event) => {
   console.warn(`⚠️ [图片加载失败] ${artwork.title}`)
   img.style.display = 'none' // 隐藏失败的图片
 
-  // 创建占位符元素
+  // 创建占位符元素（DOM API 构建而非 innerHTML：标题来自接口数据，避免注入）
   const wrapper = img.closest('.artwork-image-wrapper')
   if (wrapper && !wrapper.querySelector('.image-error-placeholder')) {
     const placeholder = document.createElement('div')
     placeholder.className = 'image-error-placeholder'
-    placeholder.innerHTML = `
-      <div class="placeholder-content">
-        <div class="placeholder-icon">🎨</div>
-        <div class="placeholder-title">${artwork.title}</div>
-        <div class="placeholder-text">
-          图片加载失败<br>点击查看详情
-        </div>
-      </div>
-    `
+
+    const content = document.createElement('div')
+    content.className = 'placeholder-content'
+
+    const icon = document.createElement('div')
+    icon.className = 'placeholder-icon'
+    icon.textContent = '🎨'
+
+    const title = document.createElement('div')
+    title.className = 'placeholder-title'
+    title.textContent = artwork.title
+
+    const text = document.createElement('div')
+    text.className = 'placeholder-text'
+    text.style.whiteSpace = 'pre-line'
+    text.textContent = '图片加载失败\n点击查看详情'
+
+    content.append(icon, title, text)
+    placeholder.appendChild(content)
     wrapper.insertBefore(placeholder, img)
   }
 }

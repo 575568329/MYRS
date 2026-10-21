@@ -4,13 +4,14 @@
  */
 
 import { ANALYTICS_ENABLED, UPLOAD_STRATEGY, RETENTION_POLICY, DEBUG, PANTRY_CONFIG } from '../../config/pantryConfig.js'
-import { pantryClient } from './pantryClient.js'
+import { uploadAnalyticsData } from './collectClient.js'
 import { createEvent, EventPriority } from './eventTypes.js'
 
 // 从环境变量读取配置（优先级高于配置文件）
-// 测试/开发环境下禁用埋点数据上传
+// dev 环境默认禁用；设置 VITE_COLLECT_DEV 指向本地服务可在 dev 启用（联调用）
 const IS_DEV = import.meta.env.DEV || import.meta.env.MODE === 'development'
-const ANALYTICS_ENABLED_ENV = !IS_DEV && import.meta.env.VITE_ANALYTICS_ENABLED !== 'false'
+const DEV_ENDPOINT = import.meta.env.VITE_COLLECT_DEV
+const ANALYTICS_ENABLED_ENV = (!IS_DEV || !!DEV_ENDPOINT) && import.meta.env.VITE_ANALYTICS_ENABLED !== 'false'
 const DEBUG_MODE = import.meta.env.VITE_DEBUG_MODE === 'true' || DEBUG.ENABLED
 const PANTRY_KEY = import.meta.env.VITE_PANTRY_KEY || PANTRY_CONFIG.KEY
 
@@ -65,27 +66,14 @@ class AnalyticsCollector {
     }
 
     try {
-      // 合并环境变量和传入的选项
-      const initOptions = {
-        key: options.key || PANTRY_KEY,
-        ...options
-      }
-
-      // 初始化 Pantry 客户端
-      await pantryClient.initialize(initOptions)
-
+      // 合并环境变量和传入的选项（collectClient 无需初始化，保留 options 以兼容旧签名）
       // 加载本地缓存的事件
       this.loadCachedEvents()
 
       // 设置定时上传
       this.startUploadTimer()
 
-      // 记录应用启动事件
-      this.track('app_start', {
-        user_id: this.userId,
-        session_id: this.sessionId,
-        timestamp: Date.now()
-      })
+      // 会话开始事件（ao）由 main.js 的 onPluginEnter 上报，这里不再发 app_start（避免双计）
 
       this.isInitialized = true
 
@@ -108,7 +96,8 @@ class AnalyticsCollector {
    * @param {Object} data - 事件数据
    */
   track(type, data = {}) {
-    if (!this.isInitialized && type !== 'app_start') {
+    // app_open 在 main.js 挂载前触发（早于 initialize），允许入队待初始化后上传
+    if (!this.isInitialized && type !== 'app_start' && type !== 'app_open') {
       if (DEBUG_MODE) console.warn('[Analytics] 收集器未初始化，跳过事件:', type)
       return
     }
@@ -120,6 +109,12 @@ class AnalyticsCollector {
         user_id: this.userId,
         session_id: this.sessionId
       })
+      // 统一兜底注入：专用事件类（PlatformSwitchEvent 等）的位置参数签名会丢弃
+      // data 里的 user_id/session_id，这里补回，保证所有事件都可归属到用户/会话
+      if (event && event.data) {
+        event.data.user_id = this.userId
+        event.data.session_id = this.sessionId
+      }
 
       // 根据优先级添加到相应队列
       switch (event.priority) {
@@ -188,7 +183,7 @@ class AnalyticsCollector {
     }
 
     try {
-      const result = await pantryClient.uploadAnalyticsData(eventsToUpload)
+      const result = await uploadAnalyticsData(eventsToUpload)
 
       if (result.success) {
         if (DEBUG_MODE) {
@@ -268,7 +263,7 @@ class AnalyticsCollector {
     }
 
     try {
-      const result = await pantryClient.uploadAnalyticsData(eventsToUpload)
+      const result = await uploadAnalyticsData(eventsToUpload)
 
       if (result.success) {
         if (DEBUG_MODE) {
@@ -528,17 +523,17 @@ export const analyticsCollector = new AnalyticsCollector()
 
 // 导出便捷函数
 export function initAnalytics(options) {
-  // 开发环境下跳过初始化
-  if (IS_DEV) {
-    console.log('[Analytics] 开发环境下跳过埋点初始化')
+  // 开发环境默认跳过；设置 VITE_COLLECT_DEV 指向本地服务可启用（联调）
+  if (IS_DEV && !DEV_ENDPOINT) {
+    console.log('[Analytics] 开发环境下跳过埋点初始化（VITE_COLLECT_DEV 可启用）')
     return Promise.resolve(false)
   }
   return analyticsCollector.initialize(options)
 }
 
 export function trackEvent(type, data) {
-  // 开发环境下跳过埋点
-  if (IS_DEV) {
+  // 开发环境默认跳过；设置 VITE_COLLECT_DEV 指向本地服务可启用（联调）
+  if (IS_DEV && !DEV_ENDPOINT) {
     return
   }
 

@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-2.0.3-blue.svg)
+![Version](https://img.shields.io/badge/version-2.1.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Vue](https://img.shields.io/badge/Vue-3.5.13-brightgreen.svg)
 ![uTools](https://img.shields.io/badge/uTools-插件-orange.svg)
@@ -144,7 +144,7 @@ API: {
 
 ### 🎯 核心功能
 
-- **🔥 多平台聚合** - 支持43+主流平台热搜，一键切换
+- **🔥 多平台聚合** - 支持51平台热搜，一键切换
 - **📂 分类浏览** - 综合类、社交类、视频类、资讯类、科技类、娱乐类、游戏类、阅读类、金融类、艺术类
 - **🌙 夜间模式** - 自动跟随系统 / 亮色 / 暗色三种主题
 - **⚡ 智能加载** - 支持分页加载，滚动即可获取更多内容

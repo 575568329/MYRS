@@ -41,7 +41,7 @@ const handleReset = () => {
   }
 }
 
-// 平台按分类分组（全部 58 个平台，显隐管理；顺序由侧栏"钉住"决定）
+// 平台按分类分组（全部 51 个平台，显隐管理；顺序由侧栏"钉住"决定）
 const CATEGORY_ORDER = ['资讯', '科技', '视频', '社交', '娱乐', '游戏', '生活', '阅读', '艺术', '金融', '综合']
 const platformGroups = computed(() => {
   const groups = new Map()
@@ -460,7 +460,7 @@ const previewSize = computed(() => FISH_PREVIEW_SIZES[fishWindow.value.size] || 
             <div class="shortcut-item">
               <div class="shortcut-desc">
                 <span class="shortcut-name">刷新 / 翻译</span>
-                <span class="shortcut-detail">刷新当前平台（翻译仅艺术类平台）</span>
+                <span class="shortcut-detail">刷新当前平台（翻译仅艺术与开发者平台）</span>
               </div>
               <div class="shortcut-keys"><kbd>F5</kbd><kbd>Ctrl</kbd>+<kbd>R</kbd> / <kbd>Ctrl</kbd>+<kbd>T</kbd></div>
             </div>
@@ -493,7 +493,7 @@ const previewSize = computed(() => FISH_PREVIEW_SIZES[fishWindow.value.size] || 
                 <div class="api-info-details">
                   <p><strong>本地服务：</strong>插件内置 DailyHotApi（56 源，默认）</p>
                   <p><strong>远程备用：</strong><code>uapis.cn</code> → <code>api-hot.imsyy.com</code></p>
-                  <p><strong>支持平台：</strong>58 个平台，覆盖资讯/科技/视频/游戏/金融等</p>
+                  <p><strong>支持平台：</strong>51 个平台，覆盖资讯/科技/视频/游戏/金融等</p>
                 </div>
               </div>
               <div class="api-info-item">
@@ -519,7 +519,7 @@ const previewSize = computed(() => FISH_PREVIEW_SIZES[fishWindow.value.size] || 
           <h3>关于</h3>
           <div class="about-info">
             <p><strong>摸鱼热搜</strong> v2.1.0</p>
-            <p>一个简洁高效的热搜聚合插件 · 58 平台 · 内置数据服务</p>
+            <p>一个简洁高效的热搜聚合插件 · 51 平台 · 内置数据服务</p>
             <p>支持 AI 智能翻译（Ctrl+T，艺术与开发者平台）</p>
           </div>
         </section>

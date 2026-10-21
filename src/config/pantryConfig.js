@@ -67,14 +67,14 @@ export const RETENTION_POLICY = {
   REMOTE_DAYS: 30
 }
 
-// 调试配置
+// 调试配置（跟随构建模式：dev 输出、生产静默，避免生产控制台暴露 session/user 维度日志）
 export const DEBUG = {
   // 是否启用调试日志
-  ENABLED: true,
+  ENABLED: import.meta.env.DEV,
   // 是否在控制台打印埋点数据
-  LOG_EVENTS: true,
+  LOG_EVENTS: import.meta.env.DEV,
   // 是否打印上传详情
-  LOG_UPLOAD: true
+  LOG_UPLOAD: import.meta.env.DEV
 }
 
 export default {

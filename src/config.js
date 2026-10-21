@@ -81,8 +81,8 @@ export const API = {
   HIGH_FREQUENCY_PLATFORMS: ['zhihu', 'baidu', 'weibo', 'toutiao', 'bilibili', 'douyin'],
   // 默认缓存时间：5分钟（统一缓存策略，提供更实时的数据）
   DEFAULT_CACHE_TIME: 5 * 60 * 1000,
-  // 是否显示调试日志（开发环境可设为 true，生产环境设为 false）
-  DEBUG: true
+  // 是否显示调试日志（跟随构建模式：dev 输出、生产静默）
+  DEBUG: import.meta.env.DEV
 }
 
 // UI 配置

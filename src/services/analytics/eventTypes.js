@@ -179,12 +179,14 @@ export class AnalyticsEvent {
 
 /**
  * 平台切换事件
+ * extra 透传调用方附加字段（to_view/source 等），避免被位置参数签名丢弃
  */
 export class PlatformSwitchEvent extends AnalyticsEvent {
-  constructor(fromPlatform, toPlatform) {
+  constructor(fromPlatform, toPlatform, extra = {}) {
     super(EventType.PLATFORM_SWITCH, {
       from_platform: fromPlatform,
-      to_platform: toPlatform
+      to_platform: toPlatform,
+      ...extra
     })
   }
 }
@@ -226,11 +228,12 @@ export class ItemClickEvent extends AnalyticsEvent {
  * 收藏切换事件
  */
 export class FavoriteToggleEvent extends AnalyticsEvent {
-  constructor(platform, itemTitle, isFavorite) {
+  constructor(platform, itemTitle, isFavorite, extra = {}) {
     super(EventType.FAVORITE_TOGGLE, {
       platform,
       item_title: itemTitle,
-      action: isFavorite ? 'add' : 'remove'
+      action: isFavorite ? 'add' : 'remove',
+      ...extra
     })
   }
 }
@@ -289,30 +292,37 @@ export class AppLifecycleEvent extends AnalyticsEvent {
 export function createEvent(type, data = {}) {
   switch (type) {
     case EventType.PLATFORM_SWITCH:
+      // extra 透传完整 data（含 to_view/source/user_id 等），避免字段被位置签名丢弃
       return new PlatformSwitchEvent(
         data.fromPlatform || data.from_platform,
-        data.toPlatform || data.to_platform
+        data.toPlatform || data.to_platform,
+        data
       )
     case EventType.PLATFORM_LOAD_START:
     case EventType.PLATFORM_LOAD_SUCCESS:
     case EventType.PLATFORM_LOAD_ERROR:
+      // status 由请求的事件类型推导（调用方传 {platform, ms, src}，不带 status）；
+      // 完整 data 作为 extra 透传，保证 ms/src 不丢
       return new PlatformLoadEvent(
         data.platform,
-        data.status,
-        data.extra
+        type === EventType.PLATFORM_LOAD_ERROR ? 'error' : type === EventType.PLATFORM_LOAD_SUCCESS ? 'success' : 'start',
+        data
       )
     case EventType.ITEM_CLICK:
+      // 完整 data 作为 extra 透传（user_id/session_id 由 collector 注入在 data 里）
       return new ItemClickEvent(
         data.platform,
         data.itemTitle || data.item_title,
         data.itemPosition || data.item_position,
-        data.extra
+        data
       )
     case EventType.FAVORITE_TOGGLE:
+      // isFavorite 兜底链：布尔 isFavorite/is_favorite > action==='add' > on 布尔（toggleFav 实际传 {platform, on}）
       return new FavoriteToggleEvent(
         data.platform,
         data.itemTitle || data.item_title,
-        data.isFavorite || data.is_favorite
+        data.isFavorite ?? data.is_favorite ?? (data.action !== undefined ? data.action === 'add' : data.on === true),
+        data
       )
     case EventType.SEARCH:
       return new SearchEvent(
