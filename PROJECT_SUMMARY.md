@@ -50,8 +50,8 @@
 
 ### 状态管理（Pinia Stores）
 
-- `stores/settingsStore.js` - 设置项持久化（utools dbStorage 优先，localStorage 降级）、设置变更事件总线
-- `stores/hotSearchStore.js` - 热搜数据状态
+- `stores/settingsStore.js` - 设置项持久化（utools dbStorage 优先，localStorage 降级）、设置变更事件总线（当前唯一接入的 store）
+- `stores/hotSearchStore.js` - 热搜数据状态（预留，与 `composables/usePlatform.js`、`useInfiniteScroll.js` 一样尚未接入视图，主视图自管理状态）
 
 ### 数据层（三级回退）
 
@@ -97,7 +97,7 @@
 │   ├── HotSearch/              # 主视图
 │   ├── Settings/               # 设置面板
 │   ├── components/             # 聚合首页 / 侧栏 / 收藏 / 卡片组件
-│   ├── composables/            # usePlatform / useInfiniteScroll
+│   ├── composables/            # usePlatform / useInfiniteScroll（预留未接入）
 │   ├── config/                 # icons / pantry / collect 配置
 │   ├── directives/             # 图片懒加载
 │   ├── services/
