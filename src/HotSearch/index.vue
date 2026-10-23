@@ -78,7 +78,7 @@ let toastTimer = null
 // 聚合视图
 const aggregateRef = ref(null)
 const aggregateLoading = ref(false)
-// 聚合卡片排序模式（↑↓ 调整钉住顺序）
+// 聚合卡片排序模式（拖拽调整钉住顺序）
 const aggregateSorting = ref(false)
 
 // 当前视图是否处于加载中（驱动顶部进度条）
@@ -1097,8 +1097,9 @@ const handleKeyPress = (event) => {
     return
   }
 
-  // 1-9 跳到第 N 条并选中
+  // 1-9 跳到第 N 条并选中（排除 Ctrl/Alt/Meta 组合，避免误吞 Ctrl+数字 等系统组合键）
   if (/^[1-9]$/.test(event.key)) {
+    if (event.ctrlKey || event.altKey || event.metaKey) return
     const idx = parseInt(event.key, 10) - 1
     if (idx < hotList.value.length) {
       selectedHotIndex.value = idx
@@ -1107,8 +1108,8 @@ const handleKeyPress = (event) => {
     return
   }
 
-  // c 复制标题 / f 收藏当前选中条
-  if (event.key === 'c' || event.key === 'f') {
+  // c 复制标题 / f 收藏当前选中条（仅无修饰键时触发，Ctrl+C 复制选中文本不被拦截）
+  if ((event.key === 'c' || event.key === 'f') && !event.ctrlKey && !event.altKey && !event.metaKey) {
     const item = hotList.value[selectedHotIndex.value]
     if (!item) return
     event.preventDefault()
