@@ -1,23 +1,24 @@
 # 摸鱼热搜 - 项目总结
 
-> **最后更新时间**: 2026-02-04
-> **当前版本**: 1.1.0
+> **最后更新时间**: 2026-10-23
+> **当前版本**: 2.1.0
 
 ---
 
 ## 📋 项目概述
 
-**摸鱼热搜** 是一个专为 uTools 设计的热搜聚合插件，支持多个热门平台的一站式查看，包括微博、知乎、抖音、B站等主流平台，以及芝加哥艺术学院、大都会博物馆等特色平台。
+**摸鱼热搜** 是一个专为 uTools 设计的热搜聚合插件：52 平台一站式浏览，配合内置浏览器小窗（无痕摸鱼）、老板键一键隐藏、站点净化、自动静音、跨平台收藏与 AI 翻译。
 
 ### 核心特性
-- 🎯 **一站式聚合**：51+ 热门平台，一个插件全掌握
-- ⚡ **实时更新**：支持手动刷新和自动刷新
-- 🌙 **深色模式**：跟随系统主题自动切换
-- 🎨 **极简/分类模式**：两种显示模式自由切换
-- 🤖 **AI翻译**：集成 utools AI，支持智能翻译
-- 🔍 **智能搜索**：电影平台自动跳转豆瓣/百度搜索 ⭐NEW
-- 📱 **响应式设计**：完美适配各种屏幕尺寸
-- 🏗️ **模块化架构**：Pinia 状态管理 + Composables 代码复用
+- 🏠 **聚合首页**：左侧平台栏 + 钉住平台聚合卡片，一屏看遍
+- 🐟 **摸鱼小窗**：内置 ubrowser 打开热搜，不占任务栏、不留历史，尺寸/透明度/置顶/静音可调
+- 🛡️ **老板键**：`` Ctrl+` `` / uTools 全局快捷键，一键隐藏所有摸鱼窗口
+- 🧹 **站点净化**：知乎/微信公众号/GitHub/掘金等 10 站自动去侧栏、加宽正文
+- ⭐ **我的收藏**：跨平台收藏流
+- 🤖 **AI 翻译**：芝加哥艺术学院、GitHub热榜、Hacker News（utools AI + 本地缓存）
+- ⌨️ **完整键盘流**：←→ 切平台、↑↓/1-9 选条、Enter 打开、c 复制、f 收藏
+- 🌙 **暗色主题**：自动 / 亮色 / 暗色
+- 🏗️ **模块化架构**：Vue 3 组合式 API + Pinia + Composables
 
 ---
 
@@ -25,887 +26,111 @@
 
 | 技术 | 版本 | 说明 |
 |------|------|------|
-| Vue.js | ^3.5.13 | 渐进式JavaScript框架 |
-| Vite | ^6.0.11 | 下一代前端构建工具 |
-| Pinia | ^3.0.4 | Vue 官方状态管理库 |
-| @vueuse/core | ^11.0.0 | Vue Composition API 工具集 |
-| vue-remix-icons | ^3.16.0 | Remix Icon 图标库 |
-| utools-api-types | ^7.5.1 | uTools API 类型定义 |
-| ESLint | ^9.0.0 | 代码检查工具 |
-| Prettier | ^3.2.0 | 代码格式化工具 |
-| Terser | ^5.46.0 | JavaScript 代码压缩工具 |
-| Pantry API | v1 | 云端数据存储服务 ⭐NEW |
+| Vue.js | ^3.5.13 | 渐进式 JavaScript 框架 |
+| Vite | ^6.0.11 | 构建工具 |
+| Pinia | ^3.0.4 | 状态管理 |
+| vue-remix-icons | ^3.5.0 | 图标库（按需加载） |
+| DailyHotApi | 打包内置 | 热搜数据源（preload 中启动本地服务 :6688） |
+| uTools API | - | ubrowser / AI / 全局快捷键 / 本地存储 |
 
 ---
 
-## 📊 支持平台列表
+## 🏗️ 架构设计
 
-### 🎬 视频/社区 (7个)
-- B站、AcFun、抖音、快手
-- 微博、知乎、知乎日报
+### 视图层
 
-### 🎮 游戏 (4个)
-- 英雄联盟、原神、崩坏3、星穹铁道
+| 模块 | 职责 |
+|------|------|
+| `src/HotSearch/index.vue` | 主视图：聚合首页 / 平台榜单 / 收藏切换、键盘流、翻译、老板键入口 |
+| `src/components/AggregateHome.vue` | 聚合首页卡片（常显 5 条、悬停滚轮、展开 50 条、拖拽排序） |
+| `src/components/PlatformSidebar.vue` | 左侧平台栏（分类、钉住、老板键/翻译/刷新/设置/打赏按钮） |
+| `src/components/FavoritesView.vue` | 跨平台收藏流 |
+| `src/Settings/index.vue` | 设置面板（显示选项 / 主题 / 摸鱼小窗 / 平台显示 / 快捷键说明） |
+| `src/components/ArtworkCard.vue` 等 | 芝加哥艺术学院、Epic 等特殊平台的卡片式渲染 |
 
-### 💻 科技/IT (10个)
-- IT之家、IT之家·喜加一、少数派、掘金、36氪
-- V2EX、CSDN、51CTO、NodeSeek、吾爱破解、主机交流、酷安
+### 状态管理（Pinia Stores）
 
-### 📰 新闻/资讯 (8个)
-- 百度、**60秒早报**⭐NEW、澎湃新闻、今日头条、腾讯新闻
-- 新浪热搜、新浪新闻、网易新闻、虎嗅、爱范儿
+- `stores/settingsStore.js` - 设置项持久化（utools dbStorage 优先，localStorage 降级）、设置变更事件总线
+- `stores/hotSearchStore.js` - 热搜数据状态
 
-### 📚 阅读 (2个)
-- 微信读书、追书排行
+### 数据层（三级回退）
 
-### 🎭 艺术 (2个)
-- **芝加哥艺术学院** - 艺术品浏览平台（公有领域）
-- **大都会博物馆** - 艺术品浏览平台（支持中国作品筛选）
+`services/hotSearchApi.js` 数据源链：
 
-### 🏀 娱乐 (3个)
-- 虎扑、豆瓣电影、**电影票房榜**、豆瓣小组、贴吧、NGA
+1. **本地 DailyHotApi** - `public/preload/hot-api.cjs`（esbuild 打包的 DailyHotApi）在 preload Node 环境启动，`http://localhost:6688`
+2. **uapis.cn** - 远程热榜聚合
+3. **api-hot.imsyy.com** - DailyHotApi 公共实例
 
-**总计**: 51+ 平台（含60秒早报）
+任一环节失败自动降级；`services/platforms/` 下是艺术、Epic 等平台的自定义抓取（官方 API / 多代理）。
 
----
+### 关键工具（src/utils/）
 
-## ✨ 最新功能特性
+| 模块 | 职责 |
+|------|------|
+| `bossKey.js` | 老板键：收集所有小窗实例，hide/show 链式调用 + 主窗口隐藏 |
+| `openUrl.js` | 小窗打开三级降级（ubrowser → 系统浏览器）+ 小窗配置 |
+| `siteRules.js` | 站点净化规则（10 站：去侧栏、加宽正文、自动静音注入） |
+| `favorites.js` | 收藏读写 |
+| `cacheManager.js` | 平台级数据缓存（高频平台缓存更短） |
+| `dataMirror.js` | 镜像降级提示（缓存滞后角标） |
+| `storage.js` | 统一存储层（utools 优先） |
 
-### 1. 芝加哥艺术学院平台 🎨
-- 🖼️ **艺术品浏览**：展示来自芝加哥艺术学院博物馆的艺术藏品
-- 📝 **详细信息**：包含艺术家、创作日期、媒介、产地等信息
-- 🖼️ **高清图片**：使用官方 IIIF 图片API，支持高质量图片展示
-- 📄 **分页加载**：支持滚动加载更多艺术品
-- 🔗 **快捷跳转**：点击查看大图或详情页
-- 🆕 **缓存机制**：智能缓存优化，支持预加载下一页
+### 埋点系统（src/services/analytics/）
 
-### 2. 大都会博物馆平台 🏛️
-- 🌍 **全球艺术品**：展示大都会博物馆的丰富艺术收藏
-- 🏮 **中国作品筛选**：支持按地理位置筛选中国艺术品
-  - 使用 `geoLocation=China` 参数精准筛选
-  - 一键切换全部作品/中国作品
-- 🎯 **智能去重**：自动过滤同页重复标题的艺术品
-- 🔄 **实时数据**：无缓存机制，每次获取最新数据
-- 🤖 **AI翻译**：完整支持翻译功能（与芝加哥艺术学院一致）
-- 📊 **详细信息**：艺术家、日期、媒介、部门、文化等完整信息
-- 🖼️ **高质量图片**：优先使用小图，支持大图备用
+- `analyticsCollector.js` - 优先级队列 + 批量上传（20 条或 10 分钟）
+- `pantryClient.js` - Pantry 云端 API 客户端（429 智能重试）
+- `viewTracker.js` - 平台停留时长（pv）
+- `eventTypes.js` - 事件类型定义（含老板键 trigger/action 维度）
+- 退出时本地缓存兜底，下次启动补传；仅聚合统计，无个人身份信息
 
-### 3. AI智能翻译功能 🤖
-- 🌐 **智能分批**：每次最多翻译200个艺术品
-- 📊 **进度显示**：按钮上实时显示翻译进度（如：50/100）
-- ⏱️ **旋转动画**：翻译中沙漏图标持续旋转
-- ✅ **确认提示**：翻译前提示AI能量消耗和翻译数量
-- 🔄 **增量翻译**：支持继续翻译下一批
-- ✅ **完成提示**：所有数据翻译完成后提示用户
+### Preload（public/preload/）
 
-#### 翻译操作说明
-- **单击翻译按钮**：继续翻译下一批（最多200个）
-- **翻译完成后点击**：提示所有数据已翻译，可选择重新开始
-- **按钮显示**：实时显示已翻译数量（如：50/100）
-
-### 4. 追书神器小说排行榜 📚
-- 📖 **小说排行**：展示热门小说排行
-- 🔗 **详情跳转**：点击查看小说详情
-- 📄 **分页加载**：支持加载更多小说
-
----
-
-## 🏗️ 架构设计 ⭐NEW
-
-### 状态管理 (Pinia Stores)
-```
-src/stores/
-├── settingsStore.js      # 设置状态管理
-│   ├── 主题模式 (light/dark/auto)
-│   ├── UI 偏好 (热度值、描述显示)
-│   └── 平台顺序管理 (拖拽排序)
-└── hotSearchStore.js     # 热搜数据状态管理
-    ├── 当前平台/分类
-    ├── 数据加载状态
-    ├── 翻译状态管理
-    ├── 平台筛选状态
-    └── 埋点事件追踪 ⭐NEW
-```
-
-### 组合式函数 (Composables)
-```
-src/composables/
-├── usePlatform.js        # 平台切换逻辑
-│   ├── 平台切换
-│   ├── 分类切换
-│   └── 标签滚动控制
-└── useInfiniteScroll.js  # 无限滚动加载
-    └── 滚动到底部自动加载更多
-```
-
-### 平台 API 模块化
-```
-src/services/platforms/
-├── index.js              # 统一导出
-├── hotboardApi.js        # 热搜聚合 API
-├── articApi.js           # 芝加哥艺术学院 API
-├── metmuseumApi.js       # 大都会博物馆 API
-└── zhuishuApi.js         # 追书神器 API
-```
-
-### 工具函数
-```
-src/utils/
-├── cacheManager.js       # 缓存管理器
-│   ├── 缓存存储/读取
-│   ├── 缓存过期检查
-│   ├── 批量缓存操作 ⭐NEW
-│   └── 缓存清理
-├── apiHelper.js          # API 辅助函数
-│   └── API 响应处理
-└── requestHelper.js      # 请求辅助函数
-    └── 网络请求封装
-```
-
-### 埋点系统 ⭐NEW
-```
-src/services/analytics/
-├── pantryClient.js       # Pantry API 客户端
-│   ├── 数据上传/下载
-│   ├── 速率限制处理
-│   └── 数据自动合并
-├── analyticsCollector.js # 埋点收集器
-│   ├── 优先级队列管理
-│   ├── 批量上传策略
-│   ├── 上传冷却机制
-│   └── 本地缓存管理
-├── eventTypes.js         # 事件类型定义
-│   ├── 事件工厂函数
-│   ├── 优先级枚举
-│   └── 数据验证
-└── index.js              # 统一导出
-```
-
-### 配置文件 ⭐NEW
-```
-src/config/
-├── pantryConfig.js       # Pantry 配置
-│   ├── API 基础配置
-│   ├── 上传策略
-│   ├── 重试配置
-│   └── 调试开关
-└── icons.js              # 图标配置
-```
-
-### 自定义指令
-```
-src/directives/
-└── lazyLoad.js           # 图片懒加载指令
-```
-
----
-
-## 🎯 核心功能模块
-
-### 1. 热搜聚合
-- 多平台热搜数据实时获取
-- 支持分类浏览和极简模式
-- 自定义平台顺序（拖拽排序）
-
-### 2. 数据缓存
-- 智能缓存机制，减少API请求
-- 芝加哥艺术学院：60分钟缓存 + 预加载
-- 大都会博物馆：无缓存（实时数据）
-- 缓存过期自动清理
-- 支持手动刷新
-- **批量缓存操作**（新增）⭐NEW
-
-### 3. 数据去重
-- **大都会博物馆**：单页标题去重，避免重复展示
-- 标准化处理：小写转换 + 空格修剪
-- 详细日志：显示去重前后的数量变化
-
-### 4. UI/UX
-- 响应式设计，适配各种设备
-- 深色模式支持（跟随系统）
-- 流畅的动画效果
-- 悬浮操作按钮组
-- 艺术品卡片式布局（芝加哥艺术学院、大都会博物馆）
-- 筛选按钮组（大都会博物馆）
-- 图片懒加载优化
-
-### 5. 设置管理
-- 显示/隐藏热搜值
-- 显示/隐藏描述信息
-- 主题模式切换（自动/亮色/暗色）
-- 自定义平台顺序（拖拽排序）
-- 平台显示/隐藏控制（点击眼睛图标切换）⭐NEW
-- 重置为默认设置
-
-### 6. 数据埋点与统计 📊⭐NEW
-- **智能事件追踪**
-  - 应用生命周期（启动/关闭）
-  - 用户行为（平台切换、链接点击）
-  - 数据操作（刷新、加载更多）
-  - 错误追踪（API 失败、网络错误）
-- **云端数据存储**
-  - Pantry API 云端存储
-  - 自动数据同步
-  - 多用户数据合并
-- **统计分析面板**
-  - 事件分布图表
-  - 热门平台排行
-  - 活动趋势分析
-  - 数据导出功能
-- **隐私保护**
-  - 匿名用户 ID
-  - 无敏感信息
-  - 可完全禁用
+- `services.js` - 注入 `window.services`（文件读写、下载）+ 启动本地热榜 API
+- `hot-api.cjs` - DailyHotApi 打包版（本地数据源）
 
 ---
 
 ## 📁 项目结构
 
 ```
-摸鱼热搜/
-├── public/                    # 静态资源
-│   └── preload/              # 预加载脚本
 ├── src/
-│   ├── HotSearch/            # 热搜主组件
-│   │   └── index.vue         # 热搜列表页面
-│   ├── Settings/             # 设置面板
-│   │   └── index.vue         # 设置组件
-│   ├── components/           # 公共组件
-│   │   ├── RemixIcon.vue     # 图标组件
-│   │   ├── PlatformIcon.vue  # 平台图标
-│   │   ├── ArtworkCard.vue   # 艺术品卡片
-│   │   ├── ArtworkListItem.vue  # 艺术品列表项
-│   │   └── AnalyticsDebugPanel.vue  # 埋点调试面板 ⭐NEW
-│   ├── composables/          # 组合式函数 ⭐NEW
-│   │   ├── usePlatform.js    # 平台切换逻辑
-│   │   └── useInfiniteScroll.js  # 无限滚动
-│   ├── directives/           # 自定义指令 ⭐NEW
-│   │   └── lazyLoad.js       # 图片懒加载
-│   ├── services/             # 业务逻辑
-│   │   ├── analytics/        # 埋点系统 ⭐NEW
-│   │   │   ├── index.js      # 统一导出
-│   │   │   ├── pantryClient.js    # Pantry 客户端
-│   │   │   ├── analyticsCollector.js  # 埋点收集器
-│   │   │   └── eventTypes.js  # 事件类型定义
-│   │   ├── platforms/        # 平台 API 模块 ⭐NEW
-│   │   │   ├── index.js      # 统一导出
-│   │   │   ├── hotboardApi.js    # 热搜聚合
-│   │   │   ├── articApi.js       # 芝加哥艺术学院
-│   │   │   ├── metmuseumApi.js   # 大都会博物馆
-│   │   │   └── zhuishuApi.js     # 追书神器
-│   │   └── hotSearchApi.js  # API 调用（兼容层）
-│   ├── stores/               # 状态管理 ⭐NEW
-│   │   ├── settingsStore.js  # 设置状态
-│   │   └── hotSearchStore.js # 热搜状态
-│   ├── utils/                # 工具函数 ⭐NEW
-│   │   ├── cacheManager.js   # 缓存管理
-│   │   ├── apiHelper.js      # API 辅助
-│   │   └── requestHelper.js  # 请求辅助
-│   ├── config/               # 配置模块 ⭐NEW
-│   │   ├── pantryConfig.js   # Pantry 配置
-│   │   └── icons.js          # 图标配置
-│   ├── config.js             # 主配置文件
-│   ├── App.vue               # 根组件
-│   └── main.js               # 入口文件
-├── .eslintrc.cjs             # ESLint 配置 ⭐NEW
-├── .prettierrc               # Prettier 配置 ⭐NEW
-├── .prettierignore           # Prettier 忽略 ⭐NEW
-├── .env.example              # 环境变量示例 ⭐NEW
-├── PANTRY_QUICKSTART.md      # Pantry 使用指南 ⭐NEW
-├── package.json              # 项目配置
-├── vite.config.js            # Vite 配置
-├── PROJECT_SUMMARY.md        # 项目总结（本文件）
-└── README.md                 # 项目说明
+│   ├── HotSearch/              # 主视图
+│   ├── Settings/               # 设置面板
+│   ├── components/             # 聚合首页 / 侧栏 / 收藏 / 卡片组件
+│   ├── composables/            # usePlatform / useInfiniteScroll
+│   ├── config/                 # icons / pantry / collect 配置
+│   ├── directives/             # 图片懒加载
+│   ├── services/
+│   │   ├── hotSearchApi.js     # 三级回退数据源
+│   │   ├── analytics/          # 埋点
+│   │   └── platforms/          # 自定义平台抓取
+│   ├── stores/                 # Pinia
+│   └── utils/                  # bossKey / openUrl / siteRules 等
+├── public/
+│   ├── preload/                # uTools preload（含本地 DailyHotApi）
+│   └── plugin.json             # uTools 插件配置（hotsearch / boss 双入口）
+├── docs/                       # 设计文档（UX-REDESIGN / FISH-WINDOW-2.0 / IMPLEMENTATION）
+└── dist/                       # 构建产物（gitignore）
 ```
 
 ---
 
 ## 🚀 快速开始
 
-### 安装依赖
 ```bash
-npm install
+npm install        # 安装依赖
+npm run dev        # 开发模式（http://localhost:5173，uTools 开发者模式接入）
+npm run build      # 生产构建（dist/）
+npm run format     # Prettier 格式化
 ```
 
-### 开发模式
-```bash
-npm run dev
-```
+uTools 本地调试：设置 → 开发者模式 → 安装本地插件 → 选择项目目录（`plugin.json` 已配置 `development.main` 指向 localhost:5173）。
 
-### 代码检查与格式化
-```bash
-# 运行 ESLint 检查并修复
-npm run lint
+### 代码风格
 
-# 仅检查不修复
-npm run lint:check
-
-# 格式化代码
-npm run format
-```
-
-### 构建生产版本
-```bash
-npm run build
-```
-
-### 在 uTools 中测试
-1. 打开 uTools
-2. 进入 `设置` -> `开发者模式`
-3. 点击 `安装本地插件`
-4. 选择本项目文件夹
-5. 输入"热搜"、"热榜"或"hot"唤醒插件
-
----
-
-## 📝 最近更新记录
-
-### 2026-02-04 - 电影平台功能增强 🎬⭐NEW
-
-#### 新增功能
-- ✅ **电影平台豆瓣搜索集成**
-  - 豆瓣电影平台：点击热搜自动跳转豆瓣搜索
-  - 电影票房榜平台：点击电影自动跳转豆瓣搜索
-  - 搜索链接格式：`https://search.douban.com/movie/subject_search?search_text=电影名称`
-- ✅ **电影票房榜数据显示优化**
-  - 新增排片/排座占比显示
-  - 完整的票房信息展示（上映天数、总票房、当日票房、票房占比、排片占比、排座占比）
-- ✅ **60秒早报平台接入**
-  - API 地址：`http://www.wudada.online/Api/ScD`
-  - 每日更新，包含10+条新闻
-  - 显示公历和农历日期
-  - 自动过滤每日金句
-  - 点击新闻使用百度搜索
-
-#### 技术实现
-- **数据解析层优化**：
-  - 在 `parseMovieBoxText()` 中直接生成豆瓣搜索链接
-  - 在 `get60sNewsData()` 中解析早报JSON数据
-  - 在 `parse60sNewsData()` 中处理新闻内容和日期
-- **链接生成策略**：
-  - 豆瓣电影：在API数据处理时统一替换URL
-  - 电影票房榜：在文本解析时生成豆瓣搜索链接
-  - 60秒早报：提取新闻关键词生成百度搜索链接
-- **数据显示优化**：
-  - 电影票房榜支持 `排片/排座占比` 字段匹配
-  - 正则表达式：`/^排片\/排座占比\s+(.+)$/`
-
-#### 影响范围
-- [hotSearchApi.js:60](src/services/hotSearchApi.js:60) - 新增 60秒早报平台
-- [hotSearchApi.js:147](src/services/hotSearchApi.js:147) - 添加60秒早报特殊处理
-- [hotSearchApi.js:230-232](src/services/hotSearchApi.js:230-L232) - 豆瓣电影搜索链接生成
-- [hotSearchApi.js:563](src/services/hotSearchApi.js:563) - 电影票房榜豆瓣搜索链接
-- [hotSearchApi.js:594-598](src/services/hotSearchApi.js:594-L598) - 排片/排座占比解析
-- [hotSearchApi.js:609-735](src/services/hotSearchApi.js:609-L735) - 60秒早报完整实现
-- [config.js:24](src/config.js:24) - 60秒早报加入默认平台列表
-
----
-
-### 2026-02-04 - 接入电影票房榜 API 🎬
-
-#### 新增功能
-- ✅ **接入电影票房实时榜 API**
-  - API 地址：`https://api.52vmy.cn/api/wl/top/movie?type=text`
-  - 返回 Top 10 电影票房数据
-  - 包含今日大盘统计
-- ✅ **数据展示**
-  - 上映天数和总票房
-  - 当日综合票房
-  - 票房占比和排片占比
-  - 排名实时更新
-- ✅ **缓存策略**
-  - 1 小时缓存时间
-  - 减少重复请求
-  - 提升加载速度
-
-#### 技术实现
-- **API 调用**：
-  - GET 请求获取纯文本数据
-  - 10 秒超时配置
-  - 专门解析文本格式
-- **数据格式**：
-  ```
-  2026.02.04 今日大盘 -> 1089.6 万
-
-  Top 1 -> 疯狂动物城2
-  上映71天 44.68亿
-  综合票房 257.02万元
-  综合票房占比 23.5%
-  排片/排座占比 15.9%/16.7%
-  ...
-  ```
-- **特殊处理**：
-  - 专门的 `getMovieBoxData()` 函数
-  - 文本解析函数 `parseMovieBoxText()`
-  - 正则表达式提取关键信息
-
-#### 影响范围
-- [config.js](src/config.js:36) - 添加 movie-box 到极简模式列表
-- [config.js](src/config.js:57) - 添加超时配置
-- [hotSearchApi.js](src/services/hotSearchApi.js:50) - 添加平台定义
-- [hotSearchApi.js](src/services/hotSearchApi.js:150) - 添加特殊处理逻辑
-- [hotSearchApi.js](src/services/hotSearchApi.js:450) - 实现 getMovieBoxData 函数
-
----
-
-### 2026-02-04 - API 清理与代码简化 🧹
-
-#### 新增功能
-- ✅ **接入新的 60 秒早报 API**
-  - API 地址：`https://60api.09cdn.xyz/v2/60s`
-  - 开源项目：https://github.com/vikiboss/60s
-  - 每日更新一次，包含 10+ 条新闻
-- ✅ **数据展示优化**
-  - 显示新闻日期和星期
-  - 支持农历日期显示
-  - 包含每日一言（tip）
-  - 提供封面图片和详情链接
-- ✅ **缓存策略**
-  - 1 小时缓存时间
-  - 减少重复请求
-  - 提升加载速度
-
-#### 技术实现
-- **API 调用**：
-  - GET 请求获取 JSON 数据
-  - 10 秒超时配置
-  - 完善的错误处理
-- **数据格式**：
-  ```json
-  {
-    "code": 200,
-    "message": "获取成功",
-    "data": {
-      "date": "2026-02-04",
-      "news": ["新闻1", "新闻2", ...],
-      "cover": "封面图URL",
-      "tip": "每日一言",
-      "image": "图片URL",
-      "link": "详情链接"
-    }
-  }
-  ```
-- **特殊处理**：
-  - 专门的 `get60sData()` 函数
-  - 独立的缓存管理
-  - 附加信息（cover、tip、lunar等）
-
-#### 影响范围
-- [config.js](src/config.js:36) - 添加 60s 到极简模式列表
-- [config.js](src/config.js:57) - 添加超时配置
-- [hotSearchApi.js](src/services/hotSearchApi.js:67) - 添加平台定义
-- [hotSearchApi.js](src/services/hotSearchApi.js:147) - 添加特殊处理逻辑
-- [hotSearchApi.js](src/services/hotSearchApi.js:449) - 实现 get60sData 函数
-
----
-
-### 2026-02-04 - API 优化与性能提升 🚀
-
-#### 删除 98dou API
-- ✅ **移除 api.98dou.cn API 依赖**
-  - 删除 60秒早报平台（60s）
-  - 删除人民财讯平台（egsea）
-  - 移除 douPlatforms 相关代码
-  - 删除 API Key 配置
-- ✅ **代码简化**
-  - 删除速率限制检查代码（每10秒最多3次）
-  - 删除特殊数据格式处理（60s、egsea）
-  - 删除专用缓存逻辑
-  - 简化 API 路由选择逻辑
-- ✅ **API 源统一**
-  - 现在只使用两个 API 源
-  - uapis.cn（主要）
-  - api-hot.imsyy.com（36kr 等）
-
-#### 影响范围
-- [config.js](src/config.js:36) - 从极简模式列表删除 60s、egsea
-- [hotSearchApi.js](src/services/hotSearchApi.js:67) - 删除平台定义和相关逻辑
-- 平台总数：50+ → 49
-- 删除约 50 行代码
-
----
-
-### 2026-02-04 - API 优化与性能提升 🚀
-
-#### 36kr API 切换
-- ✅ **切换至 api-hot.imsyy.com API**
-  - 从 uapis.cn 平台列表移除 36kr
-  - 添加专用 imsyyPlatforms 配置
-  - 优化 API 路由逻辑
-  - 提升数据获取稳定性
-
-#### 缓存机制优化
-- ✅ **增强缓存管理器功能**
-  - 新增批量缓存操作方法
-  - 优化缓存过期检查性能
-  - 添加缓存统计信息
-  - 支持更细粒度的缓存控制
-
-#### 影响范围
-- [hotSearchApi.js](src/services/hotSearchApi.js:112) - 36kr API 路由优化
-- [cacheManager.js](src/utils/cacheManager.js:45) - 缓存功能增强
-- [config.js](src/config.js:59) - 超时配置调整
-
----
-
-### 2026-02-03 - Pantry 埋点系统集成 📊⭐NEW
-
-#### 核心功能
-- ✅ **云端数据存储**
-  - 集成 Pantry API 服务
-  - 支持多 Basket 数据管理
-  - 自动数据合并与同步
-  - 文档：[Pantry API Docs](https://documenter.getpostman.com/view/3281832/SzmZeMLC)
-
-#### 埋点收集系统
-- ✅ **智能事件追踪**
-  - 优先级队列管理（高/中/低）
-  - 批量上传策略（20条/批）
-  - 上传冷却机制（3秒冷却）
-  - 最大间隔强制上传（10分钟）
-- ✅ **事件类型支持**
-  - 应用启动/关闭
-  - 平台切换
-  - 链接点击
-  - 数据刷新
-  - 加载更多
-  - 错误记录
-
-#### 速率限制处理
-- ✅ **429 错误智能处理**
-  - 5次指数退避重试
-  - 自动延迟调整
-  - 上传失败自动重新入队
-  - 详细的错误日志
-
-#### 数据可视化面板
-- ✅ **统计分析面板**
-  - 事件分布图表
-  - 热门平台排行
-  - 活动趋势图
-  - 远程数据加载
-  - 数据导出功能（JSON/CSV）
-
-#### 隐私与合规
-- ✅ **匿名数据收集**
-  - 匿名用户 ID
-  - 会话 ID 追踪
-  - 无敏感信息存储
-  - 可完全禁用埋点功能
-
-#### 技术实现
-- **核心模块**：
-  - `pantryClient.js` - Pantry API 客户端
-  - `analyticsCollector.js` - 埋点收集器
-  - `eventTypes.js` - 事件类型定义
-  - `AnalyticsDebugPanel.vue` - 调试面板
-- **配置文件**：
-  - `pantryConfig.js` - Pantry 配置
-  - `.env.example` - 环境变量示例
-- **自动初始化**：
-  - 在 `main.js` 中自动启动
-  - 开发环境自动禁用
-  - 支持环境变量配置
-
-#### 快速开始
-1. 访问 [https://getpantry.cloud](https://getpantry.cloud) 注册获取 Pantry Key
-2. 配置环境变量 `VITE_ANALYTICS_ENABLED=true`
-3. 配置环境变量 `VITE_PANTRY_KEY=your_key_here`
-4. 重启应用即可开始收集数据
-
-#### 详细文档
-- [PANTRY_QUICKSTART.md](PANTRY_QUICKSTART.md) - 完整使用指南
-
-#### 影响范围
-- [config/pantryConfig.js](src/config/pantryConfig.js:1) - Pantry 配置
-- [services/analytics/](src/services/analytics/) - 埋点服务模块
-- [components/AnalyticsDebugPanel.vue](src/components/AnalyticsDebugPanel.vue:1) - 调试面板
-- [main.js](src/main.js:15) - 自动初始化
-- [hotSearchStore.js](src/stores/hotSearchStore.js:105) - 状态追踪
-
----
-
-### 2026-02-03 - 数据展示间距优化 🎨
-
-#### UI 改进
-- ✅ **优化数据展示间距**
-  - 调整热搜列表项间距
-  - 提升可读性
-  - 更符合视觉设计规范
-- ✅ **响应式布局优化**
-  - 适配不同屏幕尺寸
-  - 改善移动端体验
-
----
-
-### 2026-02-03 - 平台显示/隐藏控制功能 👁️⭐NEW
-
-#### 新增功能
-- ✅ **平台显示/隐藏控制**
-  - 在设置页面为每个平台添加眼睛图标开关
-  - 点击 👁️ 可隐藏平台，点击 👁️‍🗨️ 可显示平台
-  - 隐藏的平台在列表中显示为半透明并带有删除线
-  - 隐藏的平台不会在主页面的平台标签中显示
-- ✅ **持久化存储**
-  - 隐藏平台列表自动保存到本地存储
-  - 刷新页面后设置保持不变
-  - 支持重置为默认设置（显示所有平台）
-- ✅ **实时同步**
-  - 设置变更后立即生效
-  - 通过 CustomEvent 实现组件间通信
-  - Pinia watch 监听自动触发事件
-
-#### 技术实现
-- **状态管理**：
-  - `hiddenPlatforms` - Set 数据结构存储隐藏平台ID
-  - `togglePlatformVisibility()` - 切换平台可见性
-  - `isPlatformVisible()` - 检查平台是否可见
-- **本地存储**：
-  - 新增 `STORAGE_KEYS.HIDDEN_PLATFORMS` 存储键
-  - 自动序列化/反序列化 Set 对象
-- **过滤逻辑**：
-  - `filteredPlatforms` 计算属性中过滤隐藏平台
-  - 支持极简模式和分类模式
-
-#### 交互优化
-- 眼睛图标悬停效果
-- 隐藏平台视觉反馈（半透明 + 删除线）
-- 点击事件阻止冒泡，避免触发拖拽
-- 完整的暗色模式适配
-
-#### 影响范围
-- [config.js](src/config.js:116) - 新增隐藏平台存储键
-- [stores/settingsStore.js](src/stores/settingsStore.js:23) - 状态管理
-- [Settings/index.vue](src/Settings/index.vue:56) - UI交互
-- [HotSearch/index.vue](src/HotSearch/index.vue:73) - 过滤逻辑
-
----
-
-### 2026-02-03 - 架构重构与代码质量提升 🏗️
-
-#### 架构升级
-- ✅ **引入 Pinia 状态管理**
-  - 将设置和热搜数据分离到独立 stores
-  - `settingsStore.js` - 主题、UI偏好、平台顺序
-  - `hotSearchStore.js` - 平台数据、翻译状态、筛选状态
-  - 替代原有的 Options API 状态管理
-
-- ✅ **Composables 代码复用**
-  - `usePlatform.js` - 平台切换、分类切换、标签滚动
-  - `useInfiniteScroll.js` - 无限滚动加载
-  - 提取可复用逻辑，提升代码可维护性
-
-- ✅ **平台 API 模块化**
-  - 将各平台 API 拆分到独立文件
-  - `hotboardApi.js` - 热搜聚合
-  - `articApi.js` - 芝加哥艺术学院
-  - `metmuseumApi.js` - 大都会博物馆
-  - `zhuishuApi.js` - 追书神器
-  - 统一从 `index.js` 导出
-
-- ✅ **工具函数提取**
-  - `cacheManager.js` - 缓存管理器
-  - `apiHelper.js` - API 辅助函数
-  - `requestHelper.js` - 请求辅助函数
-  - 提升代码复用性和可测试性
-
-- ✅ **自定义指令**
-  - `lazyLoad.js` - 图片懒加载指令
-  - 优化艺术品图片加载性能
-
-#### 代码质量提升
-- ✅ **ESLint 配置**
-  - 添加 Vue 3 推荐规则
-  - 配置代码质量检查（eqeqeq、no-var、prefer-const）
-  - 代码风格统一（单引号、无分号）
-  - 生产环境禁用 console 和 debugger
-
-- ✅ **Prettier 配置**
-  - 统一代码格式化规则
-  - ESLint 集成，自动修复格式问题
-
-- ✅ **Terser 优化**
-  - 生产构建代码压缩和混淆
-  - 移除 console 和 debugger
-
-#### 性能优化
-- 图片懒加载指令
-- 缓存机制优化
-- 请求超时控制
-- 并发请求限制
-
----
-
-### 2026-02-03 - 大都会博物馆平台上线 🏛️
-
-#### 新增功能
-- ✅ **大都会博物馆平台完整集成**
-  - 使用官方 Collection API 获取艺术品数据
-  - 支持 `geoLocation` 参数精准筛选地理位置
-  - API 地址：`https://collectionapi.metmuseum.org/public/collection/v1/search`
-  - 官方文档：[Met Museum Collection API](https://metmuseum.org/developers/digital-body/metmuseum-collection-api)
-- ✅ **中国作品筛选功能**
-  - 筛选按钮组：🌍 全部作品 / 🏮 中国作品
-  - 使用 `geoLocation=China` 参数精准筛选
-  - 切换筛选时自动重置页码和翻译状态
-- ✅ **智能去重功能**
-  - 单页标题去重，避免重复展示
-  - 标准化处理：小写转换 + 空格修剪
-  - 详细日志显示过滤效果
-- ✅ **翻译功能完整支持**
-  - 支持大都会博物馆艺术品的AI翻译
-  - 与芝加哥艺术学院功能完全一致
-  - 批量翻译、进度显示、状态重置
-- ✅ **无缓存设计**
-  - 实时获取最新数据
-  - 不使用缓存，确保数据新鲜度
-  - 优化请求超时和错误处理
-
-#### 技术实现
-- **API调用**：
-  - 搜索API：`/search?q=*&hasImages=true&geoLocation=China`
-  - 详情API：`/objects/{objectId}`
-  - 并发请求50个艺术品详情，每个5秒超时
-- **数据过滤**：
-  - 仅显示有主图片的艺术品 (`primaryImage`)
-  - 仅显示公有领域艺术品 (`isPublicDomain`)
-  - 标题去重（单页级别）
-- **状态管理**：
-  - 筛选条件：`metMuseumFilter` (all/china)
-  - 切换平台时自动重置筛选
-  - 切换筛选时重置翻译偏移量
-
-#### 交互优化
-- 筛选按钮组采用卡片式设计
-- 支持暗色模式
-- 悬停效果和激活状态
-- 平台切换时智能重置状态
-
-#### 已知限制
-- **去重范围**：仅支持单页去重，跨页重复无法过滤
-- **分页影响**：去重后实际数据可能少于pageSize
-- **API限制**：每次请求50个ID，需要单独获取详情
-
----
-
-### 2026-02-03 - 上线前代码审查与优化 ✅
-
-#### 🔧 必须修复的问题 (已完成)
-- ✅ **修复调试函数递归引用错误** (index.vue:12)
-  - 将 `debug.log(...args)` 修正为 `console.log(...args)`
-  - 避免死循环风险
-- ✅ **删除临时文件**
-  - 删除根目录临时文件 `nul`
-  - 删除未使用的增强版组件 `index_enhanced.vue`
-- ✅ **确认生产环境配置**
-  - 验证 `DEBUG: false` 配置正确
-  - 确保生产环境不输出调试日志
-
-#### 📊 代码审查结果
-- **项目结构**: ✅ 良好 (B+)
-- **代码质量**: ✅ 良好 (B+)
-- **安全性**: ⚠️ 需关注 (C)
-- **性能优化**: ✅ 良好 (B+)
-- **可维护性**: ✅ 良好 (B)
-
-#### ⚠️ 后续优化建议 (可选)
-1. HTML 解析安全性增强 (XSS 防护)
-2. AI 调用频率限制机制
-3. 添加单元测试覆盖
-4. 考虑引入 TypeScript
-
----
-
-### 2026-02-03 - 版权保护与API透明化更新 🔒
-
-#### 功能优化
-- 🔒 **版权保护**：芝加哥艺术学院平台仅获取公有领域（Public Domain）艺术品
-  - API筛选：`is_public_domain: true`
-  - 避免版权问题，符合API官方文档建议
-- 📋 **API信息公示**：在设置页面新增"数据来源 & API 信息"专区
-  - 完整公示所有使用的API地址和文档
-  - 明确版权说明和免责声明
-  - 提供API官方文档链接
-- 🗑️ **简化界面**：移除芝加哥艺术学院平台的页面内API提示框
-  - 统一在设置页面展示API信息
-  - 保持页面简洁美观
-
-#### API透明化详情
-**热搜聚合 API**
-- 主要API: `https://uapis.cn/api/v1/misc/hotboard`
-- 备用API: `https://api-hot.imsyy.com`
-- 36kr专用API: `https://api-hot.imsyy.com` ⭐NEW
-- 支持50+平台热搜数据聚合
-
-**芝加哥艺术学院 API**
-- API地址: `https://api.artic.edu/api/v1/artworks`
-- 官方文档: `https://api.artic.edu/docs/`
-- 版权声明: 仅展示公有领域艺术品，可免费使用
-- 筛选条件: `is_public_domain: true`
-
-**大都会博物馆 API**
-- API地址: `https://collectionapi.metmuseum.org/public/collection/v1/search`
-- 官方文档: `https://metmuseum.org/developers/digital-body/metmuseum-collection-api`
-- 版权声明: 仅展示公有领域艺术品，可免费使用
-- 筛选条件: `isPublicDomain: true`
-
-**免责声明**
-- 本应用仅作为数据展示工具，所有数据版权归原平台所有
-- 热搜数据实时抓取自各公开平台，可能存在延迟或差异
-- 艺术品均为公有领域作品，可自由使用
-- 如有任何版权问题，请联系原平台或API提供商
-
----
-
-### 2026-02-03 - 芝加哥艺术学院与翻译功能
-
-- ✅ 新增芝加哥艺术学院平台
-- ✅ 新增艺术品列表展示组件
-- ✅ 新增AI智能翻译功能（支持200个批量翻译）
-- ✅ 新增翻译进度显示
-- ✅ 新增追书神器小说排行榜
-- ✅ 优化图标系统为 vue-remix-icons
-- ✅ 优化缓存机制和错误处理
-- ✅ 修复设置页面排序图标显示错误（统一使用 PlatformIcon 组件）
-
-#### 主要改进（累计）
-- 使用 IIIF 图片API获取高质量艺术品图片
-- 智能分批翻译（每次最多200个）
-- 添加翻译确认对话框
-- 沙漏图标旋转动画
-- 双击恢复原文功能
-- 版权保护机制（公有领域筛选）
-- API信息透明化公示
-
----
-
-## 🔧 配置说明
-
-### 显示模式
-- **极简模式**：只显示主流平台
-- **分类模式**：按分类显示所有平台
-
-### 平台超时配置
-- 芝加哥艺术学院：10秒
-- 追书神器：20秒
-- 大都会博物馆：15秒（包含多次请求）
-- 其他平台：5秒（默认）⭐UPDATED
-
-### 缓存策略
-- 芝加哥艺术学院：60分钟
-- 大都会博物馆：无缓存（实时数据）
-- 其他平台：60分钟（API默认）
-
-### 代码风格 ⭐NEW
-- **JavaScript风格**：单引号、无分号
-- **缩进**：2空格
-- **命名**：camelCase（变量/函数）、PascalCase（组件/类）
-- **最大行宽**：100字符
-- **ESLint规则**：
-  - 禁止 `var`，使用 `const/let`
-  - 强制使用 `===` 而非 `==`
-  - 生产环境禁用 `console` 和 `debugger`
-  - 未使用变量警告
+- 单引号、无分号、2 空格缩进，Prettier 统一格式化（`npm run format`）
+- 变量/函数 camelCase，组件 PascalCase
+- 生产构建自动移除调试日志（`API.DEBUG` 跟随 `import.meta.env.DEV`）
 
 ---
 
@@ -915,61 +140,41 @@ npm run build
 - **数据来源**：芝加哥艺术学院 API
 - **版权状态**：仅展示公有领域（Public Domain）艺术品
 - **筛选条件**：`is_public_domain: true`
-- **使用许可**：可免费使用，无需额外授权
 - **官方文档**：[https://api.artic.edu/docs/](https://api.artic.edu/docs/)
 
-#### 大都会博物馆平台
-- **数据来源**：大都会博物馆 API
-- **版权状态**：仅展示公有领域（Public Domain）艺术品
-- **筛选条件**：`isPublicDomain: true`
-- **使用许可**：可免费使用，无需额外授权
-- **官方文档**：[https://metmuseum.org/developers/digital-body/metmuseum-collection-api](https://metmuseum.org/developers/digital-body/metmuseum-collection-api)
-
 #### 热搜数据聚合
-- **数据来源**：uapis.cn / imsyy.top
+- **数据来源**：内置本地 DailyHotApi / uapis.cn / api-hot.imsyy.com 三级回退
 - **数据性质**：实时聚合各公开平台热搜
 - **使用限制**：仅用于展示，版权归原作者平台
 
-#### API信息完整公示
-所有API信息可在设置页面 > 数据来源 & API 信息 中查看，包括：
-- API地址
-- 官方文档链接
-- 版权说明
-- 使用条款
+所有 API 信息可在 设置页 → 数据来源 & 免责声明 中查看。
 
 ---
 
 ## 🐛 已知问题
 
-1. **API依赖**：部分平台依赖第三方API，可能不稳定
+1. **API 依赖**：部分平台依赖第三方 API，可能不稳定（三级回退缓解）
 2. **翻译功能**：需要用户在 uTools 中配置 AI 模型
 3. **网络限制**：部分平台可能存在网络访问限制
-4. **大都会去重**：仅支持单页去重，跨页重复无法过滤
 
 ---
 
-## 📄 许可证
+## 📝 最近更新
 
-MIT License
-
----
-
-## 👥 作者
-
-摸鱼工作室
+- **2026-10-21 - v2.1.0**：全新界面（侧栏 + 聚合首页 + 钉住）、摸鱼小窗体系、老板键、站点净化、我的收藏、键盘流，详见 [CHANGELOG.md](CHANGELOG.md)
+- **2026-10-23**：快捷键修复（单字母/数字键排除修饰键组合，不再误吞 Ctrl+C 等系统快捷键）
 
 ---
 
 ## 🔗 相关链接
 
 - [uTools 官方文档](https://www.u-tools.cn/docs/developer/welcome.html)
-- [Vue 3 文档](https://vuejs.org/)
-- [Vite 文档](https://vitejs.dev/)
-- [Pinia 文档](https://pinia.vuejs.org/)
-- [VueUse 文档](https://vueuse.org/)
-- [芝加哥艺术学院API](https://api.artic.edu/docs/)
-- [大都会博物馆API](https://metmuseum.org/developers/digital-body/metmuseum-collection-api)
+- [Vue 3 文档](https://vuejs.org/) / [Vite](https://vitejs.dev/) / [Pinia](https://pinia.vuejs.org/)
+- [DailyHotApi](https://github.com/imsyy/DailyHotApi)
+- [芝加哥艺术学院 API](https://api.artic.edu/docs/)
 
 ---
 
-**备注**: 本项目持续更新中，欢迎提出建议和反馈！
+## 📄 许可证
+
+MIT License

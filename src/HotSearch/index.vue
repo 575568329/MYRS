@@ -135,7 +135,7 @@ const isGamePlatform = computed(() => {
   return isEpicFreePlatform.value
 })
 
-// 判断是否为支持翻译的平台（芝加哥艺术学院、大都会博物馆、GitHub Trending、Hacker News）
+// 判断是否为支持翻译的平台（芝加哥艺术学院、GitHub Trending、Hacker News）
 const isTranslatablePlatform = computed(() => {
   return isArticPlatform.value ||
          isGithubTrendingPlatform.value ||

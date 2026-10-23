@@ -4,8 +4,6 @@
 
 ### 1. 安装依赖
 
-本项目已配置淘宝镜像源，可以快速安装依赖：
-
 ```bash
 # 使用 npm（推荐）
 npm install
@@ -17,25 +15,13 @@ pnpm install
 yarn install
 ```
 
-**淘宝镜像配置**:
-项目中的 `.npmrc` 文件已配置为使用淘宝镜像源：
-```
-registry=https://registry.npmmirror.com
-```
-
-如果需要手动配置或查看当前镜像源：
+**镜像加速**（国内网络建议）：
 ```bash
 # 查看 npm 当前镜像源
 npm config get registry
 
 # 设置 npm 使用淘宝镜像（全局）
 npm config set registry https://registry.npmmirror.com
-
-# 设置 pnpm 使用淘宝镜像
-pnpm config set registry https://registry.npmmirror.com
-
-# 设置 yarn 使用淘宝镜像
-yarn config set registry https://registry.npmmirror.com
 ```
 
 ### 2. 启动开发服务器
@@ -44,11 +30,11 @@ yarn config set registry https://registry.npmmirror.com
 npm run dev
 ```
 
-开发服务器会在 `http://localhost:3000` 启动。
+开发服务器会在 `http://localhost:5173` 启动（`plugin.json` 的 `development.main` 已指向该地址）。
 
 ### 3. 在浏览器中测试
 
-打开浏览器访问 `http://localhost:3000`，你应该能看到热搜界面。
+打开浏览器访问 `http://localhost:5173`，你应该能看到热搜界面（部分功能需要 uTools 环境）。
 
 ### 4. 在 uTools 中测试
 
@@ -56,7 +42,7 @@ npm run dev
 2. 进入 `设置` -> `开发者模式`
 3. 点击 `安装本地插件`
 4. 选择本项目文件夹
-5. 输入"热搜"、"热榜"或"hot"唤醒插件
+5. 输入"热搜"、"热榜"、"摸鱼"、"热点"或"今日热点"唤醒插件
 
 ## 📦 构建生产版本
 
@@ -70,19 +56,21 @@ npm run build
 
 ### 1. 查看热搜
 
-- 选择分类标签（综合、社交、视频等）
-- 点击平台标签（微博、知乎、抖音等）
-- 查看该平台的热搜列表
+- 左侧平台栏按分类浏览（综合、社交、视频、资讯、科技、游戏、娱乐、生活、阅读、金融、艺术）
+- 常用平台可「钉住」置顶，聚合首页一屏看遍
+- 点击条目在 uTools 内置小窗打开（无痕摸鱼）
 
-### 2. 搜索功能
+### 2. 键盘流
 
-在顶部搜索框输入关键词，实时筛选热搜内容。
+- `←` / `→` 切换平台，`↑` / `↓` / `1-9` 选择条目
+- `Enter` 打开、`c` 复制标题、`f` 收藏
+- `` Ctrl+` `` 老板键一键隐藏所有摸鱼窗口
 
 ### 3. 快捷操作
 
-- **刷新**: 点击 🔄 按钮更新数据
-- **复制**: 点击 📋 按钮复制热搜列表
-- **打开详情**: 点击热搜项在浏览器中打开
+- **刷新**: 侧栏刷新按钮或 `F5`
+- **翻译**: 侧栏翻译按钮或 `Ctrl+T`（芝加哥艺术学院、GitHub热榜、Hacker News）
+- **设置**: 侧栏设置按钮（小窗尺寸/透明度/静音/站点净化等）
 
 ## 🔧 配置
 
@@ -91,7 +79,7 @@ npm run build
 编辑 `src/HotSearch/index.vue`:
 
 ```javascript
-const selectedPlatform = ref('weibo') // 改为你想要的默认平台
+const selectedPlatform = ref('baidu') // 改为你想要的默认平台
 ```
 
 ### 添加新平台
@@ -104,10 +92,13 @@ const selectedPlatform = ref('weibo') // 改为你想要的默认平台
 
 ### 修改 API 地址
 
-如果需要使用自己的 API 实例，编辑 `src/services/hotSearchApi.js`:
+数据源为三级回退（本地 DailyHotApi → uapis.cn → api-hot.imsyy.com）。如需修改本地服务地址，编辑 `src/config.js`:
 
 ```javascript
-const API_BASE = 'https://your-api-domain.com'
+API = {
+  LOCAL_API_BASE: 'http://localhost:6688',
+  // ...
+}
 ```
 
 ## 🐛 常见问题
@@ -125,7 +116,7 @@ A: 打开浏览器开发者工具（F12），查看 Console 和 Network 标签�
 
 ### Q: 数据多久更新一次?
 
-A: DailyHotApi 默认缓存60分钟。你也可以点击刷新按钮强制更新。
+A: 各平台独立缓存配置，微博、知乎、百度等高频平台缓存更短。你也可以点击刷新按钮强制更新。
 
 ### Q: 可以添加其他功能吗?
 
@@ -133,7 +124,7 @@ A: 当然！本项目完全开源，欢迎添加新功能并提交 PR。
 
 ### Q: 依赖安装慢怎么办?
 
-A: 项目已配置淘宝镜像，如果仍然慢，可以尝试：
+A: 可以配置淘宝镜像后重试：
 ```bash
 # 清除 npm 缓存
 npm cache clean --force
@@ -161,7 +152,7 @@ MIT License
 
 ---
 
-## 🎉 新功能使用指南 (v1.1.0)
+## 🎉 开发技巧
 
 ### 代码格式化
 
@@ -170,13 +161,9 @@ MIT License
 ```bash
 # 格式化所有代码
 npm run format
-
-# 检查代码问题（不修复）
-npm run lint:check
-
-# 检查并修复代码问题
-npm run lint
 ```
+
+> ⚠️ `npm run lint` 当前不可用：`.eslintrc.cjs` 旧式配置与新版 ESLint 不兼容，待迁移到 flat config。
 
 ### 1. 图片懒加载
 
@@ -224,12 +211,6 @@ const data = await retryRequest(
 // 芝加哥艺术学院
 import { getArticData } from '@/services/platforms/index.js'
 const articData = await getArticData(page, pageSize)
-
-// 大都会博物馆
-import { getMetMuseumData } from '@/services/platforms/index.js'
-const metData = await getMetMuseumData(page, pageSize, {
-  geoLocation: 'China'
-})
 ```
 
 ### 5. 开发建议
@@ -250,10 +231,7 @@ import SomeComponent from '@/components/SomeComponent.vue'
 # 1. 格式化代码
 npm run format
 
-# 2. 检查代码问题
-npm run lint
-
-# 3. 构建测试
+# 2. 构建测试
 npm run build
 ```
 
