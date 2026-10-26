@@ -474,6 +474,21 @@ const previewSize = computed(() => FISH_PREVIEW_SIZES[fishWindow.value.size] || 
           <h3>其他</h3>
 
           <div class="setting-item">
+            <div class="setting-label">
+              <span class="setting-name">好评提醒</span>
+              <span class="setting-desc">每周最多一次邀请去插件市场评分（觉得打扰可关闭）</span>
+            </div>
+            <label class="toggle-switch">
+              <input
+                type="checkbox"
+                :checked="settingsStore.ratingReminderEnabled"
+                @change="settingsStore.setRatingReminderEnabled($event.target.checked)"
+              />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-item">
             <button class="action-btn reset-btn" @click="handleReset">
               🔄 重置为默认设置
             </button>
@@ -519,7 +534,7 @@ const previewSize = computed(() => FISH_PREVIEW_SIZES[fishWindow.value.size] || 
           <h3>关于</h3>
           <div class="about-info">
             <p><strong>摸鱼热搜</strong> v2.1.0</p>
-            <p>一个简洁高效的热搜聚合插件 · 51 平台 · 内置数据服务</p>
+            <p>一个简洁高效的热搜聚合插件 · 52 平台 · 内置数据服务</p>
             <p>支持 AI 智能翻译（Ctrl+T，艺术与开发者平台）</p>
           </div>
         </section>

@@ -172,7 +172,11 @@ export const STORAGE_KEYS = {
   // 摸鱼小窗上次位置（FISH-WINDOW-2.0 M1 位置记忆）
   FISH_WINDOW_POS: 'fishWindowPos',
   // 五星好评提醒上次弹出时间（每周最多提醒一次）
-  RATING_REMINDER: 'ratingReminderTs'
+  RATING_REMINDER: 'ratingReminderTs',
+  // 好评提醒被用户关闭（弹窗"不再提醒"或设置页开关）
+  RATING_DISABLED: 'ratingDisabled',
+  // 首次进入操作引导已完成
+  ONBOARDING_DONE: 'onboardingDone'
 }
 
 // 导出默认配置对象

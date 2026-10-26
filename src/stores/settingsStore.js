@@ -17,6 +17,9 @@ export const useSettingsStore = defineStore('settings', () => {
   const themeMode = ref(UI.THEME_MODE)
   const showSettings = ref(false)
 
+  // 好评提醒开关（弹窗"不再提醒"或设置页可关闭）
+  const ratingReminderEnabled = ref(true)
+
   // 平台顺序管理
   const customPlatformOrder = ref([])
   const draggedItem = ref(null)
@@ -90,6 +93,11 @@ export const useSettingsStore = defineStore('settings', () => {
         const savedThemeMode = storage.getItem(STORAGE_KEYS.THEME_MODE)
         const savedPlatformOrder = storage.getItem(STORAGE_KEYS.CUSTOM_PLATFORM_ORDER)
         const savedHiddenPlatforms = storage.getItem(STORAGE_KEYS.HIDDEN_PLATFORMS)
+        const savedRatingDisabled = storage.getItem(STORAGE_KEYS.RATING_DISABLED)
+
+        if (savedRatingDisabled === 'true') {
+          ratingReminderEnabled.value = false
+        }
 
         if (savedShowHotValue !== null) {
           showHotValue.value = savedShowHotValue === 'true'
@@ -223,6 +231,7 @@ export const useSettingsStore = defineStore('settings', () => {
     persist(STORAGE_KEYS.HIDDEN_PLATFORMS, JSON.stringify(Array.from(hiddenPlatforms.value)))
     persist(STORAGE_KEYS.PINNED_PLATFORMS, JSON.stringify(pinnedPlatforms.value))
     persist(STORAGE_KEYS.FISH_WINDOW_CONFIG, JSON.stringify(fishWindow.value))
+    persist(STORAGE_KEYS.RATING_DISABLED, (!ratingReminderEnabled.value).toString())
   }
 
   /**
@@ -246,6 +255,15 @@ export const useSettingsStore = defineStore('settings', () => {
    */
   function toggleShowThumbnails() {
     showThumbnails.value = !showThumbnails.value
+    saveSettings()
+  }
+
+  /**
+   * 设置好评提醒开关
+   * @param {boolean} enabled
+   */
+  function setRatingReminderEnabled(enabled) {
+    ratingReminderEnabled.value = enabled
     saveSettings()
   }
 
@@ -280,6 +298,7 @@ export const useSettingsStore = defineStore('settings', () => {
     showHotValue.value = UI.SHOW_HOT_VALUE
     showDescription.value = UI.SHOW_DESCRIPTION
     themeMode.value = UI.THEME_MODE
+    ratingReminderEnabled.value = true
     customPlatformOrder.value = DISPLAY_MODE.SIMPLE_MODE_PLATFORMS.map(id =>
       PLATFORMS.find(p => p.id === id)
     ).filter(Boolean)
@@ -506,6 +525,7 @@ export const useSettingsStore = defineStore('settings', () => {
     showThumbnails,
     themeMode,
     showSettings,
+    ratingReminderEnabled,
     customPlatformOrder,
     draggedItem,
     draggedIndex,
@@ -520,6 +540,7 @@ export const useSettingsStore = defineStore('settings', () => {
     toggleShowHotValue,
     toggleShowDescription,
     toggleShowThumbnails,
+    setRatingReminderEnabled,
     setThemeMode,
     openSettings,
     closeSettings,

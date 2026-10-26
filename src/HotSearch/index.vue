@@ -99,6 +99,7 @@ const selectedHotIndex = ref(-1)
 
 // UI 设置
 const showRatingDialog = ref(false) // 五星好评提醒（每周最多一次）
+const showOnboarding = ref(false) // 首次进入操作引导
 const autoTranslate = ref(false) // 自动翻译开关（仅对芝加哥艺术学院有效）
 const translateOffset = ref(0) // 翻译偏移量（用于分页翻译）
 
@@ -630,6 +631,30 @@ const closeSettings = () => {
   settingsStore.closeSettings()
 }
 
+// ===== 首次进入操作引导 =====
+
+// 检查是否首次进入（未完成过引导即弹）
+const checkOnboarding = () => {
+  const storage = getStorage()
+  let done = '1'
+  try {
+    done = storage?.getItem(STORAGE_KEYS.ONBOARDING_DONE) || ''
+  } catch (e) { /* 读不到视为首次 */ }
+  if (done !== '1') {
+    showOnboarding.value = true
+  }
+}
+
+// 完成引导（按钮或 Esc 关闭均走这里）
+const finishOnboarding = () => {
+  showOnboarding.value = false
+  const storage = getStorage()
+  try {
+    storage?.setItem(STORAGE_KEYS.ONBOARDING_DONE, '1')
+  } catch (e) { /* 写失败下次还会看到引导 */ }
+  trackEvent('onboarding_done', {})
+}
+
 // ===== 五星好评提醒（每周最多一次，替代打赏入口） =====
 const RATING_INTERVAL = 7 * 24 * 60 * 60 * 1000
 let ratingTimer = null
@@ -637,6 +662,8 @@ let ratingTimer = null
 // 启动后延迟 8 秒检查：距上次提醒超过一周才弹，不打扰刚打开的用户
 const scheduleRatingReminder = () => {
   if (!window.utools) return // 浏览器开发环境无插件市场可跳
+  if (!settingsStore.ratingReminderEnabled) return // 用户已关闭提醒
+  if (showOnboarding.value) return // 首次引导会话不弹好评，避免连环打扰
   clearTimeout(ratingTimer)
   ratingTimer = setTimeout(() => {
     // 设置面板开着就顺延 1 分钟，避免叠加弹层
@@ -662,6 +689,13 @@ const scheduleRatingReminder = () => {
 const dismissRatingPrompt = () => {
   showRatingDialog.value = false
   trackEvent('rating_prompt', { action: 'dismiss' })
+}
+
+// 不再提醒（弹窗入口 / 设置页开关均可恢复）
+const neverRatePrompt = () => {
+  showRatingDialog.value = false
+  settingsStore.setRatingReminderEnabled(false)
+  trackEvent('rating_prompt', { action: 'never' })
 }
 
 // 去好评：跳转 uTools 插件市场本插件详情页
@@ -1067,13 +1101,17 @@ const handleKeyPress = (event) => {
     return
   }
 
-  // 弹层打开时：仅 Esc 关闭弹层，其余快捷键失效
-  const overlayOpen = settingsStore.showSettings || showRatingDialog.value
+  // 引导/弹层打开时：仅 Esc 关闭，其余快捷键失效
+  const overlayOpen = settingsStore.showSettings || showRatingDialog.value || showOnboarding.value
   if (overlayOpen) {
     if (event.key === 'Escape') {
       event.preventDefault()
-      settingsStore.closeSettings()
-      showRatingDialog.value = false
+      if (showOnboarding.value) {
+        finishOnboarding()
+      } else {
+        settingsStore.closeSettings()
+        showRatingDialog.value = false
+      }
     }
     return
   }
@@ -1339,6 +1377,9 @@ onMounted(() => {
   window.addEventListener('keydown', handleKeyPress)
   debug.log('⌨️ 键盘流已启用：←→ 平台 · ↑↓/1-9 选择 · Enter 打开 · c 复制 · f 收藏 · Esc 退出')
 
+  // 首次进入操作引导（先于好评提醒检查，首次会话不弹好评）
+  checkOnboarding()
+
   // 五星好评提醒（每周最多一次，延迟 8 秒弹出）
   scheduleRatingReminder()
 })
@@ -1581,6 +1622,49 @@ watch(selectedPlatform, (newPlatform) => {
     <!-- 埋点调试面板 - 仅在开发环境显示 -->
     <AnalyticsDebugPanel v-if="isDev" />
 
+    <!-- 首次进入操作引导 -->
+    <div v-if="showOnboarding" class="onboard-modal" @click="finishOnboarding">
+      <div class="onboard-content" @click.stop>
+        <div class="onboard-logo">🐟</div>
+        <h3 class="onboard-title">欢迎来到摸鱼热搜</h3>
+        <p class="onboard-sub">52 个平台的热搜，摸鱼姿势一次学会</p>
+
+        <div class="onboard-steps">
+          <div class="onboard-step">
+            <span class="step-ico">📌</span>
+            <div class="step-text">
+              <b>钉住常用平台</b>
+              <span>左侧栏点击平台看榜单，悬停点 📌 钉住，聚合首页一屏看遍</span>
+            </div>
+          </div>
+          <div class="onboard-step">
+            <span class="step-ico">🐟</span>
+            <div class="step-text">
+              <b>无痕小窗摸鱼</b>
+              <span>点击热搜条目在内置小窗打开：不占任务栏、不留浏览历史</span>
+            </div>
+          </div>
+          <div class="onboard-step">
+            <span class="step-ico">🛡️</span>
+            <div class="step-text">
+              <b>老板键一键隐身</b>
+              <span>Ctrl + ` 隐藏所有摸鱼窗口，再按一次恢复；可在 uTools 绑定全局快捷键</span>
+            </div>
+          </div>
+          <div class="onboard-step">
+            <span class="step-ico">⌨️</span>
+            <div class="step-text">
+              <b>键盘流</b>
+              <span>← → 切平台 · ↑ ↓ / 1-9 选条目 · Enter 打开 · c 复制 · f 收藏</span>
+            </div>
+          </div>
+        </div>
+
+        <p class="onboard-hint">小窗透明度、自动静音、站点净化等更多玩法在「设置」里</p>
+        <button class="onboard-btn" @click="finishOnboarding">开始摸鱼 🐟</button>
+      </div>
+    </div>
+
     <!-- 五星好评提醒（每周最多一次） -->
     <div v-if="showRatingDialog" class="rate-modal" @click="dismissRatingPrompt">
       <div class="rate-content" @click.stop>
@@ -1592,7 +1676,10 @@ watch(selectedPlatform, (newPlatform) => {
           <button class="rate-btn ghost" @click="dismissRatingPrompt">下次再说</button>
           <button class="rate-btn primary" @click="goRate">⭐ 去好评</button>
         </div>
-        <p class="rate-tip">每周最多提醒一次，不会打扰</p>
+        <p class="rate-tip">
+          每周最多提醒一次，不会打扰 ·
+          <button class="rate-never" @click="neverRatePrompt">不再提醒</button>
+        </p>
       </div>
     </div>
 
@@ -2234,6 +2321,131 @@ html.dark-mode .filter-btn.active {
   font-size: var(--font-sm, 12px);
   color: var(--color-text-muted);
   margin: 0;
+}
+
+.rate-never {
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: inherit;
+  color: var(--color-text-3);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.rate-never:hover {
+  color: var(--color-text-2);
+}
+
+/* ========== 首次进入操作引导 ========== */
+
+.onboard-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--z-modal);
+  animation: donateFadeIn 0.3s ease;
+}
+
+.onboard-content {
+  background-color: var(--color-surface);
+  border-radius: var(--radius-xl);
+  padding: 28px 32px;
+  max-width: 460px;
+  width: 92%;
+  max-height: 86vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+  animation: slideUp 0.3s ease;
+  text-align: center;
+}
+
+.onboard-logo {
+  font-size: 44px;
+  line-height: 1;
+  margin-bottom: 10px;
+}
+
+.onboard-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0 0 6px 0;
+}
+
+.onboard-sub {
+  font-size: var(--font-sm, 13px);
+  color: var(--color-text-3);
+  margin: 0 0 20px 0;
+}
+
+.onboard-steps {
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.onboard-step {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  background-color: var(--color-bg);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+}
+
+.step-ico {
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.step-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.step-text b {
+  font-size: var(--font-base);
+  color: var(--color-text);
+}
+
+.step-text span {
+  font-size: var(--font-sm, 12px);
+  color: var(--color-text-3);
+  line-height: 1.5;
+}
+
+.onboard-hint {
+  font-size: var(--font-sm, 12px);
+  color: var(--color-text-muted);
+  margin: 0 0 16px 0;
+}
+
+.onboard-btn {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, #ff9f1c, #ff6b35);
+  color: #ffffff;
+  font-size: var(--font-lg, 15px);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.onboard-btn:hover {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
 }
 </style>
 
