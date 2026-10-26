@@ -98,7 +98,7 @@ const lastRequestTime = ref(0)
 const selectedHotIndex = ref(-1)
 
 // UI 设置
-const showDonate = ref(false)
+const showRatingDialog = ref(false) // 五星好评提醒（每周最多一次）
 const autoTranslate = ref(false) // 自动翻译开关（仅对芝加哥艺术学院有效）
 const translateOffset = ref(0) // 翻译偏移量（用于分页翻译）
 
@@ -630,14 +630,53 @@ const closeSettings = () => {
   settingsStore.closeSettings()
 }
 
-// 打开打赏弹窗
-const openDonate = () => {
-  showDonate.value = true
+// ===== 五星好评提醒（每周最多一次，替代打赏入口） =====
+const RATING_INTERVAL = 7 * 24 * 60 * 60 * 1000
+let ratingTimer = null
+
+// 启动后延迟 8 秒检查：距上次提醒超过一周才弹，不打扰刚打开的用户
+const scheduleRatingReminder = () => {
+  if (!window.utools) return // 浏览器开发环境无插件市场可跳
+  clearTimeout(ratingTimer)
+  ratingTimer = setTimeout(() => {
+    // 设置面板开着就顺延 1 分钟，避免叠加弹层
+    if (settingsStore.showSettings) {
+      ratingTimer = setTimeout(scheduleRatingReminder, 60 * 1000)
+      return
+    }
+    const storage = getStorage()
+    let last = 0
+    try {
+      last = parseInt(storage?.getItem(STORAGE_KEYS.RATING_REMINDER) || '0', 10) || 0
+    } catch (e) { /* 读不到按从未提醒处理 */ }
+    if (Date.now() - last < RATING_INTERVAL) return
+    try {
+      storage?.setItem(STORAGE_KEYS.RATING_REMINDER, String(Date.now()))
+    } catch (e) { /* 写失败仅影响本周不重复的精度 */ }
+    showRatingDialog.value = true
+    trackEvent('rating_prompt', { action: 'show' })
+  }, 8 * 1000)
 }
 
-// 关闭打赏弹窗
-const closeDonate = () => {
-  showDonate.value = false
+// 下次再说（提醒时间已在弹出时记录，下周同一节奏再提醒）
+const dismissRatingPrompt = () => {
+  showRatingDialog.value = false
+  trackEvent('rating_prompt', { action: 'dismiss' })
+}
+
+// 去好评：跳转 uTools 插件市场本插件详情页
+const goRate = () => {
+  showRatingDialog.value = false
+  trackEvent('rating_prompt', { action: 'rate' })
+  try {
+    if (window.utools?.openMarketPage) {
+      window.utools.openMarketPage('摸鱼热搜')
+    } else {
+      showToast('请在 uTools 插件市场搜索「摸鱼热搜」评价')
+    }
+  } catch (e) {
+    showToast('请在 uTools 插件市场搜索「摸鱼热搜」评价')
+  }
 }
 
 // 批量翻译多个文本（一次性请求）
@@ -1029,12 +1068,12 @@ const handleKeyPress = (event) => {
   }
 
   // 弹层打开时：仅 Esc 关闭弹层，其余快捷键失效
-  const overlayOpen = settingsStore.showSettings || showDonate.value
+  const overlayOpen = settingsStore.showSettings || showRatingDialog.value
   if (overlayOpen) {
     if (event.key === 'Escape') {
       event.preventDefault()
       settingsStore.closeSettings()
-      showDonate.value = false
+      showRatingDialog.value = false
     }
     return
   }
@@ -1181,6 +1220,9 @@ onUnmounted(() => {
   if (loadingTimeout.value) {
     clearTimeout(loadingTimeout.value)
   }
+  if (ratingTimer) {
+    clearTimeout(ratingTimer)
+  }
   // 结算未上报的平台停留（pv）
   flushView()
 })
@@ -1296,6 +1338,9 @@ onMounted(() => {
   // 键盘流（P0.3）
   window.addEventListener('keydown', handleKeyPress)
   debug.log('⌨️ 键盘流已启用：←→ 平台 · ↑↓/1-9 选择 · Enter 打开 · c 复制 · f 收藏 · Esc 退出')
+
+  // 五星好评提醒（每周最多一次，延迟 8 秒弹出）
+  scheduleRatingReminder()
 })
 
 // 处理滚动事件
@@ -1342,7 +1387,6 @@ watch(selectedPlatform, (newPlatform) => {
       @refresh="refresh"
       @boss-key="handleBossKey('button')"
       @settings="openSettings"
-      @donate="openDonate"
     />
 
     <!-- 主区 -->
@@ -1537,16 +1581,18 @@ watch(selectedPlatform, (newPlatform) => {
     <!-- 埋点调试面板 - 仅在开发环境显示 -->
     <AnalyticsDebugPanel v-if="isDev" />
 
-    <!-- 打赏弹窗 -->
-    <div v-if="showDonate" class="donate-modal" @click="closeDonate">
-      <div class="donate-content" @click.stop>
-        <button class="donate-close" @click="closeDonate">✕</button>
-        <h3 class="donate-title">感谢打赏</h3>
-        <p class="donate-desc">如果您觉得这个插件对您有帮助，欢迎打赏支持</p>
-        <div class="donate-qr-container">
-          <img src="/img/zs.png" alt="打赏二维码" class="donate-qr" />
+    <!-- 五星好评提醒（每周最多一次） -->
+    <div v-if="showRatingDialog" class="rate-modal" @click="dismissRatingPrompt">
+      <div class="rate-content" @click.stop>
+        <button class="rate-close" @click="dismissRatingPrompt">✕</button>
+        <div class="rate-stars">⭐⭐⭐⭐⭐</div>
+        <h3 class="rate-title">喜欢摸鱼热搜吗？</h3>
+        <p class="rate-desc">如果觉得好用，欢迎去 uTools 插件市场给我们一个五星好评，让更多人发现它～</p>
+        <div class="rate-actions">
+          <button class="rate-btn ghost" @click="dismissRatingPrompt">下次再说</button>
+          <button class="rate-btn primary" @click="goRate">⭐ 去好评</button>
         </div>
-        <p class="donate-tip">扫码打赏，感谢您的支持！</p>
+        <p class="rate-tip">每周最多提醒一次，不会打扰</p>
       </div>
     </div>
 
@@ -2063,9 +2109,9 @@ html.dark-mode .filter-btn.active {
   color: #ffffff;
 }
 
-/* ========== 打赏弹窗（自全局块迁入并令牌化） ========== */
+/* ========== 五星好评提醒弹窗（每周最多一次） ========== */
 
-.donate-modal {
+.rate-modal {
   position: fixed;
   top: 0;
   left: 0;
@@ -2084,7 +2130,7 @@ html.dark-mode .filter-btn.active {
   to { opacity: 1; }
 }
 
-.donate-content {
+.rate-content {
   background-color: var(--color-surface);
   border-radius: var(--radius-xl);
   padding: 32px;
@@ -2093,6 +2139,7 @@ html.dark-mode .filter-btn.active {
   box-shadow: var(--shadow-lg);
   animation: slideUp 0.3s ease;
   position: relative;
+  text-align: center;
 }
 
 @keyframes slideUp {
@@ -2100,7 +2147,7 @@ html.dark-mode .filter-btn.active {
   to { transform: translateY(0); opacity: 1; }
 }
 
-.donate-close {
+.rate-close {
   position: absolute;
   top: 16px;
   right: 16px;
@@ -2118,45 +2165,74 @@ html.dark-mode .filter-btn.active {
   transition: all 0.2s;
 }
 
-.donate-close:hover {
+.rate-close:hover {
   background-color: var(--color-surface-muted-hover);
   color: var(--color-text);
 }
 
-.donate-title {
+.rate-stars {
+  font-size: 28px;
+  letter-spacing: 4px;
+  margin-bottom: 12px;
+}
+
+.rate-title {
   font-size: var(--font-xxl);
   font-weight: 600;
   color: var(--color-text);
   margin: 0 0 12px 0;
-  text-align: center;
 }
 
-.donate-desc {
+.rate-desc {
   font-size: var(--font-base);
   color: var(--color-text-3);
-  text-align: center;
   margin: 0 0 24px 0;
-  line-height: 1.5;
+  line-height: 1.6;
 }
 
-.donate-qr-container {
+.rate-actions {
   display: flex;
+  gap: 12px;
   justify-content: center;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
-.donate-qr {
-  width: 250px;
-  height: 250px;
-  object-fit: contain;
+.rate-btn {
+  flex: 1;
+  max-width: 150px;
+  padding: 10px 16px;
   border-radius: var(--radius-md);
-  border: 2px solid var(--color-border-light);
+  font-size: var(--font-base);
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
 }
 
-.donate-tip {
-  font-size: var(--font-md);
+.rate-btn.ghost {
+  background-color: var(--color-bg);
+  color: var(--color-text-2);
+  border-color: var(--color-border-light);
+}
+
+.rate-btn.ghost:hover {
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+
+.rate-btn.primary {
+  background: linear-gradient(135deg, #ff9f1c, #ff6b35);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.rate-btn.primary:hover {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+}
+
+.rate-tip {
+  font-size: var(--font-sm, 12px);
   color: var(--color-text-muted);
-  text-align: center;
   margin: 0;
 }
 </style>

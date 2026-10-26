@@ -125,9 +125,6 @@
         <Settings2 class="side-ico" :size="13" />
         <span>设置</span>
       </button>
-      <button class="foot-btn" title="打赏" @click="$emit('donate')">
-        <Heart class="side-ico heart" :size="13" />
-      </button>
     </div>
   </aside>
 </template>
@@ -138,7 +135,7 @@ import { PLATFORMS } from '../services/hotSearchApi.js'
 import { useSettingsStore } from '../stores/settingsStore.js'
 import {
   LayoutDashboard, Star, Pin, ChevronDown, ChevronRight,
-  Languages, RefreshCw, Settings2, Heart, Flame, Shield
+  Languages, RefreshCw, Settings2, Flame, Shield
 } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -153,7 +150,7 @@ const props = defineProps({
   loading: { type: Boolean, default: false }
 })
 
-defineEmits(['select', 'pin-toggle', 'translate', 'refresh', 'boss-key', 'settings', 'donate'])
+defineEmits(['select', 'pin-toggle', 'translate', 'refresh', 'boss-key', 'settings'])
 
 const settingsStore = useSettingsStore()
 
@@ -407,10 +404,6 @@ function dotColor(category) {
 
 .foot-btn.active {
   color: var(--color-brand-text);
-}
-
-.foot-btn .heart {
-  color: #ef5b5b;
 }
 
 /* 老板键：侧栏底部独立全宽按钮，右侧标注快捷键 */

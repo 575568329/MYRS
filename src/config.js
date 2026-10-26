@@ -170,7 +170,9 @@ export const STORAGE_KEYS = {
   // 摸鱼小窗配置（P1：尺寸/透明度/置顶/打开方式）
   FISH_WINDOW_CONFIG: 'fishWindowConfig',
   // 摸鱼小窗上次位置（FISH-WINDOW-2.0 M1 位置记忆）
-  FISH_WINDOW_POS: 'fishWindowPos'
+  FISH_WINDOW_POS: 'fishWindowPos',
+  // 五星好评提醒上次弹出时间（每周最多提醒一次）
+  RATING_REMINDER: 'ratingReminderTs'
 }
 
 // 导出默认配置对象
