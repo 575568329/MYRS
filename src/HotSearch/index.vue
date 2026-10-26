@@ -2049,12 +2049,6 @@ watch(selectedPlatform, (newPlatform) => {
   font-variant-numeric: tabular-nums;
 }
 
-/* 有简介时编号对齐标题首行，而不是对整个「标题+简介」块垂直居中 */
-.hot-item:not(.no-desc) .hot-rank {
-  align-self: flex-start;
-  margin-top: 1px;
-}
-
 /* Top3 排名高亮（getRankClass 输出，§11.2 色阶） */
 .hot-rank.rank-top.top-1 {
   background: linear-gradient(135deg, var(--brand-fire-2), var(--brand-fire-3));
