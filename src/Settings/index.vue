@@ -696,7 +696,7 @@ const previewSize = computed(() => FISH_PREVIEW_SIZES[fishWindow.value.size] || 
 }
 
 .toggle-switch input:checked + .toggle-slider {
-  background: var(--color-primary);
+  background: var(--brand-fire-2);
 }
 
 .toggle-switch input:checked + .toggle-slider::before {
@@ -1078,16 +1078,17 @@ kbd {
   padding: 8px 18px;
   border: none;
   border-radius: var(--radius-sm);
-  background: var(--color-btn-primary);
+  background: var(--gradient-brand);
   color: #ffffff;
   font-size: var(--font-sm);
   cursor: pointer;
   font-family: inherit;
-  transition: background 0.2s;
+  transition: filter 0.2s, transform 0.2s;
 }
 
 .action-btn:hover {
-  background: var(--color-btn-primary-hover);
+  filter: brightness(1.05);
+  transform: translateY(-1px);
 }
 
 /* API 信息（折叠） */

@@ -13,7 +13,7 @@ import PlatformSidebar from '../components/PlatformSidebar.vue'
 import AggregateHome from '../components/AggregateHome.vue'
 import FavoritesView from '../components/FavoritesView.vue'
 import ErrorState from '../components/ErrorState.vue'
-import { RefreshCw, Star, Copy, Link, Flame, ArrowUpDown } from 'lucide-vue-next'
+import { RefreshCw, Star, Copy, Link, Flame, ArrowUpDown, Pin, Fish, Shield, Keyboard } from 'lucide-vue-next'
 import { openUrl } from '../utils/openUrl.js'
 import { toggleBossKey } from '../utils/bossKey.js'
 import { saveMirror, peekMirror, mirrorAgeText } from '../utils/dataMirror.js'
@@ -1625,34 +1625,34 @@ watch(selectedPlatform, (newPlatform) => {
     <!-- 首次进入操作引导 -->
     <div v-if="showOnboarding" class="onboard-modal" @click="finishOnboarding">
       <div class="onboard-content" @click.stop>
-        <div class="onboard-logo">🐟</div>
+        <img src="/logo.svg" alt="摸鱼热搜" class="onboard-logo-img" />
         <h3 class="onboard-title">欢迎来到摸鱼热搜</h3>
         <p class="onboard-sub">52 个平台的热搜，摸鱼姿势一次学会</p>
 
         <div class="onboard-steps">
           <div class="onboard-step">
-            <span class="step-ico">📌</span>
+            <span class="step-ico"><Pin :size="18" /></span>
             <div class="step-text">
               <b>钉住常用平台</b>
               <span>左侧栏点击平台看榜单，悬停点 📌 钉住，聚合首页一屏看遍</span>
             </div>
           </div>
           <div class="onboard-step">
-            <span class="step-ico">🐟</span>
+            <span class="step-ico"><Fish :size="18" /></span>
             <div class="step-text">
               <b>无痕小窗摸鱼</b>
               <span>点击热搜条目在内置小窗打开：不占任务栏、不留浏览历史</span>
             </div>
           </div>
           <div class="onboard-step">
-            <span class="step-ico">🛡️</span>
+            <span class="step-ico"><Shield :size="18" /></span>
             <div class="step-text">
               <b>老板键一键隐身</b>
               <span>Ctrl + ` 隐藏所有摸鱼窗口，再按一次恢复；可在 uTools 绑定全局快捷键</span>
             </div>
           </div>
           <div class="onboard-step">
-            <span class="step-ico">⌨️</span>
+            <span class="step-ico"><Keyboard :size="18" /></span>
             <div class="step-text">
               <b>键盘流</b>
               <span>← → 切平台 · ↑ ↓ / 1-9 选条目 · Enter 打开 · c 复制 · f 收藏</span>
@@ -1661,7 +1661,7 @@ watch(selectedPlatform, (newPlatform) => {
         </div>
 
         <p class="onboard-hint">小窗透明度、自动静音、站点净化等更多玩法在「设置」里</p>
-        <button class="onboard-btn" @click="finishOnboarding">开始摸鱼 🐟</button>
+        <button class="onboard-btn" @click="finishOnboarding">开始摸鱼</button>
       </div>
     </div>
 
@@ -1676,10 +1676,7 @@ watch(selectedPlatform, (newPlatform) => {
           <button class="rate-btn ghost" @click="dismissRatingPrompt">下次再说</button>
           <button class="rate-btn primary" @click="goRate">⭐ 去好评</button>
         </div>
-        <p class="rate-tip">
-          每周最多提醒一次，不会打扰 ·
-          <button class="rate-never" @click="neverRatePrompt">不再提醒</button>
-        </p>
+        <button class="rate-never" @click="neverRatePrompt">不再提醒</button>
       </div>
     </div>
 
@@ -2046,9 +2043,16 @@ watch(selectedPlatform, (newPlatform) => {
   justify-content: center;
   font-size: 12px;
   font-weight: bold;
+  line-height: 1;
   flex-shrink: 0;
   margin-right: 10px;
   font-variant-numeric: tabular-nums;
+}
+
+/* 有简介时编号对齐标题首行，而不是对整个「标题+简介」块垂直居中 */
+.hot-item:not(.no-desc) .hot-rank {
+  align-self: flex-start;
+  margin-top: 1px;
 }
 
 /* Top3 排名高亮（getRankClass 输出，§11.2 色阶） */
@@ -2317,18 +2321,12 @@ html.dark-mode .filter-btn.active {
   transform: translateY(-1px);
 }
 
-.rate-tip {
-  font-size: var(--font-sm, 12px);
-  color: var(--color-text-muted);
-  margin: 0;
-}
-
 .rate-never {
   border: none;
   background: none;
   padding: 0;
-  font-size: inherit;
-  color: var(--color-text-3);
+  font-size: var(--font-sm, 12px);
+  color: var(--color-text-muted);
   text-decoration: underline;
   cursor: pointer;
 }
@@ -2366,10 +2364,11 @@ html.dark-mode .filter-btn.active {
   text-align: center;
 }
 
-.onboard-logo {
-  font-size: 44px;
-  line-height: 1;
-  margin-bottom: 10px;
+.onboard-logo-img {
+  width: 60px;
+  height: 60px;
+  border-radius: 15px;
+  margin-bottom: 12px;
 }
 
 .onboard-title {
@@ -2403,8 +2402,15 @@ html.dark-mode .filter-btn.active {
 }
 
 .step-ico {
-  font-size: 22px;
-  line-height: 1.2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: var(--gradient-brand);
+  color: #ffffff;
+  flex: none;
 }
 
 .step-text {
