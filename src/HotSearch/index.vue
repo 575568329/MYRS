@@ -2076,7 +2076,7 @@ watch(selectedPlatform, (newPlatform) => {
 .hot-title {
   font-size: 15px;
   color: var(--color-text);
-  margin-bottom: 4px;
+  margin-bottom: 0; /* 间距由 .hot-desc 的 margin-top 提供，避免无简介时标题偏离行中心 */
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2088,7 +2088,7 @@ watch(selectedPlatform, (newPlatform) => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  margin-bottom: 4px;
+  margin-top: 4px;
 }
 
 .hot-value {
