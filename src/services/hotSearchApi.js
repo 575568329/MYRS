@@ -68,15 +68,19 @@ export const PLATFORMS = [
   { id: 'zhihu-daily', name: '知乎日报', icon: 'ri-newspaper-line', category: '社交', alias: ["zhrb","daily"] },
   { id: 'douyin', name: '抖音', icon: 'ri-music-2-line', category: '视频', alias: ["dy","douyin"] },
   { id: 'kuaishou', name: '快手', icon: 'ri-camera-lens-line', category: '视频', alias: ["ks"] },
+  { id: 'xiaohongshu', name: '小红书', icon: 'ri-heart-line', category: '社交', alias: ["xhs","rednote"] },
   { id: 'douban-movie', name: '豆瓣电影', icon: 'ri-movie-2-line', category: '娱乐', alias: ["db","douban"] },
   { id: 'douban-group', name: '豆瓣小组', icon: 'ri-team-line', category: '娱乐', alias: ["dbxz"] },
   { id: 'tieba', name: '贴吧', icon: 'ri-group-line', category: '社交', alias: ["tb","tieba"] },
   { id: 'hupu', name: '虎扑', icon: 'ri-basketball-line', category: '生活', alias: ["hupu","hp"] },
   { id: 'newsmth', name: '水木社区', icon: 'ri-chat-3-line', category: '社交', alias: ["smth","shuimu"] },
-  // { id: 'miyoushe', name: '米游社', icon: 'ri-game-line', category: '游戏' },
   { id: 'v2ex', name: 'V2EX', icon: 'ri-chat-smile-2-line', category: '科技', alias: ["v2ex"] },
   { id: '52pojie', name: '吾爱破解', icon: 'ri-lock-2-line', category: '科技', alias: ["52","pojie"] },
   { id: 'coolapk', name: '酷安', icon: 'ri-android-line', category: '科技', alias: ["coolapk","kuan"] },
+
+  // 音乐
+  { id: 'qq-music', name: 'QQ音乐', icon: 'ri-disc-line', category: '音乐', alias: ["qqyy","gequ"] },
+  { id: 'netease-music', name: '网易云热歌', icon: 'ri-album-line', category: '音乐', alias: ["wyy","wangyiyun"] },
 
   // 新闻/资讯
   { id: 'baidu', name: '百度', icon: 'ri-search-2-line', category: '综合', alias: ["bd","baidu"] },
@@ -86,6 +90,7 @@ export const PLATFORMS = [
   { id: 'sina', name: '新浪热搜', icon: 'ri-rss-line', category: '资讯', alias: ["xl","sina"] },
   { id: 'sina-news', name: '新浪新闻', icon: 'ri-rss-line', category: '资讯', alias: ["xlxw"] },
   { id: 'netease-news', name: '网易新闻', icon: 'ri-news-line', category: '资讯', alias: ["wy","wangyi"] },
+  // { id: 'nytimes', name: '纽约时报', icon: 'ri-newspaper-line', category: '资讯', alias: ["nyt","niuyue"] },
   { id: 'huxiu', name: '虎嗅', icon: 'ri-lightbulb-line', category: '资讯', alias: ["huxiu","hx"] },
   { id: 'ifanr', name: '爱范儿', icon: 'ri-magic-line', category: '资讯', alias: ["ifanr","afr"] },
 
@@ -101,9 +106,18 @@ export const PLATFORMS = [
   { id: 'csdn', name: 'CSDN', icon: 'ri-code-box-line', category: '科技', alias: ["csdn"] },
   { id: 'nodeseek', name: 'NodeSeek', icon: 'ri-nodejs-line', category: '科技', alias: ["ns","nodeseek"] },
   { id: 'geekpark', name: '极客公园', icon: 'ri-rocket-2-line', category: '科技', alias: ["geekpark","jike"] },
+  // 以下平台本地 DailyHotApi 上游源当前网络环境不可用（拒连/超时/证书过期），恢复后取消注释即可
+  // { id: 'linuxdo', name: 'LinuxDo', icon: 'ri-terminal-box-line', category: '科技', alias: ["ld","linuxdo"] },
+  // { id: 'hostloc', name: 'HostLoc', icon: 'ri-server-line', category: '科技', alias: ["hostloc"] },
+  { id: 'dgtle', name: '数字尾巴', icon: 'ri-smartphone-line', category: '科技', alias: ["dgtle","shuzi"] },
 
   // 游戏
   { id: 'lol', name: '英雄联盟', icon: 'ri-sword-line', category: '游戏', alias: ["lol","yx"] },
+  { id: 'ngabbs', name: 'NGA', icon: 'ri-gamepad-line', category: '游戏', alias: ["nga"] },
+  // 以下游戏社区上游源当前不可用（同上，网络环境原因）
+  // { id: 'miyoushe', name: '米游社', icon: 'ri-game-line', category: '游戏', alias: ["mys","miyou"] },
+  // { id: 'yystv', name: '游研社', icon: 'ri-sword-line', category: '游戏', alias: ["yys","youyan"] },
+  // { id: 'gameres', name: '游资网', icon: 'ri-game-line', category: '游戏', alias: ["yzw","gameres"] },
   { id: 'epic-free', name: 'Epic免费游戏', icon: 'ri-gamepad-line', category: '游戏', alias: ["epic","free"] },
   { id: 'genshin', name: '原神', icon: 'ri-star-smile-line', category: '游戏', alias: ["ys","yuanshen"] },
   { id: 'honkai', name: '崩坏3', icon: 'ri-planet-line', category: '游戏', alias: ["bh3","benghuai"] },
@@ -113,6 +127,7 @@ export const PLATFORMS = [
   { id: 'stock-hot', name: '热门股票', icon: 'ri-stock-line', category: '金融', alias: ["gp","gupiao"] },
   { id: 'stock-sh', name: '上证指数', icon: 'ri-funds-line', category: '金融', alias: ["szzs","shangzheng"] },
   { id: 'stock-tech', name: '科技股', icon: 'ri-cpu-line', category: '金融', alias: ["kjg","tech"] },
+  { id: 'cls-telegraph', name: '财联社电报', icon: 'ri-broadcast-line', category: '金融', alias: ["cls","dianbao"] },
 
   // 开发者工具
   { id: 'github-trending', name: 'GitHub热榜', icon: 'ri-github-fill', category: '科技', alias: ["gh","github"] },
@@ -123,6 +138,8 @@ export const PLATFORMS = [
   { id: 'weread', name: '微信读书', icon: 'ri-book-read-line', category: '阅读', alias: ["weread","wxds"] },
   { id: 'smzdm', name: '什么值得买', icon: 'ri-shopping-bag-3-line', category: '生活', alias: ["smzdm","zdm"] },
   { id: 'history', name: '历史上的今天', icon: 'ri-calendar-line', category: '综合', alias: ["ls","lishi"] },
+  // { id: 'earthquake', name: '地震速报', icon: 'ri-alert-line', category: '综合', alias: ["dizhen","earthquake"] },
+  { id: 'weatheralarm', name: '气象预警', icon: 'ri-cloudy-line', category: '综合', alias: ["qxyj","tianqi"] },
   { id: 'hellogithub', name: 'HelloGitHub', icon: 'ri-github-line', category: '科技', alias: ["hg","hellogithub"] },
   { id: 'artic', name: '芝加哥艺术学院', icon: 'ri-building-2-line', category: '艺术', alias: ["artic","meishu"] },
 ]
@@ -262,11 +279,19 @@ function normalizeUapisData(data, platformId) {
       const url = (platformId === 'douban-movie')
         ? `https://search.douban.com/movie/subject_search?search_text=${encodeURIComponent(title)}`
         : (item.url || '')
+      // 封面兜底：部分源封面在 extra.cover / 顶层 cover
+      let img = item.extra?.img || item.extra?.cover || item.cover || ''
+      // 小红书热榜的封面统一是官方"热"字角标占位图，无信息量，不展示（真封面来自笔记图床时不在此列）
+      if (platformId === 'xiaohongshu' && img.includes('picasso-static.xiaohongshu.com')) {
+        img = ''
+      }
       return {
         index: item.index,
         title: title,
-        desc: stripHtml(item.extra?.desc || ''),
-        img: item.extra?.img || '',
+        // 歌曲类源（QQ音乐）歌手名在 extra.artist_names，无独立 desc
+        desc: stripHtml(item.extra?.desc || item.extra?.artist_names || ''),
+        // 封面兜底：部分源封面在 extra.cover / 顶层 cover
+        img: img,
         url: url,
         hot: item.hot_value || ''
       }
@@ -286,6 +311,242 @@ function normalizeUapisData(data, platformId) {
     })
   }
   throw new Error('API 返回数据格式不正确')
+}
+
+/**
+ * 获取网易云音乐热歌榜（官方歌单老接口，热歌榜 id 3778678，无需签名）
+ * @param {number} page - 页码
+ * @param {number} pageSize - 每页条数
+ * @returns {Promise<Object>} 热歌数据
+ */
+async function getNeteaseMusicData(page, pageSize) {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), API.REQUEST_TIMEOUT + 4000)
+  try {
+    const response = await fetch('https://music.163.com/api/playlist/detail?id=3778678', {
+      method: 'GET',
+      signal: controller.signal
+    })
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+    }
+    const result = await response.json()
+    const tracks = result?.result?.tracks
+    if (!Array.isArray(tracks) || tracks.length === 0) {
+      throw new Error('网易云返回数据格式不正确')
+    }
+    const hotList = tracks.map((track, index) => ({
+      index: index + 1,
+      title: track.name || '',
+      desc: [
+        Array.isArray(track.artists) ? track.artists.map(a => a.name).join('/') : '',
+        track.album?.name || ''
+      ].filter(Boolean).join(' · '),
+      img: track.album?.picUrl || '',
+      url: track.id ? `https://music.163.com/song?id=${track.id}` : 'https://music.163.com/',
+      mobileUrl: track.id ? `https://music.163.com/song?id=${track.id}` : 'https://music.163.com/',
+      hot: ''
+    }))
+    debug.log(`✅ 成功获取网易云热歌榜 ${hotList.length} 首`)
+    const start = (page - 1) * pageSize
+    const end = start + pageSize
+    return {
+      data: hotList.slice(start, end),
+      total: hotList.length,
+      hasMore: end < hotList.length,
+      source: 'netease'
+    }
+  } catch (error) {
+    // 与财联社/股票平台一致：区分跨域失败给出明确提示
+    if (error.message && (error.message.includes('Failed to fetch') || error.message.includes('NetworkError'))) {
+      throw new Error('跨域请求被阻止（建议在uTools中使用）')
+    }
+    throw error
+  } finally {
+    clearTimeout(timeoutId)
+  }
+}
+
+/**
+ * 纯 JS SHA1 / MD5（财联社 sign 用；渲染进程拿不到 node:crypto，Web Crypto 又无 MD5）
+ * 输入经 UTF-8 编码，返回小写 hex
+ */
+function jsSha1(str) {
+  const msg = unescape(encodeURIComponent(str))
+  const ml = msg.length
+  const words = []
+  for (let i = 0; i < ml; i++) words[i >> 2] = (words[i >> 2] || 0) | msg.charCodeAt(i) << (24 - (i % 4) * 8)
+  words[ml >> 2] = (words[ml >> 2] || 0) | 0x80 << (24 - (ml % 4) * 8)
+  const n = (((ml + 8) >> 6) + 1) * 16
+  for (let i = 0; i < n; i++) words[i] = words[i] || 0
+  words[n - 1] = ml * 8
+  let h0 = 0x67452301, h1 = 0xEFCDAB89, h2 = 0x98BADCFE, h3 = 0x10325476, h4 = 0xC3D2E1F0
+  const w = new Array(80)
+  for (let i = 0; i < n; i += 16) {
+    for (let j = 0; j < 16; j++) w[j] = words[i + j]
+    for (let j = 16; j < 80; j++) {
+      const x = w[j - 3] ^ w[j - 8] ^ w[j - 14] ^ w[j - 16]
+      w[j] = (x << 1) | (x >>> 31)
+    }
+    let a = h0, b = h1, c = h2, d = h3, e = h4
+    for (let j = 0; j < 80; j++) {
+      let f, k
+      if (j < 20) { f = (b & c) | (~b & d); k = 0x5A827999 }
+      else if (j < 40) { f = b ^ c ^ d; k = 0x6ED9EBA1 }
+      else if (j < 60) { f = (b & c) | (b & d) | (c & d); k = 0x8F1BBCDC }
+      else { f = b ^ c ^ d; k = 0xCA62C1D6 }
+      const t = (((a << 5) | (a >>> 27)) + f + e + k + (w[j] | 0)) | 0
+      e = d; d = c; c = (b << 30) | (b >>> 2); b = a; a = t
+    }
+    h0 = (h0 + a) | 0; h1 = (h1 + b) | 0; h2 = (h2 + c) | 0; h3 = (h3 + d) | 0; h4 = (h4 + e) | 0
+  }
+  return [h0, h1, h2, h3, h4].map(x => (x >>> 0).toString(16).padStart(8, '0')).join('')
+}
+
+function jsMd5(str) {
+  // 经典紧凑实现（Joseph Myers 公共域版本改写），按小端字节序输出 hex
+  const rl = (n, c) => (n << c) | (n >>> (32 - c))
+  const ad = (x, y) => (x + y) | 0
+  const cmn = (q, a, b, x, s, t) => rl(ad(ad(a, q), ad(x, t)), s) + b | 0
+  const ff = (a, b, c, d, x, s, t) => cmn((b & c) | (~b & d), a, b, x, s, t)
+  const gg = (a, b, c, d, x, s, t) => cmn((b & d) | (c & ~d), a, b, x, s, t)
+  const hh = (a, b, c, d, x, s, t) => cmn(b ^ c ^ d, a, b, x, s, t)
+  const ii = (a, b, c, d, x, s, t) => cmn(c ^ (b | ~d), a, b, x, s, t)
+  const md5cycle = (x, k) => {
+    let [a, b, c, d] = x
+    a = ff(a, b, c, d, k[0], 7, -680876936); d = ff(d, a, b, c, k[1], 12, -389564586); c = ff(c, d, a, b, k[2], 17, 606105819); b = ff(b, c, d, a, k[3], 22, -1044525330)
+    a = ff(a, b, c, d, k[4], 7, -176418897); d = ff(d, a, b, c, k[5], 12, 1200080426); c = ff(c, d, a, b, k[6], 17, -1473231341); b = ff(b, c, d, a, k[7], 22, -45705983)
+    a = ff(a, b, c, d, k[8], 7, 1770035416); d = ff(d, a, b, c, k[9], 12, -1958414417); c = ff(c, d, a, b, k[10], 17, -42063); b = ff(b, c, d, a, k[11], 22, -1990404162)
+    a = ff(a, b, c, d, k[12], 7, 1804603682); d = ff(d, a, b, c, k[13], 12, -40341101); c = ff(c, d, a, b, k[14], 17, -1502002290); b = ff(b, c, d, a, k[15], 22, 1236535329)
+    a = gg(a, b, c, d, k[1], 5, -165796510); d = gg(d, a, b, c, k[6], 9, -1069501632); c = gg(c, d, a, b, k[11], 14, 643717713); b = gg(b, c, d, a, k[0], 20, -373897302)
+    a = gg(a, b, c, d, k[5], 5, -701558691); d = gg(d, a, b, c, k[10], 9, 38016083); c = gg(c, d, a, b, k[15], 14, -660478335); b = gg(b, c, d, a, k[4], 20, -405537848)
+    a = gg(a, b, c, d, k[9], 5, 568446438); d = gg(d, a, b, c, k[14], 9, -1019803690); c = gg(c, d, a, b, k[3], 14, -187363961); b = gg(b, c, d, a, k[8], 20, 1163531501)
+    a = gg(a, b, c, d, k[13], 5, -1444681467); d = gg(d, a, b, c, k[2], 9, -51403784); c = gg(c, d, a, b, k[7], 14, 1735328473); b = gg(b, c, d, a, k[12], 20, -1926607734)
+    a = hh(a, b, c, d, k[5], 4, -378558); d = hh(d, a, b, c, k[8], 11, -2022574463); c = hh(c, d, a, b, k[11], 16, 1839030562); b = hh(b, c, d, a, k[14], 23, -35309556)
+    a = hh(a, b, c, d, k[1], 4, -1530992060); d = hh(d, a, b, c, k[4], 11, 1272893353); c = hh(c, d, a, b, k[7], 16, -155497632); b = hh(b, c, d, a, k[10], 23, -1094730640)
+    a = hh(a, b, c, d, k[13], 4, 681279174); d = hh(d, a, b, c, k[0], 11, -358537222); c = hh(c, d, a, b, k[3], 16, -722521979); b = hh(b, c, d, a, k[6], 23, 76029189)
+    a = hh(a, b, c, d, k[9], 4, -640364487); d = hh(d, a, b, c, k[12], 11, -421815835); c = hh(c, d, a, b, k[15], 16, 530742520); b = hh(b, c, d, a, k[2], 23, -995338651)
+    a = ii(a, b, c, d, k[0], 6, -198630844); d = ii(d, a, b, c, k[7], 10, 1126891415); c = ii(c, d, a, b, k[14], 15, -1416354905); b = ii(b, c, d, a, k[5], 21, -57434055)
+    a = ii(a, b, c, d, k[12], 6, 1700485571); d = ii(d, a, b, c, k[3], 10, -1894986606); c = ii(c, d, a, b, k[10], 15, -1051523); b = ii(b, c, d, a, k[1], 21, -2054922799)
+    a = ii(a, b, c, d, k[8], 6, 1873313359); d = ii(d, a, b, c, k[15], 10, -30611744); c = ii(c, d, a, b, k[6], 15, -1560198380); b = ii(b, c, d, a, k[13], 21, 1309151649)
+    a = ii(a, b, c, d, k[4], 6, -145523070); d = ii(d, a, b, c, k[11], 10, -1120210379); c = ii(c, d, a, b, k[2], 15, 718787259); b = ii(b, c, d, a, k[9], 21, -343485551)
+    x[0] = ad(a, x[0]); x[1] = ad(b, x[1]); x[2] = ad(c, x[2]); x[3] = ad(d, x[3])
+  }
+  const md5blk = (s) => {
+    const blks = []
+    for (let i = 0; i < 64; i += 4) {
+      blks[i >> 2] = s.charCodeAt(i) + (s.charCodeAt(i + 1) << 8) + (s.charCodeAt(i + 2) << 16) + (s.charCodeAt(i + 3) << 24)
+    }
+    return blks
+  }
+  const md51 = (s) => {
+    const n = s.length
+    const state = [1732584193, -271733879, -1732584194, 271733878]
+    let i
+    for (i = 64; i <= n; i += 64) md5cycle(state, md5blk(s.substring(i - 64, i)))
+    s = s.substring(i - 64)
+    const tail = new Array(16).fill(0)
+    for (i = 0; i < s.length; i++) tail[i >> 2] |= s.charCodeAt(i) << ((i % 4) << 3)
+    tail[i >> 2] |= 0x80 << ((i % 4) << 3)
+    if (i > 55) {
+      md5cycle(state, tail)
+      for (i = 0; i < 16; i++) tail[i] = 0
+    }
+    tail[14] = n * 8
+    md5cycle(state, tail)
+    return state
+  }
+  const rhex = (n) => {
+    let s = ''
+    for (let j = 0; j < 4; j++) {
+      s += ((n >> (j * 8 + 4)) & 0x0F).toString(16) + ((n >> (j * 8)) & 0x0F).toString(16)
+    }
+    return s
+  }
+  return md51(unescape(encodeURIComponent(str))).map(rhex).join('')
+}
+
+/**
+ * 获取财联社电报（cls.cn 新接口 /v1/roll/get_roll_list，需 sign 签名）
+ * 签名算法逆向自 cls.cn 前端：参数按 key 字典序拼接 query string → sha1 → md5
+ * 注意：接口无 CORS 头，uTools 可直连；纯浏览器 dev 会跨域失败（与股票平台行为一致）
+ * @param {number} page - 页码
+ * @param {number} pageSize - 每页条数
+ * @returns {Promise<Object>} 电报数据
+ */
+async function getClsTelegraphData(page, pageSize) {
+  const buildSign = (params) => {
+    const qs = Object.keys(params).sort().map(k => `${k}=${params[k] ?? ''}`).join('&')
+    return jsMd5(jsSha1(qs))
+  }
+  const baseParams = { app: 'CailianpressWeb', category: '', last_time: '', os: 'web', refresh_type: 1, rn: 20, sv: '8.7.9' }
+  // 翻页：以当前页最后一条的 ctime 作为 last_time 向前翻（第 1 页 last_time 为空）
+  // 最多翻 30 页（600 条）防接口异常时死循环；游标不推进也立即停止
+  const collectPages = async (targetEnd) => {
+    const items = []
+    let lastTime = ''
+    for (let round = 0; round < 30 && items.length < targetEnd; round++) {
+      const params = { ...baseParams, last_time: lastTime }
+      const query = Object.keys(params).sort().map(k => `${k}=${params[k]}`).join('&')
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), API.REQUEST_TIMEOUT + 4000)
+      try {
+        const response = await fetch(`https://www.cls.cn/v1/roll/get_roll_list?${query}&sign=${buildSign(params)}`, {
+          method: 'GET',
+          signal: controller.signal
+        })
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+        }
+        const result = await response.json()
+        const roll = result?.data?.roll_data
+        if (!Array.isArray(roll) || roll.length === 0) break
+        items.push(...roll)
+        const nextTime = roll[roll.length - 1].ctime
+        if (!nextTime || nextTime === lastTime) break
+        lastTime = nextTime
+      } finally {
+        clearTimeout(timeoutId)
+      }
+    }
+    return items
+  }
+
+  try {
+    const targetEnd = page * pageSize
+    const roll = await collectPages(targetEnd)
+    if (roll.length === 0) {
+      throw new Error('财联社返回数据格式不正确')
+    }
+    const hotList = roll.map((item, index) => {
+      const title = stripHtml(item.title || '')
+      const content = stripHtml(item.content || item.brief || '')
+      return {
+        index: index + 1,
+        title: title || content.slice(0, 50),
+        desc: content,
+        img: item.img || '',
+        url: item.shareurl || (item.id ? `https://www.cls.cn/detail/${item.id}` : 'https://www.cls.cn/telegraph'),
+        mobileUrl: item.shareurl || (item.id ? `https://www.cls.cn/detail/${item.id}` : 'https://www.cls.cn/telegraph'),
+        hot: item.reading_num || ''
+      }
+    })
+    debug.log(`✅ 成功获取财联社电报 ${hotList.length} 条`)
+    const start = (page - 1) * pageSize
+    const end = start + pageSize
+    return {
+      data: hotList.slice(start, end),
+      total: hotList.length,
+      hasMore: end < hotList.length,
+      source: 'cls'
+    }
+  } catch (error) {
+    // 区分跨域失败与接口失败，给出和股票平台一致的提示
+    if (error.message && (error.message.includes('Failed to fetch') || error.message.includes('NetworkError'))) {
+      throw new Error('跨域请求被阻止（建议在uTools中使用）')
+    }
+    throw error
+  }
 }
 
 /**
@@ -323,14 +584,24 @@ async function getHotDataViaFetch(platformId, page, pageSize, geoLocation) {
     return await getProductHuntData(page, pageSize)
   }
 
+  // 特殊处理网易云热歌榜（music.163.com 老接口无 CORS 头：uTools 可直连，纯浏览器 dev 会跨域失败，与股票平台行为一致）
+  if (platformId === 'netease-music') {
+    return await getNeteaseMusicData(page, pageSize)
+  }
+
+  // 特殊处理财联社电报（接口需 sign 签名：md5(sha1(参数字典序拼接))，逆向自 cls.cn 前端；无 CORS 头，行为同上）
+  if (platformId === 'cls-telegraph') {
+    return await getClsTelegraphData(page, pageSize)
+  }
+
   // uapis.cn 支持的平台（根据官方文档）
   const uapisPlatforms = [
-    'baidu', 'weibo', 'zhihu', 'douyin', 'bilibili', 'kuaishou',
+    'baidu', 'weibo', 'zhihu', 'douyin', 'bilibili', 'kuaishou', 'xiaohongshu', 'qq-music',
     'toutiao', 'tieba', 'hupu', 'douban-movie', 'douban-group', 'juejin', 'jianshu',
     'ithome', 'ithome-xijiayi', 'csdn', 'v2ex', 'sspai', 'coolapk',
     'thepaper', 'qq-news', 'sina', 'sina-news', 'netease-news', 'huxiu', 'ifanr',
     'acfun', 'miyoushe', 'genshin', 'honkai', 'starrail', 'lol', 'guokr', '51cto',
-    'nodeseek', '52pojie', 'weread', 'hellogithub', 'zhihu-daily'
+    'nodeseek', '52pojie', 'weread', 'hellogithub', 'zhihu-daily', 'ngabbs', 'dgtle', 'weatheralarm'
   ]
 
   // 数据源链：本地 DailyHotApi → uapis.cn → api-hot.imsyy.com 公共实例

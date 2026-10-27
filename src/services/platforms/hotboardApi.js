@@ -7,12 +7,12 @@ import { API } from '../../config.js'
 
 // uapis.cn 支持的平台列表
 const UAPIS_PLATFORMS = [
-  'baidu', 'weibo', 'zhihu', 'douyin', 'bilibili', 'kuaishou',
+  'baidu', 'weibo', 'zhihu', 'douyin', 'bilibili', 'kuaishou', 'xiaohongshu', 'qq-music',
   'toutiao', 'tieba', 'hupu', 'douban-movie', 'douban-group', 'juejin', 'jianshu',
   'ithome', 'ithome-xijiayi', '36kr', 'csdn', 'v2ex', 'sspai', 'coolapk',
   'thepaper', 'qq-news', 'sina', 'sina-news', 'netease-news', 'huxiu', 'ifanr',
   'acfun', 'genshin', 'honkai', 'starrail', 'lol', 'guokr', '51cto',
-  'nodeseek', '52pojie', 'hostloc', 'weread', 'hellogithub', 'zhihu-daily'
+  'nodeseek', '52pojie', 'hostloc', 'weread', 'hellogithub', 'zhihu-daily', 'ngabbs', 'dgtle', 'weatheralarm'
 ]
 
 /**
