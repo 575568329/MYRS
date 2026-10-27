@@ -533,8 +533,8 @@ const previewSize = computed(() => FISH_PREVIEW_SIZES[fishWindow.value.size] || 
         <section class="settings-section">
           <h3>关于</h3>
           <div class="about-info">
-            <p><strong>摸鱼热搜</strong> v2.1.0</p>
-            <p>一个简洁高效的热搜聚合插件 · 52 平台 · 内置数据服务</p>
+            <p><strong>摸鱼热搜</strong> v2.2.0</p>
+            <p>一个简洁高效的热搜聚合插件 · {{ PLATFORMS.length }} 平台 · 内置数据服务</p>
             <p>支持 AI 智能翻译（Ctrl+T，艺术与开发者平台）</p>
           </div>
         </section>
