@@ -1,6 +1,6 @@
 {
   "name": "hot-search-utools",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "摸鱼热搜 - uTools 热搜聚合插件，支持46+平台和AI翻译",
   "type": "module",
   "scripts": {
@@ -24,7 +24,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-username/hot-search-utools.git"
+    "url": "https://github.com/575568329/MYRS.git"
   },
   "dependencies": {
     "@vueuse/core": "^11.0.0",
