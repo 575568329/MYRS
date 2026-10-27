@@ -45,3 +45,6 @@ coverage
 
 # Claude Code 本地个人配置
 .claude/settings.local.json
+
+# uTools 插件安装包（构建产物）
+*.upx
